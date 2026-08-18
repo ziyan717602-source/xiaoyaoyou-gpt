@@ -6,9 +6,9 @@
 - 共享核心前置：28
 - 总跟踪：205
 - 当前 partial：40
-- 当前 verified：0
+- 当前 verified：1
 - 当前 deferred：0
-- 当前 unstarted：165
+- 当前 unstarted：164
 
 ## 执行切片
 
@@ -25,6 +25,12 @@
 | `CS05-SPECIAL`            |      1 |
 
 第一可执行切片是 `CS01A-CORE-CARD-AUDIT`：冻结鼠儿果、天雷破、冰心诀、灵葫仙丹的逐模式旧版证据并补齐灵葫仙丹普通自疗。仍依赖事件、技能或特殊牌的条目继续保持 partial，直到相应切片闭合。
+
+## 已验证条目
+
+| ID              | 名称     | 完成边界                                                                          | 证据                                             |
+| --------------- | -------- | --------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `xyy.card.jp03` | 五气朝元 | primary living-team heal-one and alternate pawn draw-one modes are fully verified | receipt:docs/verification/receipts/cs01b-jp03.md |
 
 ## 已有局部实现（不得误报为完成）
 

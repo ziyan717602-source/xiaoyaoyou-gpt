@@ -315,6 +315,65 @@ function injectTp02Fixture(
   }
 }
 
+function injectJp03Fixture(
+  databasePath: string,
+  matchId: string,
+  actor: PlayerId,
+): void {
+  const database = new Database(databasePath);
+  try {
+    const row = database
+      .prepare(
+        `SELECT rowid, state_json FROM snapshots
+         WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1`,
+      )
+      .get(matchId) as { rowid: number; state_json: string } | undefined;
+    if (row === undefined) throw new Error("Missing JP03 fixture snapshot.");
+    const state = JSON.parse(row.state_json) as MatchState;
+    const cards = ["xyy.card.jp03@5", "xyy.card.jp03@6"] as const;
+    const now = Date.now();
+    const fixture: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hp: player.maxHp - 1,
+            hand: player.id === actor ? cards : [],
+          },
+        ]),
+      ),
+      turn:
+        state.turn === null
+          ? null
+          : {
+              ...state.turn,
+              phase: "action",
+              openedAt: now,
+              deadlineAt: now + 15_000,
+            },
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !cards.includes(card)),
+      discardPile: [],
+      effectStack: [],
+      reactionWindow: null,
+      pendingChoice: null,
+      dyingBatch: null,
+    };
+    const stateJson = JSON.stringify(fixture);
+    const stateHash = createHash("sha256")
+      .update(stateJson, "utf8")
+      .digest("hex");
+    database
+      .prepare(
+        "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE rowid = ?",
+      )
+      .run(stateJson, stateHash, row.rowid);
+  } finally {
+    database.close();
+  }
+}
+
 describe("M04 reaction lifecycle over six real WebSockets", () => {
   it("persists a child window across restart and completes a counter-chain", async () => {
     const root = mkdtempSync(
@@ -667,6 +726,113 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
       (player) => player.id === actor,
     )!;
     expect(actorAfterHeal.hp).toBe(actorAfterHeal.maxHp);
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    injectJp03Fixture(databasePath, room.roomId, actor);
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    const jp03ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    const jp03Actor = jp03ClientByPlayer.get(actor)!;
+    const actorTeam = jp03Actor.latestView.players.find(
+      (player) => player.id === actor,
+    )!.team;
+    const allies = jp03Actor.latestView.players
+      .filter((player) => player.alive && player.team === actorTeam)
+      .sort((left, right) => left.seat - right.seat)
+      .map((player) => player.id);
+    expect(jp03Actor.latestView.availableActions).toEqual(
+      expect.arrayContaining([
+        {
+          type: "play-card",
+          cardInstanceId: "xyy.card.jp03@5",
+          targetPlayerIds: allies,
+          mode: "primary",
+        },
+        {
+          type: "play-card",
+          cardInstanceId: "xyy.card.jp03@6",
+          targetPlayerIds: [],
+          mode: "pawn",
+        },
+      ]),
+    );
+    expect(
+      clients
+        .filter((client) => client !== jp03Actor)
+        .every(
+          (client) =>
+            !JSON.stringify(client.latestView).includes("xyy.card.jp03@5") &&
+            !JSON.stringify(client.latestView).includes("xyy.card.jp03@6"),
+        ),
+    ).toBe(true);
+
+    const teamHeal = await sendCommand(
+      jp03Actor,
+      sessionByPlayer.get(actor)!,
+      "network-jp03-team-heal",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp03@5",
+        targetPlayerIds: allies,
+        mode: "primary",
+      },
+    );
+    expect(teamHeal.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    let jp03Pass = 0;
+    while (clients[0]!.latestView.reactionWindow !== null) {
+      const window = clients[0]!.latestView.reactionWindow!;
+      const response = await sendCommand(
+        jp03ClientByPlayer.get(window.priorityPlayerId)!,
+        sessionByPlayer.get(window.priorityPlayerId)!,
+        `network-jp03-pass-${jp03Pass}`,
+        version,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitForVersion(clients, version);
+      jp03Pass += 1;
+      if (jp03Pass > 6) throw new Error("JP03 team healing did not close.");
+    }
+    for (const player of jp03Actor.latestView.players) {
+      expect(player.hp).toBe(
+        allies.includes(player.id) ? player.maxHp : player.maxHp - 1,
+      );
+    }
+
+    const handBeforePawn = jp03Actor.latestView.players.find(
+      (player) => player.id === actor,
+    )!.hand;
+    const pawned = await sendCommand(
+      jp03Actor,
+      sessionByPlayer.get(actor)!,
+      "network-jp03-pawn",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp03@6",
+        targetPlayerIds: [],
+        mode: "pawn",
+      },
+    );
+    expect(pawned.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    expect(jp03Actor.latestView.reactionWindow).toBeNull();
+    const handAfterPawn = jp03Actor.latestView.players.find(
+      (player) => player.id === actor,
+    )!.hand;
+    expect(handAfterPawn).toHaveLength(handBeforePawn.length);
+    expect(handAfterPawn).not.toContain("xyy.card.jp03@6");
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });

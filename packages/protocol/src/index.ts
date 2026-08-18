@@ -51,6 +51,7 @@ export type ClientCommand =
       readonly type: "play-card";
       readonly cardInstanceId: string;
       readonly targetPlayerIds: readonly PlayerId[];
+      readonly mode?: "primary" | "pawn";
     }
   | { readonly type: "end-action" }
   | {
@@ -252,6 +253,7 @@ export const clientMessageSchema = {
                       maxItems: 6,
                       items: identifierSchema,
                     },
+                    mode: { enum: ["primary", "pawn"] },
                   },
                 },
                 {

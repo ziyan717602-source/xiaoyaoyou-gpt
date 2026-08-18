@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-action-tricks-v1",
+  "scope": "CONTENT-STANDARD/CS01B-ACTION-TRICKS",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "items": {
+    "xyy.card.jp01": {
+      "name": "偷盗",
+      "rule": "choose another living target with at least one unprotected hand card, privately choose one opaque hand slot, then transfer that exact card to the source owner after the response resolves",
+      "status": "pending-hidden-hand-choice-and-transfer"
+    },
+    "xyy.card.jp02": {
+      "name": "窥测天机",
+      "rule": "inspect the top two monster cards and optionally reorder them; with exactly one monster card only inspect it; illegal with an empty monster deck",
+      "status": "pending-CS03-monster-deck"
+    },
+    "xyy.card.jp03": {
+      "name": "五气朝元",
+      "rule": "primary mode targets every living player on the source team and heals each one HP with water attribution after responses; pawn mode pays the card and draws one without opening a response window",
+      "status": "verified"
+    },
+    "xyy.card.jp06": {
+      "name": "铜钱镖",
+      "rule": "choose any living target with an unprotected hand or equipment card, then choose one visible equipment or opaque opponent hand slot and discard the exact chosen card after the response resolves",
+      "status": "pending-hidden-hand-choice-and-equipment-discard"
+    }
+  },
+  "legacyEvidence": [
+    "psd.db3:Tux:JP01-JP02-JP03-JP06 description-target-special",
+    "PSDGamepkg/JNS/JP06.cs:294-316 JP01 target-hidden-slot-transfer",
+    "PSDGamepkg/JNS/JP06.cs:318-327 JP02 monster-top-inspect-reorder",
+    "PSDGamepkg/JNS/JP06.cs:330-335 JP03 living-team-water-heal-one",
+    "PSDGamepkg/JNS/JP06.cs:365-412 JP06 target-hidden-hand-or-visible-equipment-discard",
+    "PSDGamepkg/Artiad/ContentRule.cs:189-196 JP03 pawn-price-one"
+  ],
+  "decisions": {
+    "jp01SelfTarget": "forbidden",
+    "jp01ProtectedCards": "excluded-from-validity-and-choice",
+    "jp02CrossSlice": "keep-item-unstarted-until-CS03-monster-deck-exists",
+    "jp03FullHp": "primary-remains-legal-and-card-is-paid",
+    "jp03TeamTarget": "all-living-same-team-players-in-seat-order",
+    "jp03Pawn": "explicit-mode-pawn-no-response-discard-one-draw-one",
+    "jp06SelfTarget": "allowed-when-self-has-an-unprotected-hand-or-equipment-card",
+    "hiddenOpponentHand": "server-owned-opaque-slot-identities-never-card-instance-ids"
+  },
+  "acceptanceMap": {
+    "CS01B-01": "four-action-trick-rules-and-cross-slice-dependencies-are-frozen-from-read-only-CSharp-evidence",
+    "CS01B-02": "JP03-primary-is-offered-with-the-exact-living-team-target-list",
+    "CS01B-03": "JP03-primary-heals-each-living-ally-one-capped-at-max-after-response-resolution",
+    "CS01B-04": "JP03-primary-is-cancelled-by-a-resolved-Bingxin-chain",
+    "CS01B-05": "JP03-primary-replays-identically-across-JSON-restart",
+    "CS01B-06": "JP03-pawn-discards-the-card-and-draws-one-without-a-response-window",
+    "CS01B-07": "JP03-private-hand-and-both-modes-work-over-six-real-WebSockets",
+    "CS01B-08": "JP01-uses-private-opaque-choice-and-authoritative-transfer",
+    "CS01B-09": "JP02-inspects-and-optionally-reorders-one-or-two-monster-cards",
+    "CS01B-10": "JP06-private-and-visible-zone-choices-discard-the-authoritative-card",
+    "CS01B-11": "all-completed-modes-conserve-the-56-card-action-deck",
+    "CS01B-12": "full-fast-and-specialty-verification-pass"
+  }
+}

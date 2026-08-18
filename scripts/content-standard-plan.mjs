@@ -35,6 +35,10 @@ function sliceFor(item) {
 }
 
 function baseline(item) {
+  const verified = contract.baselineVerified?.[item.canonicalId];
+  if (verified !== undefined) {
+    return { state: "verified", ...verified };
+  }
   if (item.packages.includes("standard") && item.kind === "hero") {
     return {
       state: "partial",
@@ -135,6 +139,13 @@ const partialRows = items
       `| \`${item.id}\` | ${item.name} | ${item.boundary} | ${item.evidence.join(", ")} |`,
   )
   .join("\n");
+const verifiedRows = items
+  .filter((item) => item.state === "verified")
+  .map(
+    (item) =>
+      `| \`${item.id}\` | ${item.name} | ${item.boundary} | ${item.evidence.join(", ")} |`,
+  )
+  .join("\n");
 const queueRows = [
   "CS00-SHARED-CORE",
   ...contract.executionQueue.map((x) => x.id),
@@ -161,6 +172,12 @@ const reportText = await format(
 ${queueRows}
 
 第一可执行切片是 \`CS01A-CORE-CARD-AUDIT\`：冻结鼠儿果、天雷破、冰心诀、灵葫仙丹的逐模式旧版证据并补齐灵葫仙丹普通自疗。仍依赖事件、技能或特殊牌的条目继续保持 partial，直到相应切片闭合。
+
+## 已验证条目
+
+| ID | 名称 | 完成边界 | 证据 |
+| --- | --- | --- | --- |
+${verifiedRows || "| - | - | 尚无 | - |"}
 
 ## 已有局部实现（不得误报为完成）
 

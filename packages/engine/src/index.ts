@@ -219,6 +219,7 @@ export type AvailableAction =
       readonly type: "play-card";
       readonly cardInstanceId: CardInstanceId;
       readonly targetPlayerIds: readonly PlayerId[];
+      readonly mode?: "primary" | "pawn";
     }
   | { readonly type: "end-action" }
   | {
@@ -641,8 +642,22 @@ function turnActions(
   if (state.turn.phase !== "action") return [];
   const playable = player.hand.flatMap((instanceId) => {
     const definition = cardDefinition(instanceId);
+    const alternate =
+      definition.alternateActions?.flatMap((action) =>
+        action.type === "pawn-draw-one"
+          ? [
+              {
+                type: "play-card" as const,
+                cardInstanceId: instanceId,
+                targetPlayerIds: [],
+                mode: "pawn" as const,
+              },
+            ]
+          : [],
+      ) ?? [];
     if (definition.coreAction?.type === "equip") {
       return [
+        ...alternate,
         {
           type: "play-card" as const,
           cardInstanceId: instanceId,
@@ -652,6 +667,7 @@ function turnActions(
     }
     if (definition.coreAction?.type === "draw-two") {
       return [
+        ...alternate,
         {
           type: "play-card" as const,
           cardInstanceId: instanceId,
@@ -664,6 +680,7 @@ function turnActions(
     }
     if (definition.coreAction?.type === "damage-two") {
       return [
+        ...alternate,
         {
           type: "play-card" as const,
           cardInstanceId: instanceId,
@@ -676,6 +693,7 @@ function turnActions(
     }
     if (definition.coreAction?.type === "heal-two") {
       return [
+        ...alternate,
         {
           type: "play-card" as const,
           cardInstanceId: instanceId,
@@ -683,7 +701,23 @@ function turnActions(
         },
       ];
     }
-    return [];
+    if (definition.coreAction?.type === "heal-team-one") {
+      return [
+        ...alternate,
+        {
+          type: "play-card" as const,
+          cardInstanceId: instanceId,
+          targetPlayerIds: Object.values(state.players)
+            .filter(
+              (candidate) => candidate.alive && candidate.team === player.team,
+            )
+            .sort((left, right) => left.seat - right.seat)
+            .map((candidate) => candidate.id),
+          mode: "primary" as const,
+        },
+      ];
+    }
+    return alternate;
   });
   return [...playable, { type: "end-action" }];
 }
@@ -751,6 +785,7 @@ export {
   type CardId,
   type CardInstanceId,
   type CoreCardAction,
+  type AlternateCardAction,
   type RescueCardAction,
   type EquipmentSlot,
   type HeroDefinition,

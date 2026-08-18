@@ -101,6 +101,86 @@ function arranged(): {
 }
 
 describe("M04 reaction event replay", () => {
+  it("replays JP03 team healing identically after a JSON restart", () => {
+    const startedState = started();
+    const actor = startedState.activePlayerId!;
+    const team = startedState.players[actor]!.team;
+    const allies = Object.values(startedState.players)
+      .filter((player) => player.alive && player.team === team)
+      .sort((left, right) => left.seat - right.seat)
+      .map((player) => player.id);
+    const initial: MatchState = {
+      ...startedState,
+      players: Object.fromEntries(
+        Object.values(startedState.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hp: player.maxHp - 1,
+            hand:
+              player.id === actor
+                ? (["xyy.card.jp03@5"] as readonly CardInstanceId[])
+                : [],
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.jp03@5",
+      ),
+      discardPile: [],
+    };
+    const played = apply(
+      initial,
+      actor,
+      "jp03-primary",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp03@5",
+        targetPlayerIds: allies,
+        mode: "primary",
+      },
+      1_000,
+    );
+    const events = [...played.events];
+    let uninterrupted = played.state;
+    let restarted = JSON.parse(JSON.stringify(played.state)) as MatchState;
+    let passSequence = 0;
+    while (uninterrupted.reactionWindow !== null) {
+      const window = uninterrupted.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const command = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `jp03-pass-${passSequence}`;
+      const now = 2_000 + passSequence * 100;
+      const primary = apply(uninterrupted, priority, commandId, command, now);
+      const recovered = apply(restarted, priority, commandId, command, now);
+      expect(recovered).toEqual(primary);
+      uninterrupted = primary.state;
+      restarted = recovered.state;
+      events.push(...primary.events);
+      passSequence += 1;
+    }
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(restarted).toEqual(uninterrupted);
+    expect(replayed).toEqual(uninterrupted);
+    for (const playerId of allies) {
+      expect(uninterrupted.players[playerId]!.hp).toBe(
+        uninterrupted.players[playerId]!.maxHp,
+      );
+    }
+    for (const player of Object.values(uninterrupted.players)) {
+      if (!allies.includes(player.id)) expect(player.hp).toBe(player.maxHp - 1);
+    }
+  });
+
   it("replays TP02 normal healing identically after a JSON restart", () => {
     const initialState = started();
     const actor = initialState.activePlayerId!;

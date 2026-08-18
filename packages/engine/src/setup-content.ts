@@ -18,16 +18,19 @@ export type CoreCardAction =
   | { readonly type: "draw-two" }
   | { readonly type: "damage-two"; readonly element: "thunder" }
   | { readonly type: "heal-two" }
+  | { readonly type: "heal-team-one"; readonly element: "water" }
   | { readonly type: "cancel-effect" }
   | null;
 
 export type RescueCardAction = { readonly type: "rescue-two" } | null;
+export type AlternateCardAction = { readonly type: "pawn-draw-one" };
 
 export interface CardDefinition {
   readonly id: CardId;
   readonly name: string;
   readonly coreAction: CoreCardAction;
   readonly rescueAction?: RescueCardAction;
+  readonly alternateActions?: readonly AlternateCardAction[];
 }
 
 // Values are the scoped Hero rows for legacy level 4 (packages 1 + 2).
@@ -370,7 +373,12 @@ const CARD_SERIALS: Readonly<Record<CardId, readonly number[]>> = {
 export const SETUP_CARDS: readonly CardDefinition[] = [
   { id: "xyy.card.jp01", name: "偷盗", coreAction: null },
   { id: "xyy.card.jp02", name: "窥测天机", coreAction: null },
-  { id: "xyy.card.jp03", name: "五气朝元", coreAction: null },
+  {
+    id: "xyy.card.jp03",
+    name: "五气朝元",
+    coreAction: { type: "heal-team-one", element: "water" },
+    alternateActions: [{ type: "pawn-draw-one" }],
+  },
   { id: "xyy.card.jp04", name: "鼠儿果", coreAction: { type: "draw-two" } },
   {
     id: "xyy.card.jp05",

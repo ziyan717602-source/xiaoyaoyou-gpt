@@ -76,6 +76,14 @@ function choosePlay(
   actor: PlayerId,
   action: Extract<AvailableAction, { type: "play-card" }>,
 ): CommandEnvelope["command"] {
+  if (action.mode !== undefined) {
+    return {
+      type: "play-card",
+      cardInstanceId: action.cardInstanceId,
+      targetPlayerIds: action.targetPlayerIds,
+      mode: action.mode,
+    };
+  }
   if (action.cardInstanceId.startsWith("xyy.card.jp05@")) {
     const actorTeam = state.players[actor]!.team;
     const target = action.targetPlayerIds

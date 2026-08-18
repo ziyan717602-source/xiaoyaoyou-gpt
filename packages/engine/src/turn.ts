@@ -129,6 +129,36 @@ export function reduceTurnEvent(
         deadlineAt: changedAt + ACTION_DEADLINE_MS,
       },
     };
+  } else if (event.type === "turn.card-pawned") {
+    const playerId = stringPayload(event, "playerId");
+    const cardInstanceId = stringPayload(
+      event,
+      "cardInstanceId",
+    ) as CardInstanceId;
+    const player = state.players[playerId];
+    if (
+      state.turn.phase !== "action" ||
+      state.activePlayerId !== playerId ||
+      player === undefined ||
+      !player.alive ||
+      !player.hand.includes(cardInstanceId) ||
+      cardDefinition(cardInstanceId).alternateActions?.some(
+        (action) => action.type === "pawn-draw-one",
+      ) !== true
+    ) {
+      throw new Error("Card pawn event is not applicable.");
+    }
+    next = {
+      ...state,
+      players: {
+        ...state.players,
+        [playerId]: {
+          ...player,
+          hand: player.hand.filter((card) => card !== cardInstanceId),
+        },
+      },
+      discardPile: [...state.discardPile, cardInstanceId],
+    };
   } else if (event.type === "turn.card-played") {
     const playerId = stringPayload(event, "playerId");
     const cardInstanceId = stringPayload(
@@ -474,6 +504,33 @@ export function applyTurnCommand(
         currentVersion: input.version,
       };
     }
+    if (command.mode === "pawn") {
+      if (
+        command.targetPlayerIds.length !== 0 ||
+        definition.alternateActions?.some(
+          (action) => action.type === "pawn-draw-one",
+        ) !== true
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      builder.append("turn.card-pawned", {
+        playerId: envelope.playerId,
+        cardInstanceId,
+      });
+      appendDraw(builder, envelope.playerId, 1, "card-effect");
+      return { accepted: true, state: builder.state, events: builder.events };
+    }
+    if (command.mode !== undefined && command.mode !== "primary") {
+      return {
+        accepted: false,
+        reason: "invalid",
+        currentVersion: input.version,
+      };
+    }
     if (definition.coreAction === null) {
       return {
         accepted: false,
@@ -499,6 +556,27 @@ export function applyTurnCommand(
           currentVersion: input.version,
         };
       }
+    } else if (definition.coreAction.type === "heal-team-one") {
+      const expectedTargets = Object.values(input.players)
+        .filter(
+          (candidate) => candidate.alive && candidate.team === player.team,
+        )
+        .sort((left, right) => left.seat - right.seat)
+        .map((candidate) => candidate.id);
+      if (!sameValues(command.targetPlayerIds, expectedTargets)) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      return beginCancellableCardEffect(
+        input,
+        envelope,
+        serverReceivedAt,
+        cardInstanceId,
+        expectedTargets,
+      );
     } else {
       const target = input.players[command.targetPlayerIds[0] ?? ""];
       if (

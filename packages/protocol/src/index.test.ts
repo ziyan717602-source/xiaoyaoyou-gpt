@@ -45,6 +45,12 @@ describe("protocol runtime schema", () => {
         cardInstanceId: "xyy.card.jp04@7",
         targetPlayerIds: ["player-2"],
       },
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp03@5",
+        targetPlayerIds: [],
+        mode: "pawn",
+      },
       { type: "end-action" },
       {
         type: "play-reaction-card",

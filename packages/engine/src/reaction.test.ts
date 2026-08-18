@@ -179,6 +179,153 @@ function passAll(
 }
 
 describe("M04 serializable reaction core", () => {
+  it("resolves JP03 team healing after responses and supports its pawn mode without a response window", () => {
+    const initial = playing("jp03-team-heal");
+    const actor = initial.activePlayerId!;
+    const responder = clockwiseAfter(initial, actor)[0]!;
+    const actorTeam = initial.players[actor]!.team;
+    const allies = Object.values(initial.players)
+      .filter((player) => player.alive && player.team === actorTeam)
+      .sort((left, right) => left.seat - right.seat)
+      .map((player) => player.id);
+    const opponents = Object.values(initial.players)
+      .filter((player) => player.alive && player.team !== actorTeam)
+      .map((player) => player.id);
+    const claimed = new Set<CardInstanceId>([
+      "xyy.card.jp03@5",
+      "xyy.card.tp01@33",
+    ]);
+    const prepared: MatchState = {
+      ...initial,
+      players: Object.fromEntries(
+        Object.values(initial.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hp: player.maxHp - 1,
+            hand:
+              player.id === actor
+                ? ["xyy.card.jp03@5"]
+                : player.id === responder
+                  ? ["xyy.card.tp01@33"]
+                  : [],
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+    expect(createPlayerView(prepared, actor).availableActions).toEqual(
+      expect.arrayContaining([
+        {
+          type: "play-card",
+          cardInstanceId: "xyy.card.jp03@5",
+          targetPlayerIds: [],
+          mode: "pawn",
+        },
+        {
+          type: "play-card",
+          cardInstanceId: "xyy.card.jp03@5",
+          targetPlayerIds: allies,
+          mode: "primary",
+        },
+      ]),
+    );
+    expect(
+      applyPlayer(
+        prepared,
+        actor,
+        "jp03-wrong-team",
+        {
+          type: "play-card",
+          cardInstanceId: "xyy.card.jp03@5",
+          targetPlayerIds: [actor],
+          mode: "primary",
+        },
+        1_000,
+      ),
+    ).toEqual({
+      accepted: false,
+      reason: "forbidden",
+      currentVersion: prepared.version,
+    });
+
+    let healed = accepted(
+      prepared,
+      actor,
+      "jp03-primary",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp03@5",
+        targetPlayerIds: allies,
+        mode: "primary",
+      },
+      1_000,
+    );
+    expect(healed.effectStack[0]).toMatchObject({
+      kind: "card:xyy.card.jp03",
+      targetIds: allies,
+    });
+    healed = passAll(healed, "jp03-pass", 2_000);
+    for (const playerId of allies) {
+      expect(healed.players[playerId]!.hp).toBe(
+        healed.players[playerId]!.maxHp,
+      );
+    }
+    for (const playerId of opponents) {
+      expect(healed.players[playerId]!.hp).toBe(
+        healed.players[playerId]!.maxHp - 1,
+      );
+    }
+
+    let cancelled = accepted(
+      prepared,
+      actor,
+      "jp03-cancelled",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp03@5",
+        targetPlayerIds: allies,
+        mode: "primary",
+      },
+      1_000,
+    );
+    cancelled = accepted(
+      cancelled,
+      responder,
+      "jp03-bingxin",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: cancelled.effectStack[0]!.effectId,
+      },
+      2_000,
+    );
+    cancelled = passAll(cancelled, "jp03-cancel-pass", 3_000);
+    for (const playerId of allies) {
+      expect(cancelled.players[playerId]!.hp).toBe(
+        cancelled.players[playerId]!.maxHp - 1,
+      );
+    }
+
+    const pawned = accepted(
+      prepared,
+      actor,
+      "jp03-pawn",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp03@5",
+        targetPlayerIds: [],
+        mode: "pawn",
+      },
+      1_000,
+    );
+    expect(pawned.reactionWindow).toBeNull();
+    expect(pawned.players[actor]!.hand).toHaveLength(1);
+    expect(pawned.players[actor]!.hand).not.toContain("xyy.card.jp03@5");
+    expect(pawned.discardPile).toContain("xyy.card.jp03@5");
+  });
+
   it("uses TP02 on self in the action phase, caps healing, allows a full-HP play, and remains cancellable", () => {
     const initial = playing("tp02-normal-heal");
     const actor = initial.activePlayerId!;

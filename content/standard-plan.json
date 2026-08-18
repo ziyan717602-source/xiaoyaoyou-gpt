@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 40,
-    "verified": 0,
+    "verified": 1,
     "deferred": 0,
-    "unstarted": 165
+    "unstarted": 164
   },
   "executionQueue": [
     {
@@ -259,9 +259,9 @@
       "kind": "card",
       "packages": ["standard"],
       "slice": "CS01B-ACTION-TRICKS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "primary living-team heal-one and alternate pawn draw-one modes are fully verified",
+      "evidence": ["receipt:docs/verification/receipts/cs01b-jp03.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

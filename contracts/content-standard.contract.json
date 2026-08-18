@@ -16,6 +16,12 @@
     "partialMustNameImplementedBoundary": true,
     "catalogRemainsGeneratedSourceEvidence": true
   },
+  "baselineVerified": {
+    "xyy.card.jp03": {
+      "boundary": "primary living-team heal-one and alternate pawn draw-one modes are fully verified",
+      "evidence": ["receipt:docs/verification/receipts/cs01b-jp03.md"]
+    }
+  },
   "baselinePartial": {
     "allStandardHeroes": {
       "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",

@@ -74,6 +74,14 @@ function cardSet(state: MatchState): Set<CardInstanceId> {
 function chooseCardAction(
   action: Extract<AvailableAction, { type: "play-card" }>,
 ) {
+  if (action.mode !== undefined) {
+    return {
+      type: "play-card" as const,
+      cardInstanceId: action.cardInstanceId,
+      targetPlayerIds: action.targetPlayerIds,
+      mode: action.mode,
+    };
+  }
   return {
     type: "play-card" as const,
     cardInstanceId: action.cardInstanceId,

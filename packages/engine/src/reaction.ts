@@ -34,6 +34,17 @@ function stringPayload(event: Readonly<DomainEvent>, key: string): string {
   return value;
 }
 
+function stringsPayload(
+  event: Readonly<DomainEvent>,
+  key: string,
+): readonly string[] {
+  const value = event.payload[key];
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new Error(`Invalid ${key} payload.`);
+  }
+  return value as string[];
+}
+
 function sameValues(
   left: readonly string[],
   right: readonly string[],
@@ -187,22 +198,39 @@ export function reduceReactionEvent(
       event,
       "cardInstanceId",
     ) as CardInstanceId;
-    const targetPlayerId = stringPayload(event, "targetPlayerId");
+    const targetPlayerIds = Array.isArray(event.payload.targetPlayerIds)
+      ? (stringsPayload(event, "targetPlayerIds") as readonly PlayerId[])
+      : [stringPayload(event, "targetPlayerId")];
     const effectId = stringPayload(event, "effectId");
     const windowId = stringPayload(event, "windowId");
     const openedAt = numberPayload(event, "openedAt");
     const player = state.players[playerId];
-    const target = state.players[targetPlayerId];
+    const targets = targetPlayerIds.map(
+      (targetPlayerId) => state.players[targetPlayerId],
+    );
+    const action = cardDefinition(cardInstanceId).coreAction;
+    const validTeamTargets =
+      action?.type !== "heal-team-one" ||
+      sameValues(
+        targetPlayerIds,
+        Object.values(state.players)
+          .filter(
+            (candidate) => candidate.alive && candidate.team === player?.team,
+          )
+          .sort((left, right) => left.seat - right.seat)
+          .map((candidate) => candidate.id),
+      );
     if (
       state.reactionWindow !== null ||
       state.activePlayerId !== playerId ||
       player === undefined ||
-      target === undefined ||
-      !target.alive ||
+      targetPlayerIds.length === 0 ||
+      targets.some((target) => target?.alive !== true) ||
       !player.hand.includes(cardInstanceId) ||
-      !["draw-two", "damage-two", "heal-two"].includes(
-        cardDefinition(cardInstanceId).coreAction?.type ?? "",
+      !["draw-two", "damage-two", "heal-two", "heal-team-one"].includes(
+        action?.type ?? "",
       ) ||
+      !validTeamTargets ||
       effectById(state, effectId) !== undefined
     ) {
       throw new Error("Original effect event is not applicable.");
@@ -212,7 +240,7 @@ export function reduceReactionEvent(
       parentEffectId: null,
       kind: `card:${cardDefinition(cardInstanceId).id}`,
       sourcePlayerId: playerId,
-      targetIds: [targetPlayerId],
+      targetIds: targetPlayerIds,
       step: "awaiting-reactions",
       status: "waiting",
       payload: { cardInstanceId },
@@ -491,6 +519,44 @@ export function reduceReactionEvent(
         ),
         reactionWindow: null,
       };
+    } else if (effect.kind === "card:xyy.card.jp03") {
+      const expected = effect.targetIds.map((targetPlayerId) => {
+        const target = state.players[targetPlayerId];
+        if (
+          target === undefined ||
+          !target.alive ||
+          target.team !== state.players[effect.sourcePlayerId ?? ""]?.team
+        ) {
+          throw new Error("Resolved team healing has an invalid target.");
+        }
+        return {
+          targetPlayerId,
+          amount: 1,
+          element: "water",
+          hpBefore: target.hp,
+          hpAfter: Math.min(target.maxHp, target.hp + 1),
+        };
+      });
+      if (
+        JSON.stringify(event.payload.healingItems) !== JSON.stringify(expected)
+      ) {
+        throw new Error("Resolved team healing disagrees with current HP.");
+      }
+      const players = { ...state.players };
+      for (const item of expected) {
+        players[item.targetPlayerId] = {
+          ...players[item.targetPlayerId]!,
+          hp: item.hpAfter,
+        };
+      }
+      next = {
+        ...state,
+        players,
+        effectStack: pruneTerminalTail(
+          updateEffects(state, { [effectId]: "resolved" }),
+        ),
+        reactionWindow: null,
+      };
     } else {
       throw new Error(`Unsupported resolvable effect ${effect.kind}.`);
     }
@@ -578,6 +644,21 @@ class EventBuilder {
           hpBefore: target.hp,
           hpAfter: Math.min(target.maxHp, target.hp + 2),
         });
+      } else if (effect.kind === "card:xyy.card.jp03") {
+        this.append("effect.resolved", {
+          effectId,
+          resolvedAt: this.serverReceivedAt,
+          healingItems: effect.targetIds.map((targetPlayerId) => {
+            const target = this.state.players[targetPlayerId]!;
+            return {
+              targetPlayerId,
+              amount: 1,
+              element: "water",
+              hpBefore: target.hp,
+              hpAfter: Math.min(target.maxHp, target.hp + 1),
+            };
+          }),
+        });
       } else {
         this.append("effect.resolved", {
           effectId,
@@ -598,7 +679,7 @@ export function beginCancellableCardEffect(
   envelope: Readonly<CommandEnvelope>,
   serverReceivedAt: number,
   cardInstanceId: CardInstanceId,
-  targetPlayerId: PlayerId,
+  targetPlayerIds: PlayerId | readonly PlayerId[],
 ): ApplyCommandResult {
   if (!validServerTime(serverReceivedAt)) {
     return {
@@ -616,7 +697,9 @@ export function beginCancellableCardEffect(
   builder.append("effect.started", {
     playerId: envelope.playerId,
     cardInstanceId,
-    targetPlayerId,
+    targetPlayerIds: Array.isArray(targetPlayerIds)
+      ? targetPlayerIds
+      : [targetPlayerIds],
     effectId: `${input.matchId}:effect:${envelope.commandId}`,
     windowId: `${input.matchId}:window:${envelope.commandId}`,
     openedAt: serverReceivedAt,
