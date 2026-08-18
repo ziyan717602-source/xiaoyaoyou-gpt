@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS01D-EQUIPMENT-EFFECTS`
-- 最近验证完成：`CS01D / WQ02 天蛇杖确定性治疗增幅`
+- 最近验证完成：`CS01D / FJ03 龙魂战铠与 FJ04 乾坤道袍掩码被动`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -23,8 +23,8 @@
 - CS01A 核心四牌证据：`contracts/core-card-audit.contract.json`、`docs/content-standard/cs01a-core-cards.md`、`docs/verification/receipts/cs01a-core-card-audit.md`
 - CS01B 行动技牌证据：`contracts/action-tricks.contract.json`、`docs/content-standard/cs01b-action-tricks.md`、`docs/verification/receipts/cs01b-jp01.md`、`docs/verification/receipts/cs01b-jp03.md`、`docs/verification/receipts/cs01b-jp06.md`
 - CS01C 防御/战力牌证据：`contracts/defense-buffs.contract.json`、`docs/content-standard/cs01c-defense-buffs.md`、`docs/verification/receipts/cs01c-tp03.md`
-- CS01D 装备证据：`contracts/equipment-effects.contract.json`、`docs/content-standard/cs01d-equipment-effects.md`、`docs/verification/receipts/cs01d-wq04.md`、`docs/verification/receipts/cs01d-wq02.md`
-- 当前工作：把伤害掩码升级为可组合标志，并实现 FJ03/FJ04 的确定性被动减伤/免疫；随后实现 FJ01/FJ02/FJ05 的付费触发。装备战力/命中等待 CS03 战斗状态。
+- CS01D 装备证据：`contracts/equipment-effects.contract.json`、`docs/content-standard/cs01d-equipment-effects.md`、`docs/verification/receipts/cs01d-wq04.md`、`docs/verification/receipts/cs01d-wq02.md`、`docs/verification/receipts/cs01d-fj03-fj04.md`
+- 当前工作：实现 FJ01 的零 HP 弃甲自救、FJ05 的受伤弃甲免疫/治疗与 FJ02 手牌转隐蛊；装备战力/命中等待 CS03，装备失效来源等待 CS02。
 - 下一 ready 节点：`CS01D-EQUIPMENT-EFFECTS`。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-007`，见 `docs/rules-semantics/decisions.md`。

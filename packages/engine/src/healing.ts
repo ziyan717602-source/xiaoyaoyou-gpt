@@ -1,35 +1,11 @@
 import type { PlayerId } from "@xiaoyaoyou/protocol";
 import type { MatchState, PlayerState } from "./index.js";
+import {
+  canonicalHpEvolutionMask,
+  hasHpEvolutionFlag,
+  type HpEvolutionFlag,
+} from "./hp-evolution.js";
 import { cardDefinition, type CardInstanceId } from "./setup-content.js";
-
-export type HpEvolutionFlag =
-  | "tux-inavo"
-  | "immune-inavo"
-  | "decr-inavo"
-  | "chain-inavo"
-  | "alive"
-  | "alive-hard"
-  | "termin-at"
-  | "from-jp"
-  | "from-sk"
-  | "from-nmb"
-  | "rsv-duel"
-  | "rsv-worm";
-
-const HP_EVOLUTION_FLAG_ORDER: readonly HpEvolutionFlag[] = [
-  "tux-inavo",
-  "immune-inavo",
-  "decr-inavo",
-  "chain-inavo",
-  "alive",
-  "alive-hard",
-  "termin-at",
-  "from-jp",
-  "from-sk",
-  "from-nmb",
-  "rsv-duel",
-  "rsv-worm",
-];
 
 export interface CureIntent {
   readonly itemId: string;
@@ -54,22 +30,6 @@ export interface AppliedCure {
   readonly appliedModifierCardInstanceIds: readonly CardInstanceId[];
 }
 
-function canonicalMask(
-  flags: readonly HpEvolutionFlag[] | undefined,
-): readonly HpEvolutionFlag[] {
-  if (flags === undefined) return [];
-  const requested = new Set(flags);
-  if (requested.size !== flags.length) {
-    throw new Error("HP evolution flags must not contain duplicates.");
-  }
-  for (const flag of requested) {
-    if (!HP_EVOLUTION_FLAG_ORDER.includes(flag)) {
-      throw new Error(`Unknown HP evolution flag ${flag}.`);
-    }
-  }
-  return HP_EVOLUTION_FLAG_ORDER.filter((flag) => requested.has(flag));
-}
-
 function activeWq02(player: Readonly<PlayerState>): CardInstanceId | null {
   const weapon = player.equipment.weapon;
   return weapon !== null && cardDefinition(weapon).id === "xyy.card.wq02"
@@ -90,11 +50,15 @@ export function planCureBatch(
     if (target === undefined || !target.alive) {
       throw new Error(`Unknown or dead cure target ${intent.targetPlayerId}.`);
     }
-    const hpEvoMask = canonicalMask(intent.hpEvoMask);
+    const hpEvoMask = canonicalHpEvolutionMask(intent.hpEvoMask);
     let amount = intent.amount;
     const appliedModifierCardInstanceIds: CardInstanceId[] = [];
     const wq02 = activeWq02(target);
-    if (amount > 0 && !hpEvoMask.includes("termin-at") && wq02 !== null) {
+    if (
+      amount > 0 &&
+      !hasHpEvolutionFlag(hpEvoMask, "termin-at") &&
+      wq02 !== null
+    ) {
       amount += 1;
       appliedModifierCardInstanceIds.push(wq02);
     }

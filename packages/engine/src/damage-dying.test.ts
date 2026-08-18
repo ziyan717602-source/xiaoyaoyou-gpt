@@ -222,8 +222,9 @@ describe("M05 damage and dying core", () => {
         ...intent,
         targetPlayerId: alternate,
         amount: 0,
-        hpEvoMask: "normal",
+        hpEvoMask: [],
         appliedReplacementEffectIds: ["effect-replace"],
+        appliedModifierCardInstanceIds: [],
       },
     ]);
     expect(() =>
@@ -241,6 +242,90 @@ describe("M05 damage and dying core", () => {
         ],
       ),
     ).toThrow("Damage modifier amount must be a nonnegative safe integer.");
+  });
+
+  it("applies FJ03 reduction and FJ04 FROM_JP immunity before damage responses", () => {
+    const initial = playing("equipment-damage-masks");
+    const actor = initial.activePlayerId!;
+    const target = initial.turnOrder.find((playerId) => playerId !== actor)!;
+    const baseIntent: DamageIntent = {
+      itemId: "equipment-damage",
+      sourcePlayerId: actor,
+      targetPlayerId: target,
+      amount: 2,
+      element: "thunder",
+      hpEvoMask: ["from-jp"],
+    };
+    const armorState = (armor: CardInstanceId) =>
+      arrange(initial, {}, { [target]: { weapon: null, armor } });
+
+    expect(
+      planDamageBatch(armorState("xyy.card.fj03@54"), [baseIntent]),
+    ).toEqual([
+      {
+        ...baseIntent,
+        amount: 1,
+        hpEvoMask: ["from-jp"],
+        appliedReplacementEffectIds: [],
+        appliedModifierCardInstanceIds: ["xyy.card.fj03@54"],
+      },
+    ]);
+    for (const bypass of ["termin-at", "decr-inavo"] as const) {
+      expect(
+        planDamageBatch(armorState("xyy.card.fj03@54"), [
+          { ...baseIntent, hpEvoMask: [bypass, "from-jp"] },
+        ])[0],
+      ).toMatchObject({
+        amount: 2,
+        appliedModifierCardInstanceIds: [],
+      });
+    }
+    expect(
+      planDamageBatch(armorState("xyy.card.fj03@54"), [
+        { ...baseIntent, amount: 1 },
+      ]),
+    ).toEqual([]);
+
+    expect(
+      planDamageBatch(armorState("xyy.card.fj04@55"), [baseIntent]),
+    ).toEqual([]);
+    expect(
+      planDamageBatch(armorState("xyy.card.fj04@55"), [
+        {
+          ...baseIntent,
+          hpEvoMask: ["immune-inavo", "from-jp"],
+        },
+      ])[0],
+    ).toMatchObject({ amount: 2, hpEvoMask: ["immune-inavo", "from-jp"] });
+    expect(
+      planDamageBatch(armorState("xyy.card.fj04@55"), [
+        { ...baseIntent, hpEvoMask: [] },
+      ])[0],
+    ).toMatchObject({ amount: 2, hpEvoMask: [] });
+
+    let live = arrange(
+      initial,
+      { [actor]: ["xyy.card.jp05@10"], [target]: ["xyy.card.tp03@39"] },
+      { [target]: { weapon: null, armor: "xyy.card.fj04@55" } },
+    );
+    const hpBefore = live.players[target]!.hp;
+    live = accepted(
+      live,
+      actor,
+      "fj04-jp05",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [target],
+      },
+      1_000,
+    );
+    live = passAllReactions(live, 2_000);
+    expect(live.players[target]!.hp).toBe(hpBefore);
+    expect(live.players[target]!.hand).toContain("xyy.card.tp03@39");
+    expect(live.players[target]!.equipment.armor).toBe("xyy.card.fj04@55");
+    expect(live.reactionWindow).toBeNull();
+    expect(live.dyingBatch).toBeNull();
   });
 
   it("resolves JP05 only after reactions and lets the dying target use TP02", () => {
@@ -499,7 +584,7 @@ describe("M05 damage and dying core", () => {
         targetPlayerId: target,
         amount: 2,
         element: "none",
-        hpEvoMask: "tux-inavo",
+        hpEvoMask: ["tux-inavo"],
       },
     ]);
     inclinationState = beginDamageResponse(

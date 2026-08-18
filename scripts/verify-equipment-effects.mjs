@@ -12,6 +12,9 @@ const view = read("packages/engine/src/index.ts");
 const unit = read("packages/engine/src/turn.test.ts");
 const replay = read("packages/engine/src/turn.replay.test.ts");
 const healing = read("packages/engine/src/healing.ts");
+const hpEvolution = read("packages/engine/src/hp-evolution.ts");
+const hpEvolutionUnit = read("packages/engine/src/hp-evolution.test.ts");
+const damage = read("packages/engine/src/damage-dying.ts");
 const healingUnit = read("packages/engine/src/healing.test.ts");
 const reactionUnit = read("packages/engine/src/reaction.test.ts");
 const dyingUnit = read("packages/engine/src/damage-dying.test.ts");
@@ -33,8 +36,8 @@ assert(
   "Expected ten CS01D equipment cards.",
 );
 assert(
-  Object.keys(contract.acceptanceMap).length === 14,
-  "Expected 14 CS01D acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 16,
+  "Expected 16 CS01D acceptance items.",
 );
 for (const id of Object.keys(contract.items)) {
   const item = plan.items.find((candidate) => candidate.id === id);
@@ -74,7 +77,7 @@ assert(
 for (const token of [
   "export function planCureBatch",
   'cardDefinition(weapon).id === "xyy.card.wq02"',
-  '!hpEvoMask.includes("termin-at")',
+  'hasHpEvolutionFlag(hpEvoMask, "termin-at")',
   "appliedModifierCardInstanceIds",
 ]) {
   assert(healing.includes(token), `Missing WQ02 healing boundary ${token}.`);
@@ -90,8 +93,41 @@ for (const [source, token] of [
 ]) {
   assert(source.includes(token), `Missing WQ02 verification token ${token}.`);
 }
+for (const token of [
+  "export type HpEvolutionFlag",
+  "canonicalHpEvolutionMask",
+  "isCanonicalHpEvolutionMask",
+  "hasHpEvolutionFlag",
+]) {
+  assert(hpEvolution.includes(token), `Missing HP mask boundary ${token}.`);
+}
+assert(
+  hpEvolutionUnit.includes("rejects duplicate flags and noncanonical"),
+  "Missing serialized HP-mask validation scenario.",
+);
+for (const token of [
+  'cardDefinition(armor).id === "xyy.card.fj03"',
+  'hasHpEvolutionFlag(hpEvoMask, "termin-at")',
+  'hasHpEvolutionFlag(hpEvoMask, "decr-inavo")',
+  'cardDefinition(armor).id === "xyy.card.fj04"',
+  'hasHpEvolutionFlag(hpEvoMask, "from-jp")',
+  'hasHpEvolutionFlag(hpEvoMask, "immune-inavo")',
+]) {
+  assert(damage.includes(token), `Missing FJ03/FJ04 boundary ${token}.`);
+}
+for (const [source, token] of [
+  [dyingUnit, "applies FJ03 reduction and FJ04 FROM_JP immunity"],
+  [dyingReplay, 'armor: "xyy.card.fj03@54"'],
+  [dyingNetwork, "network-fj04-jp05-immunity"],
+]) {
+  assert(
+    source.includes(token),
+    `Missing FJ03/FJ04 verification token ${token}.`,
+  );
+}
 for (const file of [
   "docs/content-standard/cs01d-equipment-effects.md",
+  "docs/verification/receipts/cs01d-fj03-fj04.md",
   "docs/verification/receipts/cs01d-wq02.md",
   "docs/verification/receipts/cs01d-wq04.md",
 ]) {
@@ -106,5 +142,5 @@ for (const command of [
 }
 
 console.log(
-  "Equipment contract passed: WQ02 cure and WQ04 pawn boundaries verified; ten items remain partial for linked effects.",
+  "Equipment contract passed: WQ02/WQ04/FJ03/FJ04 boundaries verified; ten items remain partial for linked effects.",
 );

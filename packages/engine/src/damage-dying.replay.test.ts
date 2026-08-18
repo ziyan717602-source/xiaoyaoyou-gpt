@@ -74,6 +74,7 @@ function fixture(): {
     "xyy.card.jp05@10",
     "xyy.card.tp02@36",
     "xyy.card.wq02@48",
+    "xyy.card.fj03@54",
   ]);
   state = {
     ...state,
@@ -82,7 +83,7 @@ function fixture(): {
         player.id,
         {
           ...player,
-          hp: player.id === target ? 2 : player.hp,
+          hp: player.id === target ? 1 : player.hp,
           hand:
             player.id === actor
               ? ["xyy.card.jp05@10"]
@@ -91,7 +92,7 @@ function fixture(): {
                 : [],
           equipment:
             player.id === target
-              ? { weapon: "xyy.card.wq02@48", armor: null }
+              ? { weapon: "xyy.card.wq02@48", armor: "xyy.card.fj03@54" }
               : { weapon: null, armor: null },
         },
       ]),
@@ -211,7 +212,7 @@ describe("M05 damage/dying event replay", () => {
     expect(replayed).toEqual(uninterrupted.state);
     expect(resumed.state).toEqual(uninterrupted.state);
     expect(uninterrupted.state.players[setup.target]).toMatchObject({
-      hp: 2,
+      hp: 1,
       alive: true,
     });
     expect(uninterrupted.state.dyingBatch).toBeNull();

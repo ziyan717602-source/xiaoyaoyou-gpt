@@ -60,16 +60,16 @@
       "name": "龙魂战铠",
       "rule": "while enabled, reduce every positive owner damage item by one unless TERMIN_AT or DECR_INVAO, removing items reduced to zero",
       "status": "partial",
-      "verifiedBoundary": "armor equip and replacement",
-      "linkedPending": ["CS01D-DAMAGE-MASK-MODIFIERS"]
+      "verifiedBoundary": "equip/replacement plus per-item positive damage reduction, TERMIN_AT/DECR_INVAO bypass, zero-item removal, replay and six-socket persistence",
+      "linkedPending": ["CS02-HERO-SKILLS:equipment-disabled-state"]
     },
     "xyy.card.fj04": {
       "name": "乾坤道袍",
       "rule": "while enabled base battle strength plus one and remove positive technique-card damage to the owner unless IMMUNE_INVAO",
       "status": "partial",
-      "verifiedBoundary": "armor equip and replacement",
+      "verifiedBoundary": "equip/replacement plus FROM_JP damage removal with IMMUNE_INVAO bypass, replay and six-socket persistence",
       "linkedPending": [
-        "CS01D-DAMAGE-MASK-MODIFIERS",
+        "CS02-HERO-SKILLS:equipment-disabled-state",
         "CS03-BATTLE-DECKS:strength"
       ]
     },
@@ -86,6 +86,7 @@
   },
   "legacyEvidence": [
     "psd.db3:Tux:WQ01-WQ05-FJ01-FJ05 description-special-growup-occurs-priors",
+    "PSDBase/Card/FiveElement.cs:17-39 combinable-HPEvoMask-bit-fields",
     "PSDBase/Card/Tux.cs:373-379,662 equipment-growth-fields",
     "PSDGamepkg/JNS/JP06.cs:572-591 WQ02-cure-plus-one",
     "PSDGamepkg/JNS/JP06.cs:593-607 FJ01-zero-hp-discard-cure-two",
@@ -102,13 +103,22 @@
     "healingPipeline": "all cure entry points create deterministic serializable cure items before HP mutation",
     "wq02ModifierScope": "each positive non-TERMIN_AT cure item targeting the enabled owner gains exactly one regardless of cure source",
     "disabledEquipment": "all-growth-and-special-effects-must-check-the-corresponding-disabled-state-once-that-state-exists",
-    "damageMasks": [
+    "hpEvolutionMasks": [
       "TUX_INAVO",
-      "TERMIN_AT",
-      "DECR_INVAO",
       "IMMUNE_INVAO",
-      "FROM_JP"
+      "DECR_INVAO",
+      "CHAIN_INVAO",
+      "ALIVE",
+      "ALIVE_HARD",
+      "TERMIN_AT",
+      "FROM_JP",
+      "FROM_SK",
+      "FROM_NMB",
+      "RSV_DUEL",
+      "RSV_WORM"
     ],
+    "damageMaskRepresentation": "canonical ordered arrays preserve combinable legacy flags in JSON events",
+    "passiveDamageOrder": "equipment reduction or immunity is included in the deterministic damage plan before the TP03 response gate and HP mutation",
     "battleGrowthCrossSlice": "do-not-apply-strength-or-hit-to-the-current-action-only-state-before-CS03"
   },
   "acceptanceMap": {
@@ -122,9 +132,11 @@
     "CS01D-08": "WQ04-equipped-pawn-works-over-six-real-WebSockets-and-server-restart",
     "CS01D-09": "only-the-owner-receives-WQ04-pawn-availableAction",
     "CS01D-10": "WQ02-modifies-TP02-normal-TP02-rescue-and-JP03-items-once-while-obeying-TERMIN_AT-and-equipment-ownership",
-    "CS01D-11": "FJ01-FJ05-triggered-effects-obey-cost-window-and-mask-rules",
-    "CS01D-12": "base-strength-and-hit-growth-waits-for-real-CS03-battle-state",
-    "CS01D-13": "all-completed-equipment-modes-conserve-the-56-card-action-deck",
-    "CS01D-14": "full-fast-and-specialty-verification-pass"
+    "CS01D-11": "FJ03-reduces-each-positive-owner-item-unless-TERMIN_AT-or-DECR_INVAO-and-removes-zero-items",
+    "CS01D-12": "FJ04-removes-positive-FROM_JP-owner-items-unless-IMMUNE_INVAO",
+    "CS01D-13": "FJ01-FJ02-FJ05-triggered-effects-obey-cost-window-and-mask-rules",
+    "CS01D-14": "base-strength-and-hit-growth-waits-for-real-CS03-battle-state",
+    "CS01D-15": "all-completed-equipment-modes-conserve-the-56-card-action-deck",
+    "CS01D-16": "full-fast-and-specialty-verification-pass"
   }
 }

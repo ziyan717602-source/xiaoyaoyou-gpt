@@ -13,6 +13,11 @@ import type {
   TeamId,
 } from "./index.js";
 import { planCureBatch, playersAfterCures } from "./healing.js";
+import {
+  canonicalHpEvolutionMask,
+  hasHpEvolutionFlag,
+  type HpEvolutionFlag,
+} from "./hp-evolution.js";
 import { cardDefinition, type CardInstanceId } from "./setup-content.js";
 import { reduceTurnEvent } from "./turn.js";
 
@@ -24,8 +29,8 @@ export interface DamageIntent {
   readonly targetPlayerId: PlayerId;
   readonly amount: number;
   readonly element: string;
-  /** Legacy HPEvoMask. TP03 cannot prevent the inclination/TUX_INAVO path. */
-  readonly hpEvoMask?: "normal" | "tux-inavo";
+  /** Canonical names for the combinable legacy C# HPEvoMask flags. */
+  readonly hpEvoMask?: readonly HpEvolutionFlag[];
 }
 
 export interface DamageModifier {
@@ -43,8 +48,9 @@ export interface AppliedDamage {
   readonly targetPlayerId: PlayerId;
   readonly amount: number;
   readonly element: string;
-  readonly hpEvoMask: "normal" | "tux-inavo";
+  readonly hpEvoMask: readonly HpEvolutionFlag[];
   readonly appliedReplacementEffectIds: readonly EffectId[];
+  readonly appliedModifierCardInstanceIds: readonly CardInstanceId[];
 }
 
 function numberPayload(event: Readonly<DomainEvent>, key: string): number {
@@ -123,12 +129,13 @@ export function planDamageBatch(
       modifierSeat(state, left) - modifierSeat(state, right) ||
       left.effectId.localeCompare(right.effectId),
   );
-  return intents.map((intent) => {
+  return intents.flatMap((intent) => {
     if (!Number.isSafeInteger(intent.amount) || intent.amount < 0) {
       throw new Error("Damage amount must be a nonnegative safe integer.");
     }
     let targetPlayerId = intent.targetPlayerId;
     let amount = intent.amount;
+    const hpEvoMask = canonicalHpEvolutionMask(intent.hpEvoMask);
     const replacements = new Set<EffectId>();
     for (const modifier of orderedModifiers) {
       if (modifier.kind !== "replacement") continue;
@@ -146,16 +153,43 @@ export function planDamageBatch(
     if (!Number.isSafeInteger(amount)) {
       throw new Error("Modified damage amount must remain a safe integer.");
     }
-    if (!(targetPlayerId in state.players)) {
+    const target = state.players[targetPlayerId];
+    if (target === undefined) {
       throw new Error(`Unknown damage target ${targetPlayerId}.`);
     }
-    return {
-      ...intent,
-      targetPlayerId,
-      amount: Math.max(0, amount),
-      hpEvoMask: intent.hpEvoMask ?? "normal",
-      appliedReplacementEffectIds: [...replacements],
-    };
+    amount = Math.max(0, amount);
+    const appliedModifierCardInstanceIds: CardInstanceId[] = [];
+    const armor = target.equipment.armor;
+    if (
+      amount > 0 &&
+      armor !== null &&
+      cardDefinition(armor).id === "xyy.card.fj03" &&
+      !hasHpEvolutionFlag(hpEvoMask, "termin-at") &&
+      !hasHpEvolutionFlag(hpEvoMask, "decr-inavo")
+    ) {
+      amount -= 1;
+      appliedModifierCardInstanceIds.push(armor);
+      if (amount === 0) return [];
+    }
+    if (
+      amount > 0 &&
+      armor !== null &&
+      cardDefinition(armor).id === "xyy.card.fj04" &&
+      hasHpEvolutionFlag(hpEvoMask, "from-jp") &&
+      !hasHpEvolutionFlag(hpEvoMask, "immune-inavo")
+    ) {
+      return [];
+    }
+    return [
+      {
+        ...intent,
+        targetPlayerId,
+        amount,
+        hpEvoMask,
+        appliedReplacementEffectIds: [...replacements],
+        appliedModifierCardInstanceIds,
+      },
+    ];
   });
 }
 

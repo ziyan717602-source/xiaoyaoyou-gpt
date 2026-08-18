@@ -85,12 +85,12 @@
         "evidence": ["M03-TURN-CORE"]
       },
       "xyy.card.fj03": {
-        "boundary": "armor slot equip and replacement only; unique damage effect pending",
-        "evidence": ["M03-TURN-CORE"]
+        "boundary": "equip/replacement and masked per-item damage minus-one are verified; disabled-equipment source waits for CS02",
+        "evidence": ["receipt:docs/verification/receipts/cs01d-fj03-fj04.md"]
       },
       "xyy.card.fj04": {
-        "boundary": "armor slot equip and replacement only; unique damage modifier pending",
-        "evidence": ["M03-TURN-CORE"]
+        "boundary": "equip/replacement and FROM_JP immunity with IMMUNE_INVAO bypass are verified; strength waits for CS03 and disabled-equipment source for CS02",
+        "evidence": ["receipt:docs/verification/receipts/cs01d-fj03-fj04.md"]
       },
       "xyy.card.fj05": {
         "boundary": "armor slot equip and replacement only; unique healing and damage modifiers pending",

@@ -21,7 +21,7 @@ assert(
   contract.deadlines.disconnectMs === 60_000,
   "Disconnect timeout drifted.",
 );
-assert(contract.persistence.matchSchema === 5, "M06 match schema drifted.");
+assert(contract.persistence.matchSchema === 6, "M06 match schema drifted.");
 assert(
   Object.keys(contract.acceptanceMap).length === 15,
   "M06 acceptance map must contain fifteen items.",

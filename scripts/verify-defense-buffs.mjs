@@ -8,6 +8,7 @@ const contract = JSON.parse(read("contracts/defense-buffs.contract.json"));
 const plan = JSON.parse(read("content/standard-plan.json"));
 const setup = read("packages/engine/src/setup-content.ts");
 const damage = read("packages/engine/src/damage-dying.ts");
+const hpEvolution = read("packages/engine/src/hp-evolution.ts");
 const reaction = read("packages/engine/src/reaction.ts");
 const view = read("packages/engine/src/index.ts");
 const unit = read("packages/engine/src/damage-dying.test.ts");
@@ -45,10 +46,17 @@ for (const token of [
   assert(setup.includes(token), `Missing TP03 definition ${token}.`);
 }
 for (const token of [
-  'readonly hpEvoMask?: "normal" | "tux-inavo"',
-  'hpEvoMask: intent.hpEvoMask ?? "normal"',
+  "readonly hpEvoMask?: readonly HpEvolutionFlag[]",
+  "canonicalHpEvolutionMask(intent.hpEvoMask)",
 ]) {
   assert(damage.includes(token), `Missing damage-mask boundary ${token}.`);
+}
+for (const token of [
+  "isCanonicalHpEvolutionMask",
+  '"tux-inavo"',
+  '"from-jp"',
+]) {
+  assert(hpEvolution.includes(token), `Missing composable mask ${token}.`);
 }
 for (const token of [
   'kind: "damage-batch"',

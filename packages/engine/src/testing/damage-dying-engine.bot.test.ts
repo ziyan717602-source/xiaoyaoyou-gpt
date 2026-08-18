@@ -5,6 +5,7 @@ import {
   createPlayerView,
   createSetupMatch,
   SETUP_CARD_INSTANCES,
+  cardDefinition,
   type AvailableAction,
   type CardInstanceId,
   type MatchState,
@@ -86,15 +87,39 @@ function choosePlay(
   }
   if (action.cardInstanceId.startsWith("xyy.card.jp05@")) {
     const actorTeam = state.players[actor]!.team;
-    const target = action.targetPlayerIds
+    const opponents = action.targetPlayerIds
       .map((playerId) => state.players[playerId]!)
       .filter((player) => player.id !== actor && player.team !== actorTeam)
-      .sort((left, right) => left.hp - right.hp || left.seat - right.seat)[0];
+      .sort((left, right) => left.hp - right.hp || left.seat - right.seat);
+    const target =
+      opponents.find(
+        (player) =>
+          player.equipment.armor === null ||
+          cardDefinition(player.equipment.armor).id !== "xyy.card.fj04",
+      ) ?? opponents[0];
     return {
       type: "play-card",
       cardInstanceId: action.cardInstanceId,
       targetPlayerIds: [target?.id ?? action.targetPlayerIds[0]!],
     };
+  }
+  if (action.cardInstanceId.startsWith("xyy.card.jp06@")) {
+    const actorTeam = state.players[actor]!.team;
+    const protectedOpponent = action.targetPlayerIds
+      .map((playerId) => state.players[playerId]!)
+      .find(
+        (player) =>
+          player.team !== actorTeam &&
+          player.equipment.armor !== null &&
+          cardDefinition(player.equipment.armor).id === "xyy.card.fj04",
+      );
+    if (protectedOpponent !== undefined) {
+      return {
+        type: "play-card",
+        cardInstanceId: action.cardInstanceId,
+        targetPlayerIds: [protectedOpponent.id],
+      };
+    }
   }
   return {
     type: "play-card",
@@ -161,7 +186,11 @@ describe("M05 six-player combat bots", () => {
           nextCommand = {
             type: "submit-choice",
             choiceId: choice.choiceId,
-            selections: [choice.optionIds[0]!],
+            selections: [
+              choice.optionIds.includes("equipment:armor")
+                ? "equipment:armor"
+                : choice.optionIds[0]!,
+            ],
           };
         } else if (state.reactionWindow !== null) {
           playerId =
@@ -197,10 +226,31 @@ describe("M05 six-player combat bots", () => {
           // This combat policy preserves cards for damage/rescue coverage;
           // pawn-heavy play is exercised by the turn/equipment bots instead.
           const nonPawnPlays = plays.filter((action) => action.mode !== "pawn");
+          const actorTeam = state.players[actor]!.team;
+          const protectedOpponentIds = new Set(
+            Object.values(state.players)
+              .filter(
+                (player) =>
+                  player.alive &&
+                  player.team !== actorTeam &&
+                  player.equipment.armor !== null &&
+                  cardDefinition(player.equipment.armor).id === "xyy.card.fj04",
+              )
+              .map((player) => player.id),
+          );
+          const armorRemoval = nonPawnPlays.find(
+            (action) =>
+              action.cardInstanceId.startsWith("xyy.card.jp06@") &&
+              action.targetPlayerIds.some((playerId) =>
+                protectedOpponentIds.has(playerId),
+              ),
+          );
           const play =
+            armorRemoval ??
             plays.find((action) =>
               action.cardInstanceId.startsWith("xyy.card.jp05@"),
-            ) ?? nonPawnPlays[0];
+            ) ??
+            nonPawnPlays[0];
           if (play === undefined) {
             nextCommand = { type: "end-action" };
           } else {

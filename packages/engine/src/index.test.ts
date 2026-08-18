@@ -77,7 +77,7 @@ describe("match state baseline", () => {
     }
 
     const migrated = migrateMatchState(legacy);
-    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.schemaVersion).toBe(6);
     expect(migrated.dyingBatch).toBeNull();
     expect(Object.values(migrated.connections)).toHaveLength(6);
 
@@ -88,7 +88,7 @@ describe("match state baseline", () => {
     schema3.schemaVersion = 3;
     delete schema3.dyingBatch;
     expect(migrateMatchState(schema3)).toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 6,
       dyingBatch: null,
     });
     const schema4 = structuredClone(current) as unknown as Record<
@@ -98,9 +98,46 @@ describe("match state baseline", () => {
     schema4.schemaVersion = 4;
     delete schema4.connections;
     expect(migrateMatchState(schema4)).toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 6,
       connections: expect.any(Object),
     });
+    const schema5 = structuredClone(current) as unknown as Record<
+      string,
+      unknown
+    >;
+    schema5.schemaVersion = 5;
+    schema5.effectStack = [
+      {
+        effectId: "legacy-damage-batch",
+        parentEffectId: null,
+        kind: "damage-batch",
+        sourcePlayerId: null,
+        targetIds: [current.turnOrder[0]],
+        step: "awaiting-reactions",
+        status: "waiting",
+        payload: {
+          damageItems: [
+            {
+              itemId: "legacy-damage",
+              sourcePlayerId: null,
+              targetPlayerId: current.turnOrder[0],
+              amount: 1,
+              element: "thunder",
+              hpEvoMask: "normal",
+              appliedReplacementEffectIds: [],
+            },
+          ],
+        },
+      },
+    ];
+    expect(
+      migrateMatchState(schema5).effectStack[0]!.payload.damageItems,
+    ).toEqual([
+      expect.objectContaining({
+        hpEvoMask: [],
+        appliedModifierCardInstanceIds: [],
+      }),
+    ]);
     expect(migrated.turn).toBeNull();
     expect(migrated.winner).toBeNull();
     expect(

@@ -18,6 +18,10 @@ import {
   type DamageIntent,
 } from "./damage-dying.js";
 import { planCureBatch, playersAfterCures } from "./healing.js";
+import {
+  hasHpEvolutionFlag,
+  isCanonicalHpEvolutionMask,
+} from "./hp-evolution.js";
 import type {
   Continuation,
   EffectFrame,
@@ -252,8 +256,7 @@ function damageItemsForEffect(
       typeof (item as Partial<AppliedDamage>).itemId !== "string" ||
       typeof (item as Partial<AppliedDamage>).targetPlayerId !== "string" ||
       typeof (item as Partial<AppliedDamage>).amount !== "number" ||
-      ((item as Partial<AppliedDamage>).hpEvoMask !== "normal" &&
-        (item as Partial<AppliedDamage>).hpEvoMask !== "tux-inavo")
+      !isCanonicalHpEvolutionMask((item as Partial<AppliedDamage>).hpEvoMask)
     ) {
       throw new Error("Damage-batch effect has an invalid planned item.");
     }
@@ -275,7 +278,10 @@ function tp03Responders(
 ): readonly PlayerId[] {
   const targetIds = new Set(
     items
-      .filter((item) => item.amount > 0 && item.hpEvoMask === "normal")
+      .filter(
+        (item) =>
+          item.amount > 0 && !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo"),
+      )
       .map((item) => item.targetPlayerId),
   );
   return livingSeatOrder(state).filter((playerId) => targetIds.has(playerId));
@@ -488,7 +494,7 @@ export function reduceReactionEvent(
         (item) =>
           item.targetPlayerId === playerId &&
           item.amount > 0 &&
-          item.hpEvoMask === "normal",
+          !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo"),
       );
     if (
       window === null ||
@@ -843,7 +849,8 @@ export function reduceReactionEvent(
       const before = damageItemsForEffect(damageEffect);
       const prevented = before.filter(
         (item) =>
-          item.targetPlayerId === sourcePlayerId && item.hpEvoMask === "normal",
+          item.targetPlayerId === sourcePlayerId &&
+          !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo"),
       );
       const preventedItemIds = stringsPayload(event, "preventedItemIds");
       if (
@@ -932,6 +939,7 @@ export function reduceReactionEvent(
         targetPlayerId: target.id,
         amount: 2,
         element: "thunder",
+        hpEvoMask: ["from-jp"],
       };
       const expected = planDamageBatch(state, [intent]);
       if (
@@ -1135,6 +1143,7 @@ class EventBuilder {
             targetPlayerId,
             amount: 2,
             element: "thunder",
+            hpEvoMask: ["from-jp"],
           },
         ]);
         this.append("effect.resolved", {
@@ -1154,7 +1163,7 @@ class EventBuilder {
             .filter(
               (item) =>
                 item.targetPlayerId === effect.sourcePlayerId &&
-                item.hpEvoMask === "normal",
+                !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo"),
             )
             .map((item) => item.itemId),
         });

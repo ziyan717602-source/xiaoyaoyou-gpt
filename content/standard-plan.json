@@ -137,8 +137,8 @@
       "packages": ["standard"],
       "slice": "CS01D-EQUIPMENT-EFFECTS",
       "state": "partial",
-      "boundary": "armor slot equip and replacement only; unique damage effect pending",
-      "evidence": ["M03-TURN-CORE"],
+      "boundary": "equip/replacement and masked per-item damage minus-one are verified; disabled-equipment source waits for CS02",
+      "evidence": ["receipt:docs/verification/receipts/cs01d-fj03-fj04.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [
@@ -160,8 +160,8 @@
       "packages": ["standard"],
       "slice": "CS01D-EQUIPMENT-EFFECTS",
       "state": "partial",
-      "boundary": "armor slot equip and replacement only; unique damage modifier pending",
-      "evidence": ["M03-TURN-CORE"],
+      "boundary": "equip/replacement and FROM_JP immunity with IMMUNE_INVAO bypass are verified; strength waits for CS03 and disabled-equipment source for CS02",
+      "evidence": ["receipt:docs/verification/receipts/cs01d-fj03-fj04.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

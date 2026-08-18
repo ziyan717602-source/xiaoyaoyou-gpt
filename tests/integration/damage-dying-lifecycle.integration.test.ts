@@ -294,6 +294,8 @@ function injectCards(
     target: PlayerId;
     rescuer?: PlayerId;
     winnerFixture?: boolean;
+    immuneFixture?: boolean;
+    reductionFixture?: boolean;
   },
 ): MatchState {
   const hands: Record<PlayerId, readonly string[]> = {
@@ -305,9 +307,13 @@ function injectCards(
   };
   const equipment = input.winnerFixture
     ? { weapon: "xyy.card.wq01@47", armor: "xyy.card.fj01@52" }
-    : input.rescuer === undefined
-      ? { weapon: null, armor: null }
-      : { weapon: "xyy.card.wq02@48", armor: null };
+    : input.immuneFixture
+      ? { weapon: null, armor: "xyy.card.fj04@55" }
+      : input.reductionFixture
+        ? { weapon: null, armor: "xyy.card.fj03@54" }
+        : input.rescuer === undefined
+          ? { weapon: null, armor: null }
+          : { weapon: "xyy.card.wq02@48", armor: null };
   const claimed = new Set([
     ...Object.values(hands).flat(),
     ...[equipment.weapon, equipment.armor].filter(
@@ -514,6 +520,77 @@ describe("M05 damage/dying over six real WebSockets", () => {
     expect(
       clients[0]!.latestView.players.find((player) => player.id === target),
     ).toMatchObject({ alive: true, hp: 3 });
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectCards(state, { actor, target, reductionFixture: true }),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    response = await send(
+      clients[indexOf(actor)]!,
+      sessions[indexOf(actor)]!,
+      "network-fj03-jp05-reduction",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [target],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    version = await passReactions(clients, sessions, version, "fj03-pass");
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === target),
+    ).toMatchObject({
+      alive: true,
+      hp: 1,
+      equipment: { weapon: null, armor: "xyy.card.fj03@54" },
+    });
+    expect(clients[0]!.latestView.dyingBatch).toBeNull();
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectCards(state, { actor, target, immuneFixture: true }),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    const immuneHp = clients[0]!.latestView.players.find(
+      (player) => player.id === target,
+    )!.hp;
+    response = await send(
+      clients[indexOf(actor)]!,
+      sessions[indexOf(actor)]!,
+      "network-fj04-jp05-immunity",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [target],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    version = await passReactions(clients, sessions, version, "fj04-pass");
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === target),
+    ).toMatchObject({
+      alive: true,
+      hp: immuneHp,
+      equipment: { weapon: null, armor: "xyy.card.fj04@55" },
+    });
+    expect(clients[0]!.latestView.dyingBatch).toBeNull();
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

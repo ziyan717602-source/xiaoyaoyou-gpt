@@ -10,7 +10,7 @@ import { PROTOCOL_VERSION } from "@xiaoyaoyou/protocol";
 import { cardDefinition } from "./setup-content.js";
 import type { CardInstanceId, HeroId } from "./setup-content.js";
 
-export const MATCH_SCHEMA_VERSION = 5 as const;
+export const MATCH_SCHEMA_VERSION = 6 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -337,6 +337,44 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
 }
 
 /** Explicit in-memory forward migration; persistence bytes remain untouched until the next accepted snapshot. */
+function upgradeDamageMasksFromV5(
+  legacy: Omit<MatchState, "schemaVersion"> & { readonly schemaVersion: 5 },
+): MatchState {
+  return {
+    ...legacy,
+    schemaVersion: MATCH_SCHEMA_VERSION,
+    effectStack: legacy.effectStack.map((effect) => {
+      const damageItems = effect.payload.damageItems;
+      if (!Array.isArray(damageItems)) return effect;
+      return {
+        ...effect,
+        payload: {
+          ...effect.payload,
+          damageItems: damageItems.map((item) => {
+            if (item === null || typeof item !== "object") return item;
+            const damage = item as Record<string, unknown>;
+            const oldMask = damage.hpEvoMask;
+            return {
+              ...damage,
+              hpEvoMask:
+                oldMask === "normal"
+                  ? []
+                  : oldMask === "tux-inavo"
+                    ? ["tux-inavo"]
+                    : oldMask,
+              appliedModifierCardInstanceIds: Array.isArray(
+                damage.appliedModifierCardInstanceIds,
+              )
+                ? damage.appliedModifierCardInstanceIds
+                : [],
+            };
+          }),
+        },
+      };
+    }),
+  };
+}
+
 export function migrateMatchState(value: unknown): MatchState {
   if (value === null || typeof value !== "object") {
     throw new Error("Match snapshot is not an object.");
@@ -361,9 +399,16 @@ export function migrateMatchState(value: unknown): MatchState {
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v5 snapshot is missing required fields.");
+      throw new Error("Match schema v6 snapshot is missing required fields.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 5) {
+    return upgradeDamageMasksFromV5(
+      value as Omit<MatchState, "schemaVersion"> & {
+        readonly schemaVersion: 5;
+      },
+    );
   }
   if (raw.schemaVersion === 4) {
     const legacy = value as Omit<
@@ -374,9 +419,9 @@ export function migrateMatchState(value: unknown): MatchState {
       readonly turn: Omit<TurnState, "openedAt" | "deadlineAt"> | null;
       readonly setup: Omit<SetupState, "openedAt" | "deadlineAt"> | null;
     };
-    return {
+    return upgradeDamageMasksFromV5({
       ...legacy,
-      schemaVersion: MATCH_SCHEMA_VERSION,
+      schemaVersion: 5,
       turn:
         legacy.turn === null
           ? null
@@ -391,15 +436,15 @@ export function migrateMatchState(value: unknown): MatchState {
           { status: "connected", disconnectedAt: null, autoAt: null },
         ]),
       ),
-    };
+    });
   }
   if (raw.schemaVersion === 3) {
     const legacy = value as Omit<MatchState, "schemaVersion" | "dyingBatch"> & {
       readonly schemaVersion: 3;
     };
-    return {
+    return upgradeDamageMasksFromV5({
       ...legacy,
-      schemaVersion: MATCH_SCHEMA_VERSION,
+      schemaVersion: 5,
       dyingBatch: null,
       turn:
         legacy.turn === null
@@ -415,7 +460,7 @@ export function migrateMatchState(value: unknown): MatchState {
           { status: "connected", disconnectedAt: null, autoAt: null },
         ]),
       ),
-    };
+    });
   }
   if (raw.schemaVersion !== 2) {
     throw new Error(
@@ -435,9 +480,9 @@ export function migrateMatchState(value: unknown): MatchState {
       },
     ]),
   );
-  return {
+  return upgradeDamageMasksFromV5({
     ...legacy,
-    schemaVersion: MATCH_SCHEMA_VERSION,
+    schemaVersion: 5,
     turn:
       legacy.turn ??
       (legacy.phase === "playing"
@@ -456,7 +501,7 @@ export function migrateMatchState(value: unknown): MatchState {
         { status: "connected", disconnectedAt: null, autoAt: null },
       ]),
     ),
-  };
+  });
 }
 
 export function createPlayerView(
@@ -868,8 +913,13 @@ export {
   playersAfterCures,
   type AppliedCure,
   type CureIntent,
-  type HpEvolutionFlag,
 } from "./healing.js";
+export {
+  canonicalHpEvolutionMask,
+  hasHpEvolutionFlag,
+  isCanonicalHpEvolutionMask,
+  type HpEvolutionFlag,
+} from "./hp-evolution.js";
 export {
   ACTION_DEADLINE_MS,
   DISCONNECT_GRACE_MS,
