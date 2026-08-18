@@ -209,6 +209,57 @@ describe("M03 deterministic turn core", () => {
     expectConserved(state);
   });
 
+  it("pawns WQ04 from either hand or weapon for two cards without a response window", () => {
+    const handInitial = playing("wq04-hand-pawn");
+    const actor = handInitial.activePlayerId!;
+    let fromHand = arrange(handInitial, {
+      [actor]: ["xyy.card.wq04@50"],
+    });
+    expect(createPlayerView(fromHand, actor).availableActions).toContainEqual({
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq04@50",
+      targetPlayerIds: [],
+      mode: "pawn",
+    });
+    fromHand = dispatch(fromHand, actor, "wq04-pawn-hand", {
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq04@50",
+      targetPlayerIds: [],
+      mode: "pawn",
+    });
+    expect(fromHand.players[actor]!.hand).toHaveLength(2);
+    expect(fromHand.discardPile).toContain("xyy.card.wq04@50");
+    expect(fromHand.reactionWindow).toBeNull();
+    expectConserved(fromHand);
+
+    const equippedInitial = playing("wq04-equipped-pawn");
+    const equippedActor = equippedInitial.activePlayerId!;
+    let fromWeapon = arrange(
+      equippedInitial,
+      { [equippedActor]: [] },
+      { [equippedActor]: { weapon: "xyy.card.wq04@50" } },
+    );
+    expect(
+      createPlayerView(fromWeapon, equippedActor).availableActions,
+    ).toContainEqual({
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq04@50",
+      targetPlayerIds: [],
+      mode: "pawn",
+    });
+    fromWeapon = dispatch(fromWeapon, equippedActor, "wq04-pawn-equipped", {
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq04@50",
+      targetPlayerIds: [],
+      mode: "pawn",
+    });
+    expect(fromWeapon.players[equippedActor]!.equipment.weapon).toBeNull();
+    expect(fromWeapon.players[equippedActor]!.hand).toHaveLength(2);
+    expect(fromWeapon.discardPile).toContain("xyy.card.wq04@50");
+    expect(fromWeapon.reactionWindow).toBeNull();
+    expectConserved(fromWeapon);
+  });
+
   it("ends action, traverses skipped stages, draws reward, requires exact discard, and advances", () => {
     let state = playing("discard-and-advance");
     const actor = state.activePlayerId!;

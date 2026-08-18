@@ -64,7 +64,7 @@ for (const token of [
 for (const token of [
   'command.mode === "pawn"',
   'builder.append("turn.card-pawned"',
-  'appendDraw(builder, envelope.playerId, 1, "card-effect")',
+  'pawnAction.type === "pawn-draw-one" ? 1 : 2',
 ]) {
   assert(turn.includes(token), `Missing JP03 pawn boundary ${token}.`);
 }

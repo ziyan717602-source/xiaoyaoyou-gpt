@@ -26,7 +26,8 @@ export type CoreCardAction =
   | null;
 
 export type RescueCardAction = { readonly type: "rescue-two" } | null;
-export type AlternateCardAction = { readonly type: "pawn-draw-one" };
+export type AlternateCardAction =
+  { readonly type: "pawn-draw-one" } | { readonly type: "pawn-draw-two" };
 
 export interface CardDefinition {
   readonly id: CardId;
@@ -433,6 +434,7 @@ export const SETUP_CARDS: readonly CardDefinition[] = [
     id: "xyy.card.wq04",
     name: "魔剑",
     coreAction: { type: "equip", slot: "weapon" },
+    alternateActions: [{ type: "pawn-draw-two" }],
   },
   {
     id: "xyy.card.wq05",

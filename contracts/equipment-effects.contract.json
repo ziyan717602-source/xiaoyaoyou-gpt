@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-equipment-effects-v1",
+  "scope": "CONTENT-STANDARD/CS01D-EQUIPMENT-EFFECTS",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "items": {
+    "xyy.card.wq01": {
+      "name": "无尘剑",
+      "rule": "while the enabled weapon is equipped, base battle strength plus one and hit plus one",
+      "status": "partial",
+      "verifiedBoundary": "weapon equip and replacement",
+      "linkedPending": ["CS03-BATTLE-DECKS:strength-and-hit"]
+    },
+    "xyy.card.wq02": {
+      "name": "天蛇杖",
+      "rule": "while enabled, base battle strength plus one and each positive non-TERMIN_AT cure to the owner gains one HP",
+      "status": "partial",
+      "verifiedBoundary": "weapon equip and replacement",
+      "linkedPending": ["CS01D-HEALING-MODIFIERS", "CS03-BATTLE-DECKS:strength"]
+    },
+    "xyy.card.wq03": {
+      "name": "魔刀天叱",
+      "rule": "while the enabled weapon is equipped, base battle strength plus two",
+      "status": "partial",
+      "verifiedBoundary": "weapon equip and replacement",
+      "linkedPending": ["CS03-BATTLE-DECKS:strength"]
+    },
+    "xyy.card.wq04": {
+      "name": "魔剑",
+      "rule": "while enabled hit plus one; during the owner's technique phase the physical card may be pawned from hand or weapon slot to draw two without a response window",
+      "status": "partial",
+      "verifiedBoundary": "equip/replacement plus hand-or-equipped pawn draw-two, replay, restart and six-socket isolation",
+      "linkedPending": ["CS03-BATTLE-DECKS:hit"]
+    },
+    "xyy.card.wq05": {
+      "name": "彩环",
+      "rule": "while the enabled weapon is equipped, hit plus two",
+      "status": "partial",
+      "verifiedBoundary": "weapon equip and replacement",
+      "linkedPending": ["CS03-BATTLE-DECKS:hit"]
+    },
+    "xyy.card.fj01": {
+      "name": "五彩霞衣",
+      "rule": "while enabled base battle strength plus one; when the alive owner is at zero HP, the owner may discard this armor to revive and cure two, then dying detection resumes",
+      "status": "partial",
+      "verifiedBoundary": "armor equip and replacement",
+      "linkedPending": [
+        "CS01D-DYING-EQUIPMENT-BURSTS",
+        "CS03-BATTLE-DECKS:strength"
+      ]
+    },
+    "xyy.card.fj02": {
+      "name": "天帝祭服",
+      "rule": "while enabled, the owner may pay any own hand card as TP03 whenever TP03 is legal; the converted card uses the normal TP03 Bingxin chain",
+      "status": "partial",
+      "verifiedBoundary": "armor equip and replacement",
+      "linkedPending": ["CS01D-EQUIPMENT-CONVERSION"]
+    },
+    "xyy.card.fj03": {
+      "name": "龙魂战铠",
+      "rule": "while enabled, reduce every positive owner damage item by one unless TERMIN_AT or DECR_INVAO, removing items reduced to zero",
+      "status": "partial",
+      "verifiedBoundary": "armor equip and replacement",
+      "linkedPending": ["CS01D-DAMAGE-MASK-MODIFIERS"]
+    },
+    "xyy.card.fj04": {
+      "name": "乾坤道袍",
+      "rule": "while enabled base battle strength plus one and remove positive technique-card damage to the owner unless IMMUNE_INVAO",
+      "status": "partial",
+      "verifiedBoundary": "armor equip and replacement",
+      "linkedPending": [
+        "CS01D-DAMAGE-MASK-MODIFIERS",
+        "CS03-BATTLE-DECKS:strength"
+      ]
+    },
+    "xyy.card.fj05": {
+      "name": "踏云靴",
+      "rule": "while enabled hit plus one; on owner damage the owner may discard this armor, remove every positive owner item unless DECR_INVAO or IMMUNE_INVAO (including TP03-immune damage), and cure one",
+      "status": "partial",
+      "verifiedBoundary": "armor equip and replacement",
+      "linkedPending": [
+        "CS01D-DAMAGE-EQUIPMENT-BURSTS",
+        "CS03-BATTLE-DECKS:hit"
+      ]
+    }
+  },
+  "legacyEvidence": [
+    "psd.db3:Tux:WQ01-WQ05-FJ01-FJ05 description-special-growup-occurs-priors",
+    "PSDBase/Card/Tux.cs:373-379,662 equipment-growth-fields",
+    "PSDGamepkg/JNS/JP06.cs:572-591 WQ02-cure-plus-one",
+    "PSDGamepkg/JNS/JP06.cs:593-607 FJ01-zero-hp-discard-cure-two",
+    "PSDGamepkg/JNS/JP06.cs:609-638 FJ02-hand-as-TP03-holder-conversion",
+    "PSDGamepkg/JNS/JP06.cs:640-663 FJ03-damage-minus-one-mask-rules",
+    "PSDGamepkg/JNS/JP06.cs:665-683 FJ04-technique-damage-immunity",
+    "PSDGamepkg/JNS/JP06.cs:685-706 FJ05-discard-immunity-cure-one",
+    "PSDGamepkg/Artiad/ContentRule.cs:189-196 WQ04-pawn-price-two"
+  ],
+  "decisions": {
+    "wq04PawnZones": "own-hand-or-own-weapon-slot",
+    "wq04PawnResponse": "explicit-pawn-mode-pays-card-and-draws-two-without-Bingxin",
+    "equipmentVisibility": "weapon-and-armor-slots-are-public-but-actions-remain-owner-only",
+    "disabledEquipment": "all-growth-and-special-effects-must-check-the-corresponding-disabled-state-once-that-state-exists",
+    "damageMasks": [
+      "TUX_INAVO",
+      "TERMIN_AT",
+      "DECR_INVAO",
+      "IMMUNE_INVAO",
+      "FROM_JP"
+    ],
+    "battleGrowthCrossSlice": "do-not-apply-strength-or-hit-to-the-current-action-only-state-before-CS03"
+  },
+  "acceptanceMap": {
+    "CS01D-01": "all-ten-equipment-rules-masks-and-cross-slice-dependencies-are-frozen-from-read-only-evidence",
+    "CS01D-02": "existing-equip-and-replacement-conserves-the-physical-card",
+    "CS01D-03": "WQ04-pawn-is-offered-from-own-hand",
+    "CS01D-04": "WQ04-pawn-is-offered-from-own-weapon-slot",
+    "CS01D-05": "WQ04-pawn-removes-the-authoritative-source-zone-card-and-draws-two",
+    "CS01D-06": "WQ04-pawn-opens-no-Bingxin-or-choice-window",
+    "CS01D-07": "WQ04-pawn-replays-identically-across-JSON-restart",
+    "CS01D-08": "WQ04-equipped-pawn-works-over-six-real-WebSockets-and-server-restart",
+    "CS01D-09": "only-the-owner-receives-WQ04-pawn-availableAction",
+    "CS01D-10": "WQ02-healing-modifier-obeys-TERMIN_AT",
+    "CS01D-11": "FJ01-FJ05-triggered-effects-obey-cost-window-and-mask-rules",
+    "CS01D-12": "base-strength-and-hit-growth-waits-for-real-CS03-battle-state",
+    "CS01D-13": "all-completed-equipment-modes-conserve-the-56-card-action-deck",
+    "CS01D-14": "full-fast-and-specialty-verification-pass"
+  }
+}

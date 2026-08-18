@@ -135,16 +135,25 @@ export function reduceTurnEvent(
       event,
       "cardInstanceId",
     ) as CardInstanceId;
+    const sourceZone = stringPayload(event, "sourceZone");
     const player = state.players[playerId];
+    const definition = cardDefinition(cardInstanceId);
+    const pawnAction = definition.alternateActions?.find((action) =>
+      ["pawn-draw-one", "pawn-draw-two"].includes(action.type),
+    );
+    const fromHand =
+      sourceZone === "hand" && player?.hand.includes(cardInstanceId) === true;
+    const fromWeapon =
+      sourceZone === "weapon" &&
+      pawnAction?.type === "pawn-draw-two" &&
+      player?.equipment.weapon === cardInstanceId;
     if (
       state.turn.phase !== "action" ||
       state.activePlayerId !== playerId ||
       player === undefined ||
       !player.alive ||
-      !player.hand.includes(cardInstanceId) ||
-      cardDefinition(cardInstanceId).alternateActions?.some(
-        (action) => action.type === "pawn-draw-one",
-      ) !== true
+      (!fromHand && !fromWeapon) ||
+      pawnAction === undefined
     ) {
       throw new Error("Card pawn event is not applicable.");
     }
@@ -154,7 +163,12 @@ export function reduceTurnEvent(
         ...state.players,
         [playerId]: {
           ...player,
-          hand: player.hand.filter((card) => card !== cardInstanceId),
+          hand: fromHand
+            ? player.hand.filter((card) => card !== cardInstanceId)
+            : player.hand,
+          equipment: fromWeapon
+            ? { ...player.equipment, weapon: null }
+            : player.equipment,
         },
       },
       discardPile: [...state.discardPile, cardInstanceId],
@@ -497,19 +511,20 @@ export function applyTurnCommand(
         currentVersion: input.version,
       };
     }
-    if (!player.hand.includes(cardInstanceId)) {
-      return {
-        accepted: false,
-        reason: "forbidden",
-        currentVersion: input.version,
-      };
-    }
     if (command.mode === "pawn") {
+      const pawnAction = definition.alternateActions?.find((action) =>
+        ["pawn-draw-one", "pawn-draw-two"].includes(action.type),
+      );
+      const sourceZone = player.hand.includes(cardInstanceId)
+        ? "hand"
+        : pawnAction?.type === "pawn-draw-two" &&
+            player.equipment.weapon === cardInstanceId
+          ? "weapon"
+          : null;
       if (
         command.targetPlayerIds.length !== 0 ||
-        definition.alternateActions?.some(
-          (action) => action.type === "pawn-draw-one",
-        ) !== true
+        pawnAction === undefined ||
+        sourceZone === null
       ) {
         return {
           accepted: false,
@@ -520,9 +535,22 @@ export function applyTurnCommand(
       builder.append("turn.card-pawned", {
         playerId: envelope.playerId,
         cardInstanceId,
+        sourceZone,
       });
-      appendDraw(builder, envelope.playerId, 1, "card-effect");
+      appendDraw(
+        builder,
+        envelope.playerId,
+        pawnAction.type === "pawn-draw-one" ? 1 : 2,
+        "card-effect",
+      );
       return { accepted: true, state: builder.state, events: builder.events };
+    }
+    if (!player.hand.includes(cardInstanceId)) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
     }
     if (command.mode !== undefined && command.mode !== "primary") {
       return {

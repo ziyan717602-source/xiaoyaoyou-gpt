@@ -69,8 +69,8 @@
         "evidence": ["M03-TURN-CORE"]
       },
       "xyy.card.wq04": {
-        "boundary": "weapon slot equip and replacement only; unique draw effect pending",
-        "evidence": ["M03-TURN-CORE"]
+        "boundary": "weapon equip/replacement and hand-or-equipped pawn draw-two are verified; hit growth waits for CS03 battle",
+        "evidence": ["receipt:docs/verification/receipts/cs01d-wq04.md"]
       },
       "xyy.card.wq05": {
         "boundary": "weapon slot equip and replacement only; unique modifier pending",

@@ -568,6 +568,69 @@ function injectTp03Fixture(
   }
 }
 
+function injectWq04Fixture(
+  databasePath: string,
+  matchId: string,
+  actor: PlayerId,
+): void {
+  const database = new Database(databasePath);
+  try {
+    const row = database
+      .prepare(
+        `SELECT rowid, state_json FROM snapshots
+         WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1`,
+      )
+      .get(matchId) as { rowid: number; state_json: string } | undefined;
+    if (row === undefined) throw new Error("Missing WQ04 fixture snapshot.");
+    const state = JSON.parse(row.state_json) as MatchState;
+    const now = Date.now();
+    const fixture: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hand: [],
+            equipment:
+              player.id === actor
+                ? { weapon: "xyy.card.wq04@50", armor: null }
+                : { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      turn:
+        state.turn === null
+          ? null
+          : {
+              ...state.turn,
+              phase: "action",
+              openedAt: now,
+              deadlineAt: now + 15_000,
+            },
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.wq04@50",
+      ),
+      discardPile: [],
+      effectStack: [],
+      reactionWindow: null,
+      pendingChoice: null,
+      dyingBatch: null,
+    };
+    const stateJson = JSON.stringify(fixture);
+    const stateHash = createHash("sha256")
+      .update(stateJson, "utf8")
+      .digest("hex");
+    database
+      .prepare(
+        "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE rowid = ?",
+      )
+      .run(stateJson, stateHash, row.rowid);
+  } finally {
+    database.close();
+  }
+}
+
 describe("M04 reaction lifecycle over six real WebSockets", () => {
   it("persists a child window across restart and completes a counter-chain", async () => {
     const root = mkdtempSync(
@@ -1398,6 +1461,72 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
     ).toMatchObject({ hp: 2, alive: true, handCount: 0 });
     expect(tp03ClientByPlayer.get(first)!.latestView.dyingBatch).toBeNull();
     expect(tp03ClientByPlayer.get(first)!.latestView.effectStack).toEqual([]);
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    injectWq04Fixture(databasePath, room.roomId, actor);
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    const wq04ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    const wq04Actor = wq04ClientByPlayer.get(actor)!;
+    expect(wq04Actor.latestView.availableActions).toContainEqual({
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq04@50",
+      targetPlayerIds: [],
+      mode: "pawn",
+    });
+    expect(
+      clients
+        .filter((client) => client !== wq04Actor)
+        .every((client) => client.latestView.availableActions.length === 0),
+    ).toBe(true);
+    const pawn = await sendCommand(
+      wq04Actor,
+      sessionByPlayer.get(actor)!,
+      "network-wq04-equipped-pawn",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.wq04@50",
+        targetPlayerIds: [],
+        mode: "pawn",
+      },
+    );
+    expect(pawn.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    expect(
+      wq04Actor.latestView.players.find((player) => player.id === actor),
+    ).toMatchObject({
+      handCount: 2,
+      equipment: { weapon: null, armor: null },
+    });
+    expect(wq04Actor.latestView.reactionWindow).toBeNull();
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = Math.max(...clients.map((client) => client.latestView.version));
+    await waitForVersion(clients, version);
+    const restartedWq04Actor =
+      clients[sessions.findIndex((session) => session.playerId === actor)]!;
+    expect(
+      restartedWq04Actor.latestView.players.find(
+        (player) => player.id === actor,
+      ),
+    ).toMatchObject({
+      handCount: 2,
+      equipment: { weapon: null, armor: null },
+    });
+    expect(restartedWq04Actor.latestView.reactionWindow).toBeNull();
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });

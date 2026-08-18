@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS01D-EQUIPMENT-EFFECTS`
-- 最近验证完成：`CS01C / TP03 隐蛊普通伤害模式`
+- 最近验证完成：`CS01D / WQ04 魔剑手牌及装备区典当模式`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -23,7 +23,8 @@
 - CS01A 核心四牌证据：`contracts/core-card-audit.contract.json`、`docs/content-standard/cs01a-core-cards.md`、`docs/verification/receipts/cs01a-core-card-audit.md`
 - CS01B 行动技牌证据：`contracts/action-tricks.contract.json`、`docs/content-standard/cs01b-action-tricks.md`、`docs/verification/receipts/cs01b-jp01.md`、`docs/verification/receipts/cs01b-jp03.md`、`docs/verification/receipts/cs01b-jp06.md`
 - CS01C 防御/战力牌证据：`contracts/defense-buffs.contract.json`、`docs/content-standard/cs01c-defense-buffs.md`、`docs/verification/receipts/cs01c-tp03.md`
-- 当前工作：提取并冻结 WQ01-WQ05/FJ01-FJ05 的装备特效、替换、被动与触发时机；TP04/ZP01-ZP04 明确等待 CS03 怪物牌堆和战斗生命周期，不伪造替代状态。
+- CS01D 装备证据：`contracts/equipment-effects.contract.json`、`docs/content-standard/cs01d-equipment-effects.md`、`docs/verification/receipts/cs01d-wq04.md`
+- 当前工作：实现 WQ02 天蛇杖的非终止治疗增幅，并统一 JP03/TP02/FJ05 的治疗计划；随后按掩码实现 FJ01-FJ05。装备战力/命中等待 CS03 战斗状态。
 - 下一 ready 节点：`CS01D-EQUIPMENT-EFFECTS`。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-007`，见 `docs/rules-semantics/decisions.md`。

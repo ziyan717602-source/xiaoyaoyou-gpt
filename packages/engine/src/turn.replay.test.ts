@@ -5,6 +5,7 @@ import {
   createPlayerView,
   createSetupMatch,
   reduceEvent,
+  SETUP_CARD_INSTANCES,
   type DomainEvent,
   type MatchState,
 } from "./index.js";
@@ -55,6 +56,50 @@ function started(): MatchState {
 }
 
 describe("M03 turn event replay", () => {
+  it("replays WQ04 pawn from an equipped weapon across a JSON restart", () => {
+    const startedState = started();
+    const actor = startedState.activePlayerId!;
+    const initial: MatchState = {
+      ...startedState,
+      players: {
+        ...startedState.players,
+        [actor]: {
+          ...startedState.players[actor]!,
+          hand: [],
+          equipment: { weapon: "xyy.card.wq04@50", armor: null },
+        },
+      },
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.wq04@50",
+      ),
+      discardPile: [],
+    };
+    const restarted = JSON.parse(JSON.stringify(initial)) as MatchState;
+    const command = {
+      type: "play-card" as const,
+      cardInstanceId: "xyy.card.wq04@50",
+      targetPlayerIds: [],
+      mode: "pawn" as const,
+    };
+    const uninterrupted = apply(initial, actor, "wq04-replay-pawn", command);
+    const resumed = apply(restarted, actor, "wq04-replay-pawn", command);
+    expect(resumed).toEqual(uninterrupted);
+    let replayed = initial;
+    for (const event of uninterrupted.events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.players[actor]).toMatchObject({
+      hand: expect.any(Array),
+      equipment: { weapon: null, armor: null },
+    });
+    expect(uninterrupted.state.players[actor]!.hand).toHaveLength(2);
+    expect(uninterrupted.state.discardPile).toContain("xyy.card.wq04@50");
+  });
+
   it("matches uninterrupted execution through JSON restart checkpoints", () => {
     const initial = started();
     let uninterrupted = initial;

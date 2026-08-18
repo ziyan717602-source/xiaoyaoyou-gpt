@@ -684,7 +684,7 @@ function turnActions(
     const definition = cardDefinition(instanceId);
     const alternate =
       definition.alternateActions?.flatMap((action) =>
-        action.type === "pawn-draw-one"
+        action.type === "pawn-draw-one" || action.type === "pawn-draw-two"
           ? [
               {
                 type: "play-card" as const,
@@ -802,7 +802,21 @@ function turnActions(
     }
     return alternate;
   });
-  return [...playable, { type: "end-action" }];
+  const equippedPawn =
+    player.equipment.weapon !== null &&
+    cardDefinition(player.equipment.weapon).alternateActions?.some(
+      (action) => action.type === "pawn-draw-two",
+    ) === true
+      ? [
+          {
+            type: "play-card" as const,
+            cardInstanceId: player.equipment.weapon,
+            targetPlayerIds: [],
+            mode: "pawn" as const,
+          },
+        ]
+      : [];
+  return [...playable, ...equippedPawn, { type: "end-action" }];
 }
 
 export const projectPlayerView = createPlayerView;

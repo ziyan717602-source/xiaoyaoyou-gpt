@@ -194,10 +194,13 @@ describe("M05 six-player combat bots", () => {
             ): action is Extract<AvailableAction, { type: "play-card" }> =>
               action.type === "play-card",
           );
+          // This combat policy preserves cards for damage/rescue coverage;
+          // pawn-heavy play is exercised by the turn/equipment bots instead.
+          const nonPawnPlays = plays.filter((action) => action.mode !== "pawn");
           const play =
             plays.find((action) =>
               action.cardInstanceId.startsWith("xyy.card.jp05@"),
-            ) ?? plays[0];
+            ) ?? nonPawnPlays[0];
           if (play === undefined) {
             nextCommand = { type: "end-action" };
           } else {
