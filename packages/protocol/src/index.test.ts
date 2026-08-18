@@ -76,6 +76,13 @@ describe("protocol runtime schema", () => {
         targetPlayerIds: ["player-1"],
       },
       {
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn50201",
+        convertedCardId: "xyy.card.jp06",
+        targetPlayerIds: ["player-2"],
+      },
+      {
         type: "activate-hero-skill",
         cardInstanceIds: ["xyy.card.jp01@1"],
         skillId: "xyy.skill.jn20302",
@@ -126,7 +133,7 @@ describe("protocol runtime schema", () => {
         type: "command",
         envelope: {
           protocolVersion: PROTOCOL_VERSION,
-          commandId: "command-short-skill-payment",
+          commandId: "command-empty-skill-payment",
           matchId: "match-1",
           playerId: "player-1",
           clientSequence: 1,
@@ -134,7 +141,7 @@ describe("protocol runtime schema", () => {
           clientIssuedAt: 1,
           command: {
             type: "play-skill-converted-card",
-            cardInstanceIds: ["xyy.card.jp01@1"],
+            cardInstanceIds: [],
             skillId: "xyy.skill.jn40301",
             targetPlayerIds: ["player-1"],
           },

@@ -152,6 +152,170 @@ function expectConserved(state: MatchState): void {
 }
 
 describe("M03 deterministic turn core", () => {
+  it("uses JN50201 once per action phase to convert one hand card into JP01 or JP06", () => {
+    let state = playing("jn50201-conversion");
+    const actor = state.activePlayerId!;
+    const target = state.turnOrder.find((id) => id !== actor)!;
+    state = arrange(
+      state,
+      {
+        [actor]: ["xyy.card.zp01@16"],
+        [target]: ["xyy.card.jp04@7"],
+      },
+      { [target]: { armor: "xyy.card.fj03@54" } },
+    );
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj402" },
+      },
+    };
+
+    const actions = createPlayerView(state, actor).availableActions;
+    expect(actions).toContainEqual({
+      type: "play-skill-converted-card",
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn50201",
+      convertedCardId: "xyy.card.jp01",
+      targetPlayerIds: [target],
+    });
+    expect(actions).toContainEqual({
+      type: "play-skill-converted-card",
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn50201",
+      convertedCardId: "xyy.card.jp06",
+      targetPlayerIds: [target],
+    });
+    expect(createPlayerView(state, target).availableActions).toEqual([]);
+
+    const forged = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn50201-forged", {
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn50201",
+        convertedCardId: "xyy.card.jp05",
+        targetPlayerIds: [target],
+      }),
+    });
+    expect(forged).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    const initial = state;
+    state = dispatch(state, actor, "jn50201-steal", {
+      type: "play-skill-converted-card",
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      skillId: "xyy.skill.jn50201",
+      convertedCardId: "xyy.card.jp01",
+      targetPlayerIds: [target],
+    });
+    expect(state.turn?.usedSkillIds).toEqual(["xyy.skill.jn50201"]);
+    expect(state.effectStack[0]).toMatchObject({
+      kind: "card:xyy.card.jp01",
+      payload: {
+        cardInstanceIds: ["xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn50201",
+        convertedCardId: "xyy.card.jp01",
+      },
+    });
+    state = passAllReactions(state, "jn50201-steal-pass");
+    expect(state.pendingChoice?.optionIds).toEqual(["opaque-hand-slot-1"]);
+    state = dispatch(state, actor, "jn50201-steal-choice", {
+      type: "submit-choice",
+      choiceId: state.pendingChoice!.choiceId,
+      selections: ["opaque-hand-slot-1"],
+    });
+    expect(state.players[actor]!.hand).toEqual(["xyy.card.jp04@7"]);
+    expect(state.players[target]!.hand).toEqual([]);
+    expect(
+      createPlayerView(state, actor).availableActions.some(
+        (action) =>
+          action.type === "play-skill-converted-card" &&
+          action.skillId === "xyy.skill.jn50201",
+      ),
+    ).toBe(false);
+
+    let discarded = dispatch(initial, actor, "jn50201-discard", {
+      type: "play-skill-converted-card",
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      skillId: "xyy.skill.jn50201",
+      convertedCardId: "xyy.card.jp06",
+      targetPlayerIds: [target],
+    });
+    discarded = passAllReactions(discarded, "jn50201-discard-pass");
+    expect(discarded.pendingChoice?.optionIds).toEqual([
+      "opaque-hand-slot-1",
+      "equipment:armor",
+    ]);
+    discarded = dispatch(discarded, actor, "jn50201-discard-choice", {
+      type: "submit-choice",
+      choiceId: discarded.pendingChoice!.choiceId,
+      selections: ["equipment:armor"],
+    });
+    expect(discarded.players[target]!.equipment.armor).toBeNull();
+    expect(discarded.discardPile).toEqual([
+      "xyy.card.zp01@16",
+      "xyy.card.fj03@54",
+    ]);
+
+    const cancelInitial: MatchState = {
+      ...initial,
+      players: {
+        ...initial.players,
+        [target]: {
+          ...initial.players[target]!,
+          hand: ["xyy.card.jp04@7", "xyy.card.tp01@33"],
+        },
+      },
+      drawPile: initial.drawPile.filter((card) => card !== "xyy.card.tp01@33"),
+    };
+    let cancelled = dispatch(cancelInitial, actor, "jn50201-cancelled", {
+      type: "play-skill-converted-card",
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      skillId: "xyy.skill.jn50201",
+      convertedCardId: "xyy.card.jp06",
+      targetPlayerIds: [target],
+    });
+    let skipped = 0;
+    while (
+      cancelled.reactionWindow !== null &&
+      cancelled.reactionWindow.priorityOrder[
+        cancelled.reactionWindow.priorityIndex
+      ] !== target
+    ) {
+      const window = cancelled.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      cancelled = dispatch(
+        cancelled,
+        priority,
+        `jn50201-cancel-skip-${skipped}`,
+        {
+          type: "pass-reaction",
+          windowId: window.windowId,
+        },
+      );
+      skipped += 1;
+    }
+    cancelled = dispatch(cancelled, target, "jn50201-bingxin", {
+      type: "play-reaction-card",
+      cardInstanceId: "xyy.card.tp01@33",
+      targetEffectId: cancelled.effectStack[0]!.effectId,
+    });
+    cancelled = passAllReactions(cancelled, "jn50201-cancel-pass");
+    expect(cancelled.pendingChoice).toBeNull();
+    expect(cancelled.players[target]).toMatchObject({
+      hand: ["xyy.card.jp04@7"],
+      equipment: { armor: "xyy.card.fj03@54" },
+    });
+    expect(cancelled.turn?.usedSkillIds).toEqual(["xyy.skill.jn50201"]);
+    expectConserved(state);
+    expectConserved(discarded);
+    expectConserved(cancelled);
+  });
+
   it("uses JN40401 to discard hand or equipment before curing self", () => {
     let state = playing("jn40401-active");
     const actor = state.activePlayerId!;
@@ -560,8 +724,13 @@ describe("M03 deterministic turn core", () => {
     state = arrange(state, {
       [actor]: ["xyy.card.jp01@1", "xyy.card.jp01@2", "xyy.card.jp02@3"],
     });
+    state = {
+      ...state,
+      turn: { ...state.turn!, usedSkillIds: ["xyy.skill.jn50201"] },
+    };
     state = dispatch(state, actor, "end-action", { type: "end-action" });
     expect(state.turn).toMatchObject({ number: 1, phase: "discard" });
+    expect(state.turn?.usedSkillIds).toEqual(["xyy.skill.jn50201"]);
     expect(state.players[actor]!.hand).toHaveLength(4);
     expect(createPlayerView(state, actor).availableActions).toEqual([
       {
@@ -576,6 +745,7 @@ describe("M03 deterministic turn core", () => {
     });
     expect(state.activePlayerId).toBe(next);
     expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(state.turn?.usedSkillIds).toEqual([]);
     expect(state.players[actor]!.hand).toHaveLength(3);
     expectConserved(state);
   });

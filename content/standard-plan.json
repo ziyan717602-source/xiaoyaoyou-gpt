@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 41,
-    "verified": 9,
+    "verified": 10,
     "deferred": 0,
-    "unstarted": 155
+    "unstarted": 154
   },
   "executionQueue": [
     {
@@ -1640,8 +1640,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN50201 once-per-action JP01/JP06 conversion are verified; JN50202 and JN50203 remain pending",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn50201.md"
+      ],
       "dependencies": {
         "contentIds": [
           "xyy.hero.xj401",
@@ -4396,9 +4399,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ402 once-per-action hand-card conversion into canonical JP01 or JP06 is verified through cancellation, opaque choice, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50201.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

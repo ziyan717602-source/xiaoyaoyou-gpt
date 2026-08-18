@@ -515,6 +515,80 @@ function injectJp06Fixture(
   }
 }
 
+function injectJn50201Fixture(
+  databasePath: string,
+  matchId: string,
+  actor: PlayerId,
+  target: PlayerId,
+): void {
+  const database = new Database(databasePath);
+  try {
+    const row = database
+      .prepare(
+        `SELECT rowid, state_json FROM snapshots
+         WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1`,
+      )
+      .get(matchId) as { rowid: number; state_json: string } | undefined;
+    if (row === undefined) throw new Error("Missing JN50201 fixture snapshot.");
+    const state = JSON.parse(row.state_json) as MatchState;
+    const claimed = new Set([
+      "xyy.card.zp01@16",
+      "xyy.card.jp04@7",
+      "xyy.card.fj03@54",
+    ]);
+    const now = Date.now();
+    const fixture: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === actor ? "xyy.hero.xj402" : player.heroId,
+            hand:
+              player.id === actor
+                ? ["xyy.card.zp01@16"]
+                : player.id === target
+                  ? ["xyy.card.jp04@7"]
+                  : [],
+            equipment:
+              player.id === target
+                ? { weapon: null, armor: "xyy.card.fj03@54" }
+                : { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      turn:
+        state.turn === null
+          ? null
+          : {
+              ...state.turn,
+              phase: "action",
+              openedAt: now,
+              deadlineAt: now + 15_000,
+              usedSkillIds: [],
+            },
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+      effectStack: [],
+      reactionWindow: null,
+      pendingChoice: null,
+      dyingBatch: null,
+    };
+    const stateJson = JSON.stringify(fixture);
+    const stateHash = createHash("sha256")
+      .update(stateJson, "utf8")
+      .digest("hex");
+    database
+      .prepare(
+        "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE rowid = ?",
+      )
+      .run(stateJson, stateHash, row.rowid);
+  } finally {
+    database.close();
+  }
+}
+
 function injectTp03Fixture(
   databasePath: string,
   matchId: string,
@@ -1541,6 +1615,173 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
       equipment: { weapon: null, armor: null },
     });
     expect(restartedWq04Actor.latestView.reactionWindow).toBeNull();
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    injectJn50201Fixture(databasePath, room.roomId, actor, first);
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    let jn50201ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    let jn50201Actor = jn50201ClientByPlayer.get(actor)!;
+    expect(jn50201Actor.latestView.availableActions).toContainEqual({
+      type: "play-skill-converted-card",
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn50201",
+      convertedCardId: "xyy.card.jp06",
+      targetPlayerIds: [first],
+    });
+    expect(
+      clients
+        .filter((client) => client !== jn50201Actor)
+        .every(
+          (client) =>
+            client.latestView.availableActions.length === 0 &&
+            !JSON.stringify(client.latestView).includes("xyy.card.zp01@16"),
+        ),
+    ).toBe(true);
+    const converted = await sendCommand(
+      jn50201Actor,
+      sessionByPlayer.get(actor)!,
+      "network-jn50201-convert-jp06",
+      version,
+      {
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn50201",
+        convertedCardId: "xyy.card.jp06",
+        targetPlayerIds: [first],
+      },
+    );
+    expect(converted.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    expect(jn50201Actor.latestView.turn?.usedSkillIds).toEqual([
+      "xyy.skill.jn50201",
+    ]);
+    const jn50201Window = JSON.parse(
+      JSON.stringify(clients[0]!.latestView.reactionWindow),
+    ) as PlayerView["reactionWindow"];
+    expect(jn50201Window).not.toBeNull();
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    jn50201ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    expect(clients[0]!.latestView.reactionWindow).toEqual(jn50201Window);
+    let jn50201Pass = 0;
+    while (clients[0]!.latestView.reactionWindow !== null) {
+      const window = clients[0]!.latestView.reactionWindow!;
+      const priority = window.priorityPlayerId;
+      const priorityClient = jn50201ClientByPlayer.get(priority)!;
+      expect(
+        clients
+          .filter((client) => client !== priorityClient)
+          .every((client) => client.latestView.availableActions.length === 0),
+      ).toBe(true);
+      const passed = await sendCommand(
+        priorityClient,
+        sessionByPlayer.get(priority)!,
+        `network-jn50201-pass-${jn50201Pass}`,
+        version,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      expect(passed.type).toBe("command-accepted");
+      version += 1;
+      await waitForVersion(clients, version);
+      jn50201Pass += 1;
+      if (jn50201Pass > 6) throw new Error("JN50201 window did not close.");
+    }
+    jn50201Actor = jn50201ClientByPlayer.get(actor)!;
+    expect(jn50201Actor.latestView.pendingChoice).toMatchObject({
+      playerIds: [actor],
+      optionIds: ["opaque-hand-slot-1", "equipment:armor"],
+      fallback: "deterministic-random",
+    });
+    for (const [playerId, client] of jn50201ClientByPlayer) {
+      if (playerId !== actor) {
+        expect(client.latestView.pendingChoice).toBeNull();
+        expect(client.latestView.availableActions).toEqual([]);
+      }
+    }
+    const persistedJn50201Choice = JSON.parse(
+      JSON.stringify(jn50201Actor.latestView.pendingChoice),
+    ) as PlayerView["pendingChoice"];
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    jn50201ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    jn50201Actor = jn50201ClientByPlayer.get(actor)!;
+    expect(jn50201Actor.latestView.pendingChoice).toEqual(
+      persistedJn50201Choice,
+    );
+    const resolvedJn50201 = await sendCommand(
+      jn50201Actor,
+      sessionByPlayer.get(actor)!,
+      "network-jn50201-discard-armor",
+      version,
+      {
+        type: "submit-choice",
+        choiceId: jn50201Actor.latestView.pendingChoice!.choiceId,
+        selections: ["equipment:armor"],
+      },
+    );
+    expect(resolvedJn50201.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    expect(
+      jn50201Actor.latestView.players.find((player) => player.id === first),
+    ).toMatchObject({
+      handCount: 1,
+      equipment: { weapon: null, armor: null },
+    });
+    expect(jn50201Actor.latestView.pendingChoice).toBeNull();
+    expect(
+      jn50201Actor.latestView.availableActions.some(
+        (action) =>
+          action.type === "play-skill-converted-card" &&
+          action.skillId === "xyy.skill.jn50201",
+      ),
+    ).toBe(false);
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = Math.max(...clients.map((client) => client.latestView.version));
+    await waitForVersion(clients, version);
+    jn50201Actor =
+      clients[sessions.findIndex((session) => session.playerId === actor)]!;
+    expect(
+      jn50201Actor.latestView.players.find((player) => player.id === first),
+    ).toMatchObject({
+      handCount: 1,
+      equipment: { weapon: null, armor: null },
+    });
+    expect(jn50201Actor.latestView.turn?.usedSkillIds).toEqual([
+      "xyy.skill.jn50201",
+    ]);
+    expect(jn50201Actor.latestView.pendingChoice).toBeNull();
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });

@@ -57,6 +57,7 @@ export type ClientCommand =
       readonly type: "play-skill-converted-card";
       readonly cardInstanceIds: readonly string[];
       readonly skillId: string;
+      readonly convertedCardId?: string;
       readonly targetPlayerIds: readonly PlayerId[];
     }
   | {
@@ -303,11 +304,12 @@ export const clientMessageSchema = {
                     type: { const: "play-skill-converted-card" },
                     cardInstanceIds: {
                       type: "array",
-                      minItems: 2,
+                      minItems: 1,
                       maxItems: 2,
                       items: identifierSchema,
                     },
                     skillId: identifierSchema,
+                    convertedCardId: identifierSchema,
                     targetPlayerIds: {
                       type: "array",
                       maxItems: 6,

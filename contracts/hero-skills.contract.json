@@ -61,6 +61,14 @@
       "status": "verified",
       "verifiedBoundary": "native ownership, hand/weapon/armor zones, exact payment, discard-before-cure ordering, retained versus paid WQ02, repeat use, timeout no-payment, JSON replay, SQLite restart and six-socket privacy",
       "linkedPending": []
+    },
+    "xyy.skill.jn50201": {
+      "name": "搜囊探宝",
+      "owner": "xyy.hero.xj402",
+      "rule": "once during her own action phase, the owner may pay exactly one own hand card as either JP01 or JP06, then use the canonical cancellable card and hidden-choice chain",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, exact hand payment, JP01/JP06 mode and target validation, once-per-turn state, Bingxin cancellation, opaque choice, deterministic timeout reuse, JSON replay, SQLite window/choice restart and six-socket privacy",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -76,7 +84,9 @@
     "psd.db3:Skill:JN20302 OCCURS R#GR and description each discarded technique card cures any player by two",
     "PSDGamepkg/JNS/XJ405.cs:542-565 JN20302 selects one JP hand card and any in-play target, discards then calls Cure directly",
     "psd.db3:Skill:JN40401 OCCURS R#GR ONCE 0 and description each discarded hand card or equipment self-cures two",
-    "PSDGamepkg/JNS/XJ405.cs:1106-1124 JN40401 selects ListOutAllCards, discards the selected card, then calls Cure on self"
+    "PSDGamepkg/JNS/XJ405.cs:1106-1124 JN40401 selects ListOutAllCards, discards the selected card, then calls Cure on self",
+    "psd.db3:Skill:JN50201 OCCURS R#GR ONCE 1 and description one arbitrary hand card as JP01 or JP06 once per action phase",
+    "PSDGamepkg/JNS/XJ405.cs:1326-1354 JN50201 requires own hand plus another player's cards, chooses one own hand card and JP01/JP06, then routes through G0CC"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -94,7 +104,11 @@
     "jn20302RepeatAndTimeout": "there is no per-turn marker; the action remains available while another JP hand card exists, and generic optional action timeout ends the phase without payment",
     "jn40401ZoneRepresentation": "the projected candidate list is own hand followed by weapon and armor; the event records the authoritative source zone so replay removes exactly one physical instance",
     "jn40401Ordering": "payment state is constructed before cure planning, matching legacy G0QZ before Cure; a paid WQ02 gives no bonus while a retained WQ02 still does",
-    "jn40401RepeatAndTimeout": "there is no per-turn marker; the action remains available while any own hand/equipment card exists, and timeout ends action without payment"
+    "jn40401RepeatAndTimeout": "there is no per-turn marker; the action remains available while any own hand/equipment card exists, and timeout ends action without payment",
+    "jn50201ConversionRepresentation": "the command and event record the paid physical hand card, native skill id and selected virtual JP01/JP06 id; both modes reuse the canonical cancellable effect and hidden card-zone choice state machine",
+    "jn50201OnceState": "usedSkillIds is serialized on the current turn, consumed when the conversion effect starts even if Bingxin later cancels it, and reset only when a new turn is created",
+    "jn50201TargetProjection": "JP01 lists living opponents with hand cards; JP06 lists living targets that retain at least one selectable card after the chosen source payment, while the legacy global requirement that another player has any card remains authoritative",
+    "jn50201Timeout": "activation is optional so the action timeout pays nothing; after activation the existing mandatory card-zone choice uses deterministic seeded random fallback"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -142,6 +156,14 @@
     "CS02-43": "JN40401-paid-WQ02-does-not-modify-its-following-cure-but-retained-WQ02-does",
     "CS02-44": "JN40401-remains-repeatable-while-another-own-card-exists-and-timeout-does-not-pay",
     "CS02-45": "JN40401-replays-identically-after-a-JSON-checkpoint",
-    "CS02-46": "JN40401-persists-through-SQLite-restart-with-six-socket-privacy"
+    "CS02-46": "JN40401-persists-through-SQLite-restart-with-six-socket-privacy",
+    "CS02-47": "JN50201-is-offered-only-to-its-native-owner-during-own-action-with-a-hand-card-another-player-card-and-unused-turn-marker",
+    "CS02-48": "JN50201-requires-exactly-one-owned-hand-card-and-only-JP01-or-JP06-as-the-virtual-card",
+    "CS02-49": "JN50201-validates-JP01-and-JP06-targets-against-the-authoritative-post-payment-state",
+    "CS02-50": "JN50201-discards-the-physical-source-and-records-skill-and-virtual-card-identities",
+    "CS02-51": "JN50201-reuses-the-canonical-cancellable-chain-and-Bingxin-can-cancel-it",
+    "CS02-52": "JN50201-reuses-opaque-card-zone-choices-and-deterministic-mandatory-timeout-without-hidden-card-leakage",
+    "CS02-53": "JN50201-is-consumed-on-start-even-if-cancelled-and-resets-on-the-next-turn-while-action-timeout-pays-nothing",
+    "CS02-54": "JN50201-replays-through-JSON-and-persists-window-choice-once-state-through-SQLite-restarts-with-six-socket-privacy"
   }
 }

@@ -60,6 +60,16 @@ function sameValues(
   );
 }
 
+function playerHasAnyCards(
+  player: Readonly<MatchState["players"][PlayerId]>,
+): boolean {
+  return (
+    player.hand.length > 0 ||
+    player.equipment.weapon !== null ||
+    player.equipment.armor !== null
+  );
+}
+
 const PHASE_EDGES: Readonly<Record<TurnPhase, readonly TurnPhase[]>> = {
   "turn-start": ["event"],
   event: ["action"],
@@ -458,6 +468,7 @@ export function reduceTurnEvent(
         phase: "turn-start",
         openedAt: advancedAt,
         deadlineAt: advancedAt + ACTION_DEADLINE_MS,
+        usedSkillIds: [],
       },
     };
   } else if (event.type === "match.finished") {
@@ -941,30 +952,99 @@ export function applyTurnCommand(
   } else if (command.type === "play-skill-converted-card") {
     const player = input.players[envelope.playerId]!;
     const cardInstanceIds = command.cardInstanceIds as CardInstanceId[];
-    if (
-      input.turn.phase !== "action" ||
-      command.skillId !== "xyy.skill.jn40301" ||
-      player.heroId === null ||
-      !heroHasSkill(player.heroId, "xyy.skill.jn40301") ||
-      cardInstanceIds.length !== 2 ||
-      new Set(cardInstanceIds).size !== 2 ||
-      cardInstanceIds.some((card) => !player.hand.includes(card)) ||
-      command.targetPlayerIds.length !== 1 ||
-      command.targetPlayerIds[0] !== envelope.playerId
-    ) {
+    if (input.turn.phase !== "action" || player.heroId === null) {
       return {
         accepted: false,
         reason: "forbidden",
         currentVersion: input.version,
       };
     }
-    return beginSkillConvertedCardEffect(
-      input,
-      envelope,
-      serverReceivedAt,
-      cardInstanceIds,
-      envelope.playerId,
-    );
+    if (command.skillId === "xyy.skill.jn40301") {
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn40301") ||
+        (command.convertedCardId !== undefined &&
+          command.convertedCardId !== "xyy.card.tp02") ||
+        cardInstanceIds.length !== 2 ||
+        new Set(cardInstanceIds).size !== 2 ||
+        cardInstanceIds.some((card) => !player.hand.includes(card)) ||
+        command.targetPlayerIds.length !== 1 ||
+        command.targetPlayerIds[0] !== envelope.playerId
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      return beginSkillConvertedCardEffect(
+        input,
+        envelope,
+        serverReceivedAt,
+        cardInstanceIds,
+        "xyy.skill.jn40301",
+        "xyy.card.tp02",
+        envelope.playerId,
+      );
+    }
+    if (command.skillId === "xyy.skill.jn50201") {
+      const target = input.players[command.targetPlayerIds[0] ?? ""];
+      const paidCard = cardInstanceIds[0];
+      const remainingHand =
+        paidCard === undefined
+          ? player.hand
+          : player.hand.filter((card) => card !== paidCard);
+      const targetHasCardsAfterPayment =
+        target === undefined
+          ? false
+          : target.id === envelope.playerId
+            ? remainingHand.length > 0 ||
+              target.equipment.weapon !== null ||
+              target.equipment.armor !== null
+            : playerHasAnyCards(target);
+      const validConvertedCard =
+        command.convertedCardId === "xyy.card.jp01" ||
+        command.convertedCardId === "xyy.card.jp06";
+      const validTarget =
+        command.targetPlayerIds.length === 1 &&
+        target?.alive === true &&
+        (command.convertedCardId === "xyy.card.jp01"
+          ? target.id !== envelope.playerId && target.hand.length > 0
+          : command.convertedCardId === "xyy.card.jp06" &&
+            targetHasCardsAfterPayment);
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn50201") ||
+        (input.turn.usedSkillIds ?? []).includes("xyy.skill.jn50201") ||
+        cardInstanceIds.length !== 1 ||
+        paidCard === undefined ||
+        !player.hand.includes(paidCard) ||
+        !Object.values(input.players).some(
+          (candidate) =>
+            candidate.id !== envelope.playerId && playerHasAnyCards(candidate),
+        ) ||
+        !validConvertedCard ||
+        !validTarget
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      return beginSkillConvertedCardEffect(
+        input,
+        envelope,
+        serverReceivedAt,
+        cardInstanceIds,
+        "xyy.skill.jn50201",
+        command.convertedCardId,
+        target.id,
+      );
+    }
+    return {
+      accepted: false,
+      reason: "forbidden",
+      currentVersion: input.version,
+    };
   } else if (command.type === "end-action") {
     if (input.turn.phase !== "action") {
       return {

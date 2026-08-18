@@ -72,6 +72,16 @@ function sameValues(
   );
 }
 
+function playerHasAnyCards(
+  player: Readonly<MatchState["players"][PlayerId]>,
+): boolean {
+  return (
+    player.hand.length > 0 ||
+    player.equipment.weapon !== null ||
+    player.equipment.armor !== null
+  );
+}
+
 function effectById(
   state: Readonly<MatchState>,
   effectId: EffectId,
@@ -511,6 +521,12 @@ export function reduceReactionEvent(
       "cardInstanceIds",
     ) as readonly CardInstanceId[];
     const skillId = stringPayload(event, "skillId");
+    const convertedCardId =
+      typeof event.payload.convertedCardId === "string"
+        ? event.payload.convertedCardId
+        : skillId === "xyy.skill.jn40301"
+          ? "xyy.card.tp02"
+          : stringPayload(event, "convertedCardId");
     const targetPlayerIds = stringsPayload(
       event,
       "targetPlayerIds",
@@ -519,32 +535,70 @@ export function reduceReactionEvent(
     const windowId = stringPayload(event, "windowId");
     const openedAt = numberPayload(event, "openedAt");
     const player = state.players[playerId];
+    const target = state.players[targetPlayerIds[0] ?? ""];
+    const paidCards = new Set(cardInstanceIds);
+    const remainingHand =
+      player === undefined
+        ? []
+        : player.hand.filter((card) => !paidCards.has(card));
+    const targetHasCardsAfterPayment =
+      target === undefined
+        ? false
+        : target.id === playerId
+          ? remainingHand.length > 0 ||
+            target.equipment.weapon !== null ||
+            target.equipment.armor !== null
+          : playerHasAnyCards(target);
+    const validJn40301 =
+      player?.heroId !== null &&
+      player?.heroId !== undefined &&
+      skillId === "xyy.skill.jn40301" &&
+      convertedCardId === "xyy.card.tp02" &&
+      heroHasSkill(player.heroId, "xyy.skill.jn40301") &&
+      cardInstanceIds.length === 2 &&
+      new Set(cardInstanceIds).size === 2 &&
+      cardInstanceIds.every((card) => player.hand.includes(card)) &&
+      targetPlayerIds.length === 1 &&
+      targetPlayerIds[0] === playerId;
+    const validJn50201 =
+      player?.heroId !== null &&
+      player?.heroId !== undefined &&
+      skillId === "xyy.skill.jn50201" &&
+      (convertedCardId === "xyy.card.jp01" ||
+        convertedCardId === "xyy.card.jp06") &&
+      heroHasSkill(player.heroId, "xyy.skill.jn50201") &&
+      !(state.turn?.usedSkillIds ?? []).includes("xyy.skill.jn50201") &&
+      cardInstanceIds.length === 1 &&
+      new Set(cardInstanceIds).size === 1 &&
+      cardInstanceIds.every((card) => player.hand.includes(card)) &&
+      Object.values(state.players).some(
+        (candidate) =>
+          candidate.id !== playerId && playerHasAnyCards(candidate),
+      ) &&
+      targetPlayerIds.length === 1 &&
+      target?.alive === true &&
+      (convertedCardId === "xyy.card.jp01"
+        ? target.id !== playerId && target.hand.length > 0
+        : targetHasCardsAfterPayment);
     if (
       state.reactionWindow !== null ||
       state.activePlayerId !== playerId ||
+      state.turn?.phase !== "action" ||
       player === undefined ||
-      player.heroId === null ||
-      skillId !== "xyy.skill.jn40301" ||
-      !heroHasSkill(player.heroId, "xyy.skill.jn40301") ||
-      cardInstanceIds.length !== 2 ||
-      new Set(cardInstanceIds).size !== 2 ||
-      cardInstanceIds.some((card) => !player.hand.includes(card)) ||
-      targetPlayerIds.length !== 1 ||
-      targetPlayerIds[0] !== playerId ||
+      (!validJn40301 && !validJn50201) ||
       effectById(state, effectId) !== undefined
     ) {
       throw new Error("Skill-converted card effect is not applicable.");
     }
-    const paidCards = new Set(cardInstanceIds);
     const effect: EffectFrame = {
       effectId,
       parentEffectId: null,
-      kind: "card:xyy.card.tp02",
+      kind: `card:${convertedCardId}`,
       sourcePlayerId: playerId,
       targetIds: targetPlayerIds,
       step: "awaiting-reactions",
       status: "waiting",
-      payload: { cardInstanceIds, skillId },
+      payload: { cardInstanceIds, skillId, convertedCardId },
     };
     const intermediate: MatchState = {
       ...state,
@@ -557,6 +611,16 @@ export function reduceReactionEvent(
       },
       discardPile: [...state.discardPile, ...cardInstanceIds],
       effectStack: [...state.effectStack, effect],
+      turn:
+        skillId === "xyy.skill.jn50201" && state.turn !== null
+          ? {
+              ...state.turn,
+              usedSkillIds: [
+                ...(state.turn.usedSkillIds ?? []),
+                "xyy.skill.jn50201",
+              ],
+            }
+          : state.turn,
     };
     next = {
       ...intermediate,
@@ -1524,6 +1588,8 @@ export function beginSkillConvertedCardEffect(
   envelope: Readonly<CommandEnvelope>,
   serverReceivedAt: number,
   cardInstanceIds: readonly CardInstanceId[],
+  skillId: "xyy.skill.jn40301" | "xyy.skill.jn50201",
+  convertedCardId: "xyy.card.tp02" | "xyy.card.jp01" | "xyy.card.jp06",
   targetPlayerId: PlayerId,
 ): ApplyCommandResult {
   if (!validServerTime(serverReceivedAt)) {
@@ -1542,7 +1608,8 @@ export function beginSkillConvertedCardEffect(
   builder.append("effect.skill-card-converted", {
     playerId: envelope.playerId,
     cardInstanceIds,
-    skillId: "xyy.skill.jn40301",
+    skillId,
+    convertedCardId,
     targetPlayerIds: [targetPlayerId],
     effectId: `${input.matchId}:effect:${envelope.commandId}`,
     windowId: `${input.matchId}:window:${envelope.commandId}`,

@@ -58,6 +58,10 @@
     "xyy.skill.jn40401": {
       "boundary": "native X3W04 repeatable own hand-or-equipment discard before direct self-cure is verified through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn40401.md"]
+    },
+    "xyy.skill.jn50201": {
+      "boundary": "native XJ402 once-per-action hand-card conversion into canonical JP01 or JP06 is verified through cancellation, opaque choice, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50201.md"]
     }
   },
   "baselinePartial": {
@@ -106,6 +110,13 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn40401.md"
+        ]
+      },
+      "xyy.hero.xj402": {
+        "boundary": "setup identity and base stats plus JN50201 once-per-action JP01/JP06 conversion are verified; JN50202 and JN50203 remain pending",
+        "evidence": [
+          "M02-SETUP-AND-TEAMS",
+          "receipt:docs/verification/receipts/cs02-jn50201.md"
         ]
       }
     },

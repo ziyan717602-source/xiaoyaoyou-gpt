@@ -56,6 +56,118 @@ function started(seed = "m03-replay-restart-seed"): MatchState {
 }
 
 describe("M03 turn event replay", () => {
+  it("replays JN50201 through its response window and mandatory hidden-card choice", () => {
+    const base = started("jn50201-replay");
+    const actor = base.activePlayerId!;
+    const target = base.turnOrder.find((id) => id !== actor)!;
+    const claimed = [
+      "xyy.card.zp01@16",
+      "xyy.card.jp04@7",
+      "xyy.card.fj03@54",
+    ] as const;
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          player.id === actor
+            ? {
+                ...player,
+                heroId: "xyy.hero.xj402",
+                hand: ["xyy.card.zp01@16"],
+                equipment: { weapon: null, armor: null },
+              }
+            : player.id === target
+              ? {
+                  ...player,
+                  hand: ["xyy.card.jp04@7"],
+                  equipment: { weapon: null, armor: "xyy.card.fj03@54" },
+                }
+              : {
+                  ...player,
+                  hand: [],
+                  equipment: { weapon: null, armor: null },
+                },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => !claimed.includes(card as (typeof claimed)[number]),
+      ),
+      discardPile: [],
+    };
+    const command = {
+      type: "play-skill-converted-card" as const,
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      skillId: "xyy.skill.jn50201",
+      convertedCardId: "xyy.card.jp06",
+      targetPlayerIds: [target],
+    };
+    const startedConversion = apply(initial, actor, "jn50201-replay", command);
+    const events: DomainEvent[] = [...startedConversion.events];
+    let uninterrupted = startedConversion.state;
+    let restarted = JSON.parse(
+      JSON.stringify(startedConversion.state),
+    ) as MatchState;
+    let sequence = 0;
+    while (uninterrupted.reactionWindow !== null) {
+      const window = uninterrupted.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const pass = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `jn50201-replay-pass-${sequence}`;
+      const primary = apply(uninterrupted, priority, commandId, pass);
+      const recovered = apply(restarted, priority, commandId, pass);
+      expect(recovered).toEqual(primary);
+      uninterrupted = primary.state;
+      restarted = recovered.state;
+      events.push(...primary.events);
+      sequence += 1;
+      if (sequence > 6) throw new Error("JN50201 replay did not converge.");
+    }
+    expect(uninterrupted.pendingChoice?.optionIds).toEqual([
+      "opaque-hand-slot-1",
+      "equipment:armor",
+    ]);
+    const choice = {
+      type: "submit-choice" as const,
+      choiceId: uninterrupted.pendingChoice!.choiceId,
+      selections: ["opaque-hand-slot-1"],
+    };
+    const primaryChoice = apply(
+      uninterrupted,
+      actor,
+      "jn50201-replay-choice",
+      choice,
+    );
+    const recoveredChoice = apply(
+      restarted,
+      actor,
+      "jn50201-replay-choice",
+      choice,
+    );
+    expect(recoveredChoice).toEqual(primaryChoice);
+    events.push(...primaryChoice.events);
+    uninterrupted = primaryChoice.state;
+    restarted = recoveredChoice.state;
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(restarted).toEqual(uninterrupted);
+    expect(replayed).toEqual(uninterrupted);
+    expect(uninterrupted.turn?.usedSkillIds).toEqual(["xyy.skill.jn50201"]);
+    expect(uninterrupted.players[target]!.hand).toEqual([]);
+    expect(uninterrupted.discardPile).toEqual([
+      "xyy.card.zp01@16",
+      "xyy.card.jp04@7",
+    ]);
+  });
+
   it("replays JN40401 equipment payment before self-healing", () => {
     const base = started("jn40401-replay");
     const actor = base.activePlayerId!;
@@ -292,6 +404,7 @@ describe("M03 turn event replay", () => {
       phase: "action",
       openedAt: 0,
       deadlineAt: 15_000,
+      usedSkillIds: [],
     });
   });
 });

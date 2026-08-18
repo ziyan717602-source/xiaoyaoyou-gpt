@@ -112,6 +112,7 @@ function finalized(state: MatchState, startedAt: number): MatchState {
       phase: "action",
       openedAt: startedAt,
       deadlineAt: startedAt + ACTION_DEADLINE_MS,
+      usedSkillIds: [],
     },
     winner: null,
     players,

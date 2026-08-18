@@ -30,6 +30,8 @@ export interface TurnState {
   readonly phase: TurnPhase;
   readonly openedAt: number;
   readonly deadlineAt: number;
+  /** Skill ids already consumed for this turn; absent only on legacy snapshots. */
+  readonly usedSkillIds?: readonly string[];
 }
 
 export interface HeroOffer {
@@ -226,6 +228,14 @@ export type AvailableAction =
       readonly cardInstanceIds: readonly CardInstanceId[];
       readonly requiredCardCount: 2;
       readonly skillId: "xyy.skill.jn40301";
+      readonly targetPlayerIds: readonly PlayerId[];
+    }
+  | {
+      readonly type: "play-skill-converted-card";
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly requiredCardCount: 1;
+      readonly skillId: "xyy.skill.jn50201";
+      readonly convertedCardId: "xyy.card.jp01" | "xyy.card.jp06";
       readonly targetPlayerIds: readonly PlayerId[];
     }
   | {
@@ -850,6 +860,66 @@ function rescueActions(
   ];
 }
 
+function jn50201TurnActions(
+  state: Readonly<MatchState>,
+  viewerId: PlayerId,
+  player: Readonly<PlayerState>,
+): AvailableAction[] {
+  const usedSkillIds = state.turn?.usedSkillIds ?? [];
+  const livingPlayers = Object.values(state.players)
+    .filter((candidate) => candidate.alive)
+    .sort((left, right) => left.seat - right.seat);
+  const otherCardTargets = livingPlayers.filter(
+    (candidate) =>
+      candidate.id !== viewerId &&
+      (candidate.hand.length > 0 ||
+        candidate.equipment.weapon !== null ||
+        candidate.equipment.armor !== null),
+  );
+  if (
+    player.heroId === null ||
+    !heroHasSkill(player.heroId, "xyy.skill.jn50201") ||
+    usedSkillIds.includes("xyy.skill.jn50201") ||
+    player.hand.length === 0 ||
+    otherCardTargets.length === 0
+  ) {
+    return [];
+  }
+  const stealTargets = otherCardTargets.filter(
+    (candidate) => candidate.hand.length > 0,
+  );
+  const selfHasCardAfterPayment =
+    player.hand.length > 1 ||
+    player.equipment.weapon !== null ||
+    player.equipment.armor !== null;
+  const discardTargets = [
+    ...(selfHasCardAfterPayment ? [player] : []),
+    ...otherCardTargets,
+  ].sort((left, right) => left.seat - right.seat);
+  return [
+    ...(stealTargets.length === 0
+      ? []
+      : [
+          {
+            type: "play-skill-converted-card" as const,
+            cardInstanceIds: player.hand,
+            requiredCardCount: 1 as const,
+            skillId: "xyy.skill.jn50201" as const,
+            convertedCardId: "xyy.card.jp01" as const,
+            targetPlayerIds: stealTargets.map((candidate) => candidate.id),
+          },
+        ]),
+    {
+      type: "play-skill-converted-card" as const,
+      cardInstanceIds: player.hand,
+      requiredCardCount: 1 as const,
+      skillId: "xyy.skill.jn50201" as const,
+      convertedCardId: "xyy.card.jp06" as const,
+      targetPlayerIds: discardTargets.map((candidate) => candidate.id),
+    },
+  ];
+}
+
 function turnActions(
   state: Readonly<MatchState>,
   viewerId: PlayerId,
@@ -1071,6 +1141,7 @@ function turnActions(
     ...playable,
     ...equippedPawn,
     ...skillConversion,
+    ...jn50201TurnActions(state, viewerId, player),
     ...heroSkillActions,
     ...selfHealingActions,
     { type: "end-action" },
