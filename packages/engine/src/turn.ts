@@ -155,45 +155,112 @@ export function reduceTurnEvent(
       state.turn.phase !== "action" ||
       state.activePlayerId !== playerId ||
       player === undefined ||
-      player.heroId === null ||
-      skillId !== "xyy.skill.jn20302" ||
-      !heroHasSkill(player.heroId, "xyy.skill.jn20302") ||
-      cardInstanceIds.length !== 1 ||
-      !player.hand.includes(cardInstanceIds[0]!) ||
-      !cardIdOf(cardInstanceIds[0]!).startsWith("xyy.card.jp") ||
-      targetPlayerIds.length !== 1 ||
-      target === undefined ||
-      !target.alive
+      player.heroId === null
     ) {
-      throw new Error("JN20302 event is not applicable.");
+      throw new Error("Hero-skill event is not applicable.");
     }
-    const expectedCures = planCureBatch(state, [
-      {
-        itemId: `${event.eventId}:cure:0`,
-        sourcePlayerId: playerId,
-        targetPlayerId: target.id,
-        amount: 2,
-        element: "neutral",
-      },
-    ]);
-    if (
-      JSON.stringify(event.payload.healingItems) !==
-      JSON.stringify(expectedCures)
-    ) {
-      throw new Error("JN20302 healing disagrees with deterministic plan.");
-    }
-    const curedPlayers = playersAfterCures(state, expectedCures);
-    next = {
-      ...state,
-      players: {
-        ...curedPlayers,
-        [playerId]: {
-          ...curedPlayers[playerId]!,
-          hand: player.hand.filter((card) => card !== cardInstanceIds[0]),
+    const cardInstanceId = cardInstanceIds[0];
+    if (skillId === "xyy.skill.jn20302") {
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn20302") ||
+        cardInstanceIds.length !== 1 ||
+        cardInstanceId === undefined ||
+        !player.hand.includes(cardInstanceId) ||
+        !cardIdOf(cardInstanceId).startsWith("xyy.card.jp") ||
+        targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive
+      ) {
+        throw new Error("JN20302 event is not applicable.");
+      }
+      const paymentState: MatchState = {
+        ...state,
+        players: {
+          ...state.players,
+          [playerId]: {
+            ...player,
+            hand: player.hand.filter((card) => card !== cardInstanceId),
+          },
         },
-      },
-      discardPile: [...state.discardPile, cardInstanceIds[0]!],
-    };
+        discardPile: [...state.discardPile, cardInstanceId],
+      };
+      const expectedCures = planCureBatch(paymentState, [
+        {
+          itemId: `${event.eventId}:cure:0`,
+          sourcePlayerId: playerId,
+          targetPlayerId: target.id,
+          amount: 2,
+          element: "neutral",
+        },
+      ]);
+      if (
+        JSON.stringify(event.payload.healingItems) !==
+        JSON.stringify(expectedCures)
+      ) {
+        throw new Error("JN20302 healing disagrees with deterministic plan.");
+      }
+      next = {
+        ...paymentState,
+        players: playersAfterCures(paymentState, expectedCures),
+      };
+    } else if (skillId === "xyy.skill.jn40401") {
+      const sourceZone = stringPayload(event, "sourceZone");
+      const validSource =
+        cardInstanceIds.length === 1 &&
+        cardInstanceId !== undefined &&
+        ((sourceZone === "hand" && player.hand.includes(cardInstanceId)) ||
+          (sourceZone === "weapon" &&
+            player.equipment.weapon === cardInstanceId) ||
+          (sourceZone === "armor" &&
+            player.equipment.armor === cardInstanceId));
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn40401") ||
+        !validSource ||
+        targetPlayerIds.length !== 1 ||
+        targetPlayerIds[0] !== playerId
+      ) {
+        throw new Error("JN40401 event is not applicable.");
+      }
+      const paymentState: MatchState = {
+        ...state,
+        players: {
+          ...state.players,
+          [playerId]: {
+            ...player,
+            hand:
+              sourceZone === "hand"
+                ? player.hand.filter((card) => card !== cardInstanceId)
+                : player.hand,
+            equipment:
+              sourceZone === "weapon" || sourceZone === "armor"
+                ? { ...player.equipment, [sourceZone]: null }
+                : player.equipment,
+          },
+        },
+        discardPile: [...state.discardPile, cardInstanceId!],
+      };
+      const expectedCures = planCureBatch(paymentState, [
+        {
+          itemId: `${event.eventId}:cure:0`,
+          sourcePlayerId: playerId,
+          targetPlayerId: playerId,
+          amount: 2,
+          element: "neutral",
+        },
+      ]);
+      if (
+        JSON.stringify(event.payload.healingItems) !==
+        JSON.stringify(expectedCures)
+      ) {
+        throw new Error("JN40401 healing disagrees with deterministic plan.");
+      }
+      next = {
+        ...paymentState,
+        players: playersAfterCures(paymentState, expectedCures),
+      };
+    } else {
+      throw new Error("Unsupported active hero skill event.");
+    }
   } else if (event.type === "turn.card-pawned") {
     const playerId = stringPayload(event, "playerId");
     const cardInstanceId = stringPayload(
@@ -747,25 +814,7 @@ export function applyTurnCommand(
     const player = input.players[envelope.playerId]!;
     const cardInstanceIds = command.cardInstanceIds as CardInstanceId[];
     const target = input.players[command.targetPlayerIds[0] ?? ""];
-    let techniqueCard = false;
-    try {
-      techniqueCard =
-        cardInstanceIds.length === 1 &&
-        cardIdOf(cardInstanceIds[0]!).startsWith("xyy.card.jp");
-    } catch {
-      techniqueCard = false;
-    }
-    if (
-      input.turn.phase !== "action" ||
-      command.skillId !== "xyy.skill.jn20302" ||
-      player.heroId === null ||
-      !heroHasSkill(player.heroId, "xyy.skill.jn20302") ||
-      !techniqueCard ||
-      !player.hand.includes(cardInstanceIds[0]!) ||
-      command.targetPlayerIds.length !== 1 ||
-      target === undefined ||
-      !target.alive
-    ) {
+    if (input.turn.phase !== "action" || player.heroId === null) {
       return {
         accepted: false,
         reason: "forbidden",
@@ -773,21 +822,122 @@ export function applyTurnCommand(
       };
     }
     const nextEventId = `${input.matchId}:event:${input.eventSequence + 1}`;
-    builder.append("turn.hero-skill-activated", {
-      playerId: envelope.playerId,
-      cardInstanceIds,
-      skillId: "xyy.skill.jn20302",
-      targetPlayerIds: [target.id],
-      healingItems: planCureBatch(input, [
-        {
-          itemId: `${nextEventId}:cure:0`,
-          sourcePlayerId: envelope.playerId,
-          targetPlayerId: target.id,
-          amount: 2,
-          element: "neutral",
+    if (command.skillId === "xyy.skill.jn20302") {
+      let techniqueCard = false;
+      try {
+        techniqueCard =
+          cardInstanceIds.length === 1 &&
+          cardIdOf(cardInstanceIds[0]!).startsWith("xyy.card.jp");
+      } catch {
+        techniqueCard = false;
+      }
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn20302") ||
+        !techniqueCard ||
+        !player.hand.includes(cardInstanceIds[0]!) ||
+        command.targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      const cardInstanceId = cardInstanceIds[0]!;
+      const paymentState: MatchState = {
+        ...input,
+        players: {
+          ...input.players,
+          [envelope.playerId]: {
+            ...player,
+            hand: player.hand.filter((card) => card !== cardInstanceId),
+          },
         },
-      ]),
-    });
+        discardPile: [...input.discardPile, cardInstanceId],
+      };
+      builder.append("turn.hero-skill-activated", {
+        playerId: envelope.playerId,
+        cardInstanceIds,
+        skillId: "xyy.skill.jn20302",
+        targetPlayerIds: [target.id],
+        healingItems: planCureBatch(paymentState, [
+          {
+            itemId: `${nextEventId}:cure:0`,
+            sourcePlayerId: envelope.playerId,
+            targetPlayerId: target.id,
+            amount: 2,
+            element: "neutral",
+          },
+        ]),
+      });
+    } else if (command.skillId === "xyy.skill.jn40401") {
+      const cardInstanceId = cardInstanceIds[0];
+      const sourceZone =
+        cardInstanceIds.length !== 1 || cardInstanceId === undefined
+          ? null
+          : player.hand.includes(cardInstanceId)
+            ? "hand"
+            : player.equipment.weapon === cardInstanceId
+              ? "weapon"
+              : player.equipment.armor === cardInstanceId
+                ? "armor"
+                : null;
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn40401") ||
+        sourceZone === null ||
+        command.targetPlayerIds.length !== 1 ||
+        command.targetPlayerIds[0] !== envelope.playerId
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      const paidCard = cardInstanceId!;
+      const paymentState: MatchState = {
+        ...input,
+        players: {
+          ...input.players,
+          [envelope.playerId]: {
+            ...player,
+            hand:
+              sourceZone === "hand"
+                ? player.hand.filter((card) => card !== paidCard)
+                : player.hand,
+            equipment:
+              sourceZone === "weapon" || sourceZone === "armor"
+                ? { ...player.equipment, [sourceZone]: null }
+                : player.equipment,
+          },
+        },
+        discardPile: [...input.discardPile, paidCard],
+      };
+      builder.append("turn.hero-skill-activated", {
+        playerId: envelope.playerId,
+        cardInstanceIds,
+        skillId: "xyy.skill.jn40401",
+        sourceZone,
+        targetPlayerIds: [envelope.playerId],
+        healingItems: planCureBatch(paymentState, [
+          {
+            itemId: `${nextEventId}:cure:0`,
+            sourcePlayerId: envelope.playerId,
+            targetPlayerId: envelope.playerId,
+            amount: 2,
+            element: "neutral",
+          },
+        ]),
+      });
+    } else {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
   } else if (command.type === "play-skill-converted-card") {
     const player = input.players[envelope.playerId]!;
     const cardInstanceIds = command.cardInstanceIds as CardInstanceId[];

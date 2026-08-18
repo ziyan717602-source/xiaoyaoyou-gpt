@@ -56,6 +56,60 @@ function started(seed = "m03-replay-restart-seed"): MatchState {
 }
 
 describe("M03 turn event replay", () => {
+  it("replays JN40401 equipment payment before self-healing", () => {
+    const base = started("jn40401-replay");
+    const actor = base.activePlayerId!;
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          player.id === actor
+            ? {
+                ...player,
+                heroId: "xyy.hero.x3w04",
+                hp: 1,
+                maxHp: 5,
+                hand: [],
+                equipment: { weapon: null, armor: "xyy.card.fj03@54" },
+              }
+            : { ...player, hand: [], equipment: { weapon: null, armor: null } },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.fj03@54",
+      ),
+      discardPile: [],
+    };
+    const command = {
+      type: "activate-hero-skill" as const,
+      cardInstanceIds: ["xyy.card.fj03@54"],
+      skillId: "xyy.skill.jn40401",
+      targetPlayerIds: [actor],
+    };
+    const uninterrupted = apply(initial, actor, "jn40401-replay", command);
+    const restarted = apply(
+      JSON.parse(JSON.stringify(initial)) as MatchState,
+      actor,
+      "jn40401-replay",
+      command,
+    );
+    expect(restarted).toEqual(uninterrupted);
+    let replayed = initial;
+    for (const event of uninterrupted.events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.players[actor]).toMatchObject({
+      hp: 3,
+      equipment: { weapon: null, armor: null },
+    });
+    expect(uninterrupted.state.discardPile).toEqual(["xyy.card.fj03@54"]);
+  });
+
   it("replays JN20302 direct healing across a JSON restart", () => {
     const base = started("jn20302-replay");
     const actor = base.activePlayerId!;

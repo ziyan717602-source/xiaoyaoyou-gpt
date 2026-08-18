@@ -152,6 +152,83 @@ function expectConserved(state: MatchState): void {
 }
 
 describe("M03 deterministic turn core", () => {
+  it("uses JN40401 to discard hand or equipment before curing self", () => {
+    let state = playing("jn40401-active");
+    const actor = state.activePlayerId!;
+    state = arrange(
+      state,
+      { [actor]: ["xyy.card.jp01@1"] },
+      {
+        [actor]: {
+          weapon: "xyy.card.wq02@48",
+          armor: "xyy.card.fj03@54",
+        },
+      },
+    );
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: {
+          ...state.players[actor]!,
+          heroId: "xyy.hero.x3w04",
+          hp: 1,
+          maxHp: 5,
+        },
+      },
+    };
+    expect(createPlayerView(state, actor).availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: [
+        "xyy.card.jp01@1",
+        "xyy.card.wq02@48",
+        "xyy.card.fj03@54",
+      ],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn40401",
+      targetPlayerIds: [actor],
+      requiredTargetCount: 0,
+    });
+    const forged = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn40401-forged", {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.jp02@3"],
+        skillId: "xyy.skill.jn40401",
+        targetPlayerIds: [actor],
+      }),
+    });
+    expect(forged).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    const keepWeapon = dispatch(state, actor, "jn40401-pay-hand", {
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.jp01@1"],
+      skillId: "xyy.skill.jn40401",
+      targetPlayerIds: [actor],
+    });
+    expect(keepWeapon.players[actor]).toMatchObject({
+      hp: 4,
+      hand: [],
+      equipment: { weapon: "xyy.card.wq02@48", armor: "xyy.card.fj03@54" },
+    });
+
+    state = dispatch(state, actor, "jn40401-pay-weapon", {
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.wq02@48"],
+      skillId: "xyy.skill.jn40401",
+      targetPlayerIds: [actor],
+    });
+    expect(state.reactionWindow).toBeNull();
+    expect(state.players[actor]).toMatchObject({
+      hp: 3,
+      hand: ["xyy.card.jp01@1"],
+      equipment: { weapon: null, armor: "xyy.card.fj03@54" },
+    });
+    expect(state.discardPile).toEqual(["xyy.card.wq02@48"]);
+    expectConserved(state);
+  });
+
   it("uses JN20302 to discard one technique card and directly cure any living target", () => {
     let state = playing("jn20302-active");
     const actor = state.activePlayerId!;

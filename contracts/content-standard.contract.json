@@ -54,6 +54,10 @@
     "xyy.skill.jn20302": {
       "boundary": "native XJ203 repeatable technique-card discard to direct cure any living player is verified through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn20302.md"]
+    },
+    "xyy.skill.jn40401": {
+      "boundary": "native X3W04 repeatable own hand-or-equipment discard before direct self-cure is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn40401.md"]
     }
   },
   "baselinePartial": {
@@ -95,6 +99,13 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn20302.md"
+        ]
+      },
+      "xyy.hero.x3w04": {
+        "boundary": "setup identity and base stats plus JN40401 repeatable hand-or-equipment self-healing are verified; JN40402 and JN40403 remain pending",
+        "evidence": [
+          "M02-SETUP-AND-TEAMS",
+          "receipt:docs/verification/receipts/cs02-jn40401.md"
         ]
       }
     },

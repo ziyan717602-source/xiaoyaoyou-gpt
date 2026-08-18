@@ -53,6 +53,14 @@
       "status": "verified",
       "verifiedBoundary": "native ownership, JP filtering, any living target including self/full HP, repeat use, direct non-cancellable cure, equipment modifier, timeout no-payment, JSON replay, SQLite restart and six-socket privacy",
       "linkedPending": []
+    },
+    "xyy.skill.jn40401": {
+      "name": "饕餮",
+      "owner": "xyy.hero.x3w04",
+      "rule": "during her own action phase, the owner may repeatedly discard exactly one own hand card, weapon or armor, then directly cure herself by two",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, hand/weapon/armor zones, exact payment, discard-before-cure ordering, retained versus paid WQ02, repeat use, timeout no-payment, JSON replay, SQLite restart and six-socket privacy",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -66,7 +74,9 @@
     "psd.db3:Skill:JN40301 OCCURS TP02 type 0/type 1 and description any two hand cards as TP02",
     "PSDGamepkg/JNS/XJ405.cs:1037-1062 JN40301 requires/selects two hand cards and routes both modes through TP02",
     "psd.db3:Skill:JN20302 OCCURS R#GR and description each discarded technique card cures any player by two",
-    "PSDGamepkg/JNS/XJ405.cs:542-565 JN20302 selects one JP hand card and any in-play target, discards then calls Cure directly"
+    "PSDGamepkg/JNS/XJ405.cs:542-565 JN20302 selects one JP hand card and any in-play target, discards then calls Cure directly",
+    "psd.db3:Skill:JN40401 OCCURS R#GR ONCE 0 and description each discarded hand card or equipment self-cures two",
+    "PSDGamepkg/JNS/XJ405.cs:1106-1124 JN40401 selects ListOutAllCards, discards the selected card, then calls Cure on self"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -81,7 +91,10 @@
     "jn40301Timeout": "both uses are optional; action timeout ends action and rescue timeout passes without paying cards",
     "activeSkillCommand": "active hero skills use a narrow command carrying selected physical cards, target players and a server-validated skill id; each migrated skill owns its exact validation and event semantics",
     "jn20302Resolution": "discard and cure are one authoritative turn event; it does not create a card effect or reaction window because legacy calls Cure directly rather than G0CC",
-    "jn20302RepeatAndTimeout": "there is no per-turn marker; the action remains available while another JP hand card exists, and generic optional action timeout ends the phase without payment"
+    "jn20302RepeatAndTimeout": "there is no per-turn marker; the action remains available while another JP hand card exists, and generic optional action timeout ends the phase without payment",
+    "jn40401ZoneRepresentation": "the projected candidate list is own hand followed by weapon and armor; the event records the authoritative source zone so replay removes exactly one physical instance",
+    "jn40401Ordering": "payment state is constructed before cure planning, matching legacy G0QZ before Cure; a paid WQ02 gives no bonus while a retained WQ02 still does",
+    "jn40401RepeatAndTimeout": "there is no per-turn marker; the action remains available while any own hand/equipment card exists, and timeout ends action without payment"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -121,6 +134,14 @@
     "CS02-35": "JN20302-resolves-directly-without-a-reaction-window",
     "CS02-36": "JN20302-remains-repeatable-while-another-JP-hand-card-exists",
     "CS02-37": "JN20302-replays-identically-after-a-JSON-checkpoint",
-    "CS02-38": "JN20302-persists-through-SQLite-restart-with-six-socket-privacy"
+    "CS02-38": "JN20302-persists-through-SQLite-restart-with-six-socket-privacy",
+    "CS02-39": "JN40401-is-offered-only-to-its-native-owner-during-own-action-with-any-own-card",
+    "CS02-40": "JN40401-candidates-cover-own-hand-weapon-and-armor-zones",
+    "CS02-41": "JN40401-rejects-external-multiple-card-forged-skill-and-target-inputs",
+    "CS02-42": "JN40401-discards-one-physical-card-before-direct-self-cure-two",
+    "CS02-43": "JN40401-paid-WQ02-does-not-modify-its-following-cure-but-retained-WQ02-does",
+    "CS02-44": "JN40401-remains-repeatable-while-another-own-card-exists-and-timeout-does-not-pay",
+    "CS02-45": "JN40401-replays-identically-after-a-JSON-checkpoint",
+    "CS02-46": "JN40401-persists-through-SQLite-restart-with-six-socket-privacy"
   }
 }
