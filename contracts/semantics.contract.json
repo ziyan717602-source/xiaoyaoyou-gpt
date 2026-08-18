@@ -1,0 +1,381 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-semantics-v1",
+  "versions": {
+    "ruleset": "standard-fengmingyushi@1",
+    "protocol": 1,
+    "persistence": 1,
+    "rngAlgorithm": "sha256-counter-v1"
+  },
+  "timeouts": {
+    "actionMs": 15000,
+    "disconnectMs": 60000,
+    "optionalFallback": "pass",
+    "mandatoryFallback": "deterministic-random-legal-option",
+    "restartPolicy": "absolute-deadline-does-not-reset"
+  },
+  "lifecycle": {
+    "states": [
+      "room-open",
+      "seating",
+      "ready-check",
+      "hero-selection",
+      "setup",
+      "turn",
+      "resolving",
+      "finished",
+      "archived"
+    ],
+    "transitions": [
+      "room-open->seating",
+      "seating->ready-check",
+      "ready-check->hero-selection",
+      "hero-selection->setup",
+      "setup->turn",
+      "turn->resolving",
+      "resolving->turn",
+      "resolving->finished",
+      "turn->finished",
+      "finished->archived"
+    ],
+    "turnPhases": [
+      "turn-start",
+      "event",
+      "action",
+      "encounter",
+      "battle",
+      "reward",
+      "turn-end"
+    ],
+    "terminalRule": "finished-is-immutable-except-archival-metadata"
+  },
+  "identity": {
+    "stableTypes": [
+      "matchId",
+      "commandId",
+      "eventId",
+      "effectId",
+      "windowId",
+      "choiceId",
+      "playerId",
+      "contentId"
+    ],
+    "eventSequence": "strictly-monotonic-per-match",
+    "effectFields": [
+      "effectId",
+      "parentEffectId",
+      "source",
+      "targets",
+      "kind",
+      "step",
+      "status",
+      "payload"
+    ],
+    "effectStatuses": [
+      "pending",
+      "waiting",
+      "resolving",
+      "cancelled",
+      "resolved",
+      "fizzled"
+    ]
+  },
+  "commands": {
+    "envelopeFields": [
+      "protocolVersion",
+      "commandId",
+      "matchId",
+      "playerId",
+      "clientSequence",
+      "expectedVersion",
+      "clientIssuedAt",
+      "command"
+    ],
+    "clientIssuedAtPolicy": "advisory-audit-only-never-used-for-deadline-order-or-authorization",
+    "acceptanceOrder": [
+      "authenticate-player",
+      "match-and-seat-authority",
+      "deduplicate-command-id",
+      "client-sequence",
+      "expected-version",
+      "window-and-deadline",
+      "available-actions",
+      "append-command-accepted",
+      "reduce-domain-events"
+    ],
+    "duplicatePolicy": "same-command-id-returns-original-result-without-new-events",
+    "rejectionReasons": [
+      "invalid",
+      "forbidden",
+      "stale-version",
+      "stale-sequence",
+      "expired-window",
+      "not-available",
+      "match-finished"
+    ]
+  },
+  "events": {
+    "fields": [
+      "eventId",
+      "sequence",
+      "matchId",
+      "causationCommandId",
+      "causationEventId",
+      "rulesetVersion",
+      "type",
+      "payload"
+    ],
+    "policy": "append-only-reducer-is-pure-and-total-for-known-version"
+  },
+  "continuations": {
+    "fields": ["continuationId", "effectId", "step", "locals", "resumeWith"],
+    "serializableOnly": true,
+    "forbidden": [
+      "closure",
+      "promise",
+      "thread",
+      "socket",
+      "wall-clock-object-reference"
+    ],
+    "waitPointRule": "every-player-input-is-a-persisted-window-plus-continuation"
+  },
+  "reactionWindows": {
+    "priorityOrder": "clockwise-seat-order-after-effect-source",
+    "actionRule": "legal-response-resets-consecutive-passes-and-opens-child-effect",
+    "passRule": "pass-advances-to-next-eligible-player",
+    "closeRule": "close-after-all-currently-eligible-players-pass-consecutively",
+    "nestedRule": "child-resolves-before-parent-window-resumes",
+    "resumeRule": "parent-resumes-after-child-source-with-prior-passes-cleared",
+    "eligibilityRule": "recompute-on-resume-and-remove-dead-disconnected-auto-players",
+    "costRule": "response-cost-is-paid-on-accepted-command-and-is-not-refunded-unless-explicit",
+    "cancelRule": "cancellation-targets-an-effect-id-never-a-card-name-or-stack-position",
+    "counterCancelRule": "if-cancellation-effect-is-cancelled-parent-effect-remains-pending-at-saved-continuation"
+  },
+  "damage": {
+    "pipeline": [
+      "canonicalize-batch",
+      "apply-replacements-once-per-effect-id",
+      "apply-additive-modifiers",
+      "apply-reductions",
+      "floor-at-zero",
+      "apply-batch-simultaneously",
+      "emit-applied-events",
+      "enqueue-after-damage-triggers",
+      "detect-dying-after-whole-batch"
+    ],
+    "modifierOrder": "priority-then-source-seat-then-effect-id",
+    "replacementLoopGuard": "effect-id-can-replace-a-damage-item-at-most-once",
+    "batchRule": "no-dying-window-opens-until-every-item-in-current-batch-is-applied"
+  },
+  "dying": {
+    "detection": "alive-player-with-hp-zero-after-complete-damage-or-hp-batch",
+    "queueOrder": "ascending-seat-at-detection-snapshot",
+    "currentTargetRule": "exactly-one-current-rescue-target",
+    "rescuePriority": "clockwise-from-current-target-inclusive",
+    "rescueSuccess": "hp-above-zero-removes-target-and-restarts-detection-before-next-target",
+    "allPass": "mark-current-target-dead-then-run-after-death-effects",
+    "postDeath": "recompute-dying-before-victory",
+    "victory": "one-alive-team-wins-zero-alive-teams-is-draw-two-alive-teams-continues"
+  },
+  "rng": {
+    "stateFields": ["algorithm", "seed", "cursor"],
+    "drawRule": "every-random-result-consumes-exactly-one-or-documented-more-cursor-values",
+    "seedRule": "server-generated-secret-seed-committed-before-gameplay-and-revealed-after-match-for-audit",
+    "counterRule": "sha256-of-length-prefixed-seed-and-unsigned-counter-no-client-input",
+    "uniformRule": "bounded-values-use-rejection-sampling-never-raw-modulo",
+    "shuffleRule": "fisher-yates-with-uniform-bounded-draws-records-start-and-end-cursor",
+    "forcedChoiceRule": "sort-legal-option-ids-then-select-by-uniform-recorded-rng-value",
+    "replayRule": "events-store-option-set-hash-result-and-cursor-range"
+  },
+  "connectionAndDeadlines": {
+    "actionTimer": "continues-while-disconnected",
+    "disconnectTimer": "presence-grace-not-extra-decision-time",
+    "afterDisconnectTimeout": "future-windows-auto-resolve-without-wait-until-reconnect",
+    "reconnect": "authenticated-seat-receives-current-private-view-and-open-window",
+    "serverRestart": "restore-absolute-deadline-and-append-at-most-one-timeout-command-if-expired"
+  },
+  "privacy": {
+    "partitions": ["public", "team", "player-private", "server-secret"],
+    "public": [
+      "seat",
+      "team",
+      "hero",
+      "hp",
+      "equipment",
+      "declared-effects",
+      "hand-count"
+    ],
+    "team": ["declared-support-state", "team-only-prompt-result"],
+    "playerPrivate": ["own-hand", "own-private-options", "own-command-result"],
+    "serverSecret": [
+      "deck-order",
+      "unrevealed-cards",
+      "other-hands",
+      "rng-seed"
+    ],
+    "forbidden": [
+      "other-player-hand-ids",
+      "stable-encrypted-card-surrogates",
+      "private-options-in-public-log",
+      "secret-dependent-error-detail",
+      "secret-dependent-message-count"
+    ],
+    "viewRule": "derive-fresh-view-per-recipient-never-redact-a-shared-object-in-place"
+  },
+  "persistence": {
+    "snapshotFields": [
+      "persistenceVersion",
+      "rulesetVersion",
+      "protocolVersion",
+      "matchVersion",
+      "lastEventSequence",
+      "state",
+      "savedAt"
+    ],
+    "logRule": "events-after-snapshot-replay-in-sequence-with-hash-chain",
+    "writeRule": "accepted-command-events-and-idempotency-result-commit-atomically",
+    "migrationRule": "explicit-versioned-forward-migrator-no-in-place-guessing",
+    "unknownVersionRule": "refuse-start-and-preserve-data"
+  },
+  "invariants": [
+    "exactly-six-seats-after-ready-check",
+    "one-authoritative-active-match-state",
+    "at-most-one-open-player-decision-window",
+    "every-open-window-has-one-serializable-continuation",
+    "effect-and-window-ids-never-reused",
+    "hp-never-negative",
+    "dead-player-not-eligible-unless-rule-explicitly-says-after-death",
+    "private-view-never-contains-other-hand-ids",
+    "accepted-command-produces-one-stable-idempotency-result",
+    "replay-from-snapshot-plus-events-is-byte-equivalent",
+    "finished-state-rejects-game-command",
+    "system-timeouts-use-command-pipeline",
+    "damage-batch-completes-before-dying-detection",
+    "every-random-result-records-cursor-and-option-set",
+    "rule-results-independent-of-thread-and-map-iteration-order"
+  ],
+  "temporaryDecisions": [
+    {
+      "id": "SEM-001",
+      "status": "provisional-autonomous",
+      "decision": "Action deadlines continue through disconnect; 60 seconds controls presence auto-mode, not extra thinking time."
+    },
+    {
+      "id": "SEM-002",
+      "status": "provisional-autonomous",
+      "decision": "Mandatory timeout sorts legal option IDs and consumes deterministic RNG; optional timeout passes."
+    },
+    {
+      "id": "SEM-003",
+      "status": "provisional-autonomous",
+      "decision": "If both teams have no surviving player after the same death cycle, the result is a draw."
+    },
+    {
+      "id": "SEM-004",
+      "status": "provisional-autonomous",
+      "decision": "A cancelled cancellation restores the parent at its saved continuation and reopens priority after the child source."
+    },
+    {
+      "id": "SEM-005",
+      "status": "provisional-autonomous",
+      "decision": "Actions with no legal targets are not offered; if targets disappear after acceptance the effect fizzles without refund unless its rule says otherwise."
+    },
+    {
+      "id": "SEM-006",
+      "status": "provisional-autonomous",
+      "decision": "Teammates do not see one another's hands; only explicitly declared team information is team-visible."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SEM-S01",
+      "covers": ["normal"],
+      "expected": "basic-lifecycle-reaches-next-turn"
+    },
+    {
+      "id": "SEM-S02",
+      "covers": ["pass"],
+      "expected": "all-pass-resolves-parent-effect"
+    },
+    {
+      "id": "SEM-S03",
+      "covers": ["nested-response"],
+      "expected": "countered-cancellation-restores-parent"
+    },
+    {
+      "id": "SEM-S04",
+      "covers": ["damage-replacement"],
+      "expected": "replacement-and-modifiers-run-in-stable-order"
+    },
+    {
+      "id": "SEM-S05",
+      "covers": ["single-dying"],
+      "expected": "successful-rescue-prevents-death"
+    },
+    {
+      "id": "SEM-S06",
+      "covers": ["multi-dying"],
+      "expected": "targets-resolve-one-at-a-time-in-seat-order"
+    },
+    {
+      "id": "SEM-S07",
+      "covers": ["timeout", "pass"],
+      "expected": "optional-timeout-passes"
+    },
+    {
+      "id": "SEM-S08",
+      "covers": ["timeout", "mandatory-random"],
+      "expected": "mandatory-timeout-records-deterministic-choice"
+    },
+    {
+      "id": "SEM-S09",
+      "covers": ["disconnect"],
+      "expected": "action-deadline-does-not-pause"
+    },
+    {
+      "id": "SEM-S10",
+      "covers": ["restart"],
+      "expected": "expired-window-times-out-once-after-restore"
+    },
+    {
+      "id": "SEM-S11",
+      "covers": ["no-target"],
+      "expected": "unoffered-or-fizzled-with-explicit-event"
+    },
+    {
+      "id": "SEM-S12",
+      "covers": ["duplicate", "forbidden"],
+      "expected": "no-new-events-and-stable-rejection"
+    },
+    {
+      "id": "SEM-S13",
+      "covers": ["privacy"],
+      "expected": "recipient-views-contain-no-other-hand-ids"
+    },
+    {
+      "id": "SEM-S14",
+      "covers": ["simultaneous-elimination"],
+      "expected": "draw-after-post-death-cycle"
+    }
+  ],
+  "acceptanceMap": {
+    "P04-01": ["lifecycle"],
+    "P04-02": ["identity", "commands", "events"],
+    "P04-03": ["continuations", "timeouts"],
+    "P04-04": ["reactionWindows"],
+    "P04-05": [
+      "reactionWindows.cancelRule",
+      "reactionWindows.counterCancelRule"
+    ],
+    "P04-06": ["damage"],
+    "P04-07": ["dying"],
+    "P04-08": ["dying.postDeath", "dying.victory"],
+    "P04-09": ["rng"],
+    "P04-10": ["timeouts", "connectionAndDeadlines"],
+    "P04-11": ["commands"],
+    "P04-12": ["privacy"],
+    "P04-13": ["versions", "persistence"],
+    "P04-14": ["scenarios"],
+    "P04-15": ["temporaryDecisions"]
+  }
+}

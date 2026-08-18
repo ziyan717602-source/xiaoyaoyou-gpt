@@ -1,12 +1,15 @@
 import type {
   ChoiceId,
+  ContinuationId,
   EffectId,
   MatchId,
   PlayerId,
   WindowId,
 } from "@xiaoyaoyou/protocol";
+import { PROTOCOL_VERSION } from "@xiaoyaoyou/protocol";
 
 export const MATCH_SCHEMA_VERSION = 1 as const;
+export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
 
@@ -26,17 +29,31 @@ export interface EffectFrame {
   readonly sourcePlayerId: PlayerId | null;
   readonly targetIds: readonly string[];
   readonly step: string;
-  readonly status: "pending" | "resolving" | "cancelled" | "resolved";
+  readonly status:
+    "pending" | "waiting" | "resolving" | "cancelled" | "resolved" | "fizzled";
   readonly payload: Readonly<Record<string, unknown>>;
+}
+
+export interface Continuation {
+  readonly continuationId: ContinuationId;
+  readonly effectId: EffectId;
+  readonly step: string;
+  readonly locals: Readonly<Record<string, unknown>>;
+  readonly resumeWith: string;
 }
 
 export interface ReactionWindow {
   readonly windowId: WindowId;
   readonly effectId: EffectId;
+  readonly parentWindowId: WindowId | null;
   readonly eligiblePlayerIds: readonly PlayerId[];
+  readonly priorityOrder: readonly PlayerId[];
   readonly priorityIndex: number;
   readonly passedPlayerIds: readonly PlayerId[];
-  readonly continuationStep: string;
+  readonly status: "open" | "closed" | "expired";
+  readonly openedAt: number;
+  readonly deadlineAt: number;
+  readonly continuation: Continuation;
 }
 
 export interface PendingChoice {
@@ -46,16 +63,24 @@ export interface PendingChoice {
   readonly minSelections: number;
   readonly maxSelections: number;
   readonly optionIds: readonly string[];
-  readonly continuationStep: string;
+  readonly optional: boolean;
+  readonly status: "open" | "closed" | "expired";
+  readonly openedAt: number;
+  readonly deadlineAt: number;
+  readonly fallback: "pass" | "deterministic-random";
+  readonly continuation: Continuation;
 }
 
 export interface RngState {
+  readonly algorithm: "sha256-counter-v1";
   readonly seed: string;
   readonly cursor: number;
 }
 
 export interface MatchState {
   readonly schemaVersion: typeof MATCH_SCHEMA_VERSION;
+  readonly persistenceVersion: typeof PERSISTENCE_VERSION;
+  readonly protocolVersion: typeof PROTOCOL_VERSION;
   readonly rulesetVersion: string;
   readonly matchId: MatchId;
   readonly version: number;
@@ -120,6 +145,8 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
 
   return {
     schemaVersion: MATCH_SCHEMA_VERSION,
+    persistenceVersion: PERSISTENCE_VERSION,
+    protocolVersion: PROTOCOL_VERSION,
     rulesetVersion: input.rulesetVersion,
     matchId: input.matchId,
     version: 0,
@@ -129,7 +156,7 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     effectStack: [],
     reactionWindow: null,
     pendingChoice: null,
-    rng: { seed: input.seed, cursor: 0 },
+    rng: { algorithm: "sha256-counter-v1", seed: input.seed, cursor: 0 },
   };
 }
 

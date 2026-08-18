@@ -6,6 +6,8 @@ export type CommandId = string;
 export type EffectId = string;
 export type WindowId = string;
 export type ChoiceId = string;
+export type EventId = string;
+export type ContinuationId = string;
 
 export type ClientCommand =
   | {
@@ -23,7 +25,10 @@ export interface CommandEnvelope {
   readonly commandId: CommandId;
   readonly matchId: MatchId;
   readonly playerId: PlayerId;
+  readonly clientSequence: number;
   readonly expectedVersion: number;
+  /** Client-reported audit metadata. Never authoritative for ordering or deadlines. */
+  readonly clientIssuedAt: number;
   readonly command: ClientCommand;
 }
 
@@ -36,7 +41,13 @@ export type ServerMessage =
       readonly type: "command-rejected";
       readonly commandId: CommandId;
       readonly reason:
-        "invalid" | "forbidden" | "stale-version" | "expired-window";
+        | "invalid"
+        | "forbidden"
+        | "stale-version"
+        | "expired-window"
+        | "stale-sequence"
+        | "not-available"
+        | "match-finished";
       readonly currentVersion: number;
     }
   | {

@@ -26,6 +26,13 @@ describe("match state baseline", () => {
     expect(Object.keys(state.players)).toHaveLength(6);
     expect(state.effectStack).toEqual([]);
     expect(state.reactionWindow).toBeNull();
+    expect(state.protocolVersion).toBe(1);
+    expect(state.persistenceVersion).toBe(1);
+    expect(state.rng).toEqual({
+      algorithm: "sha256-counter-v1",
+      seed: "deterministic-seed",
+      cursor: 0,
+    });
   });
 
   it("does not expose another player's private hand", () => {
