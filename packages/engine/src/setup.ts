@@ -13,6 +13,7 @@ import {
   type TeamId,
 } from "./index.js";
 import { seedCommitment, nextInt, shuffle } from "./random.js";
+import { applyReactionCommand, reduceReactionEvent } from "./reaction.js";
 import {
   SELECTABLE_HEROES,
   SETUP_CARD_INSTANCES,
@@ -186,6 +187,12 @@ export function reduceEvent(
     return reduceTurnEvent(state, eventToReduce);
   }
   if (
+    eventToReduce.type.startsWith("reaction.") ||
+    eventToReduce.type.startsWith("effect.")
+  ) {
+    return reduceReactionEvent(state, eventToReduce);
+  }
+  if (
     eventToReduce.matchId !== state.matchId ||
     eventToReduce.sequence !== state.eventSequence + 1 ||
     eventToReduce.rulesetVersion !== state.rulesetVersion
@@ -269,7 +276,7 @@ export function applyCommand(
       currentVersion: input.version,
     };
   }
-  const { envelope } = command;
+  const { envelope, serverReceivedAt } = command;
   if (
     envelope.matchId !== input.matchId ||
     !(envelope.playerId in input.players)
@@ -295,7 +302,9 @@ export function applyCommand(
     };
   }
   if (input.phase === "playing") {
-    return applyTurnCommand(input, envelope);
+    return input.reactionWindow === null
+      ? applyTurnCommand(input, envelope, serverReceivedAt)
+      : applyReactionCommand(input, envelope, serverReceivedAt);
   }
   if (input.phase !== "setup" || input.setup === null) {
     return {

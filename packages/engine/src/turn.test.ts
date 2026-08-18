@@ -42,6 +42,7 @@ function dispatch(
 ): MatchState {
   const result = applyCommand(state, {
     origin: "player",
+    serverReceivedAt: 0,
     envelope: envelope(state, playerId, commandId, command),
   });
   expect(result.accepted).toBe(true);
@@ -50,6 +51,22 @@ function dispatch(
   for (const event of result.events) replayed = reduceEvent(replayed, event);
   expect(replayed).toEqual(result.state);
   return result.state;
+}
+
+function passAllReactions(state: MatchState, prefix: string): MatchState {
+  let next = state;
+  let index = 0;
+  while (next.reactionWindow !== null) {
+    const window = next.reactionWindow;
+    const priority = window.priorityOrder[window.priorityIndex]!;
+    next = dispatch(next, priority, `${prefix}-${index}`, {
+      type: "pass-reaction",
+      windowId: window.windowId,
+    });
+    index += 1;
+    if (index > 12) throw new Error("Reaction fixture did not converge.");
+  }
+  return next;
 }
 
 function playing(seed = "m03-turn-seed"): MatchState {
@@ -157,6 +174,9 @@ describe("M03 deterministic turn core", () => {
 
     expect(state.players[actor]!.hand).not.toContain("xyy.card.jp04@7");
     expect(state.discardPile).toContain("xyy.card.jp04@7");
+    expect(state.reactionWindow).not.toBeNull();
+    expect(state.players[target]!.hand).toHaveLength(1);
+    state = passAllReactions(state, "draw-two-pass");
     expect(state.players[target]!.hand).toHaveLength(3);
     expect(
       createPlayerView(state, actor).players.find((p) => p.id === target)?.hand,
@@ -252,6 +272,7 @@ describe("M03 deterministic turn core", () => {
       expect(
         applyCommand(state, {
           origin: "player",
+          serverReceivedAt: 0,
           envelope: envelope(state, playerId, `reject-${reason}`, command),
         }),
       ).toEqual({ accepted: false, reason, currentVersion: state.version });
@@ -262,28 +283,31 @@ describe("M03 deterministic turn core", () => {
   it("rejects tampered deterministic draw events and broken command version chains", () => {
     let state = playing("tampered-events");
     const actor = state.activePlayerId!;
-    const target = state.turnOrder.find((id) => id !== actor)!;
-    state = arrange(state, { [actor]: ["xyy.card.jp04@7"] });
+    state = arrange(state, { [actor]: [] });
     const result = applyCommand(state, {
       origin: "player",
-      envelope: envelope(state, actor, "tamper-source", {
-        type: "play-card",
-        cardInstanceId: "xyy.card.jp04@7",
-        targetPlayerIds: [target],
-      }),
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "tamper-source", { type: "end-action" }),
     });
     expect(result.accepted).toBe(true);
     if (!result.accepted) throw new Error(result.reason);
-    const afterPlay = reduceEvent(state, result.events[0]!);
-    const draw = result.events[1]!;
+    const drawIndex = result.events.findIndex(
+      (event) => event.type === "turn.cards-drawn",
+    );
+    expect(drawIndex).toBeGreaterThan(0);
+    let beforeDraw = state;
+    for (const event of result.events.slice(0, drawIndex)) {
+      beforeDraw = reduceEvent(beforeDraw, event);
+    }
+    const draw = result.events[drawIndex]!;
     expect(() =>
-      reduceEvent(afterPlay, {
+      reduceEvent(beforeDraw, {
         ...draw,
         payload: { ...draw.payload, cardInstanceIds: ["xyy.card.fj05@56"] },
       }),
     ).toThrow("disagrees with deterministic draw");
     expect(() =>
-      reduceEvent(afterPlay, { ...draw, causationEventId: null }),
+      reduceEvent(beforeDraw, { ...draw, causationEventId: null }),
     ).toThrow("invalid match version");
   });
 
@@ -302,6 +326,7 @@ describe("M03 deterministic turn core", () => {
       cardInstanceId: "xyy.card.jp04@7",
       targetPlayerIds: [target],
     });
+    state = passAllReactions(state, "reshuffle-pass");
     expect(state.players[target]!.hand).toHaveLength(2);
     expect(state.rng.cursor).toBeGreaterThan(beforeCursor);
     expectConserved(state);

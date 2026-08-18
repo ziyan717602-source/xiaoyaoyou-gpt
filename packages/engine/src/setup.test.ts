@@ -50,6 +50,7 @@ function accepted(
 ): MatchState {
   const result = applyCommand(state, {
     origin: "player",
+    serverReceivedAt: 0,
     envelope: envelope(state, playerId, commandId, command),
   });
   expect(result.accepted).toBe(true);
@@ -119,6 +120,7 @@ describe("M02 deterministic setup", () => {
     );
     const repeatedReroll = applyCommand(state, {
       origin: "player",
+      serverReceivedAt: 0,
       envelope: envelope(state, firstPlayerId, "reroll-2", {
         type: "reroll-hero",
       }),
@@ -174,6 +176,7 @@ describe("M02 deterministic setup", () => {
     });
     const staleResult = applyCommand(state, {
       origin: "player",
+      serverReceivedAt: 0,
       envelope: { ...stale, expectedVersion: 99 },
     });
     expect(staleResult).toMatchObject({
@@ -183,6 +186,7 @@ describe("M02 deterministic setup", () => {
     expect(
       applyCommand(state, {
         origin: "player",
+        serverReceivedAt: 0,
         envelope: envelope(state, playerId, "foreign", {
           type: "choose-hero",
           heroId: "xyy.hero.not-offered",
@@ -192,6 +196,7 @@ describe("M02 deterministic setup", () => {
     expect(
       applyCommand(state, {
         origin: "player",
+        serverReceivedAt: 0,
         envelope: {
           ...envelope(state, playerId, "wrong-player", {
             type: "reroll-hero",

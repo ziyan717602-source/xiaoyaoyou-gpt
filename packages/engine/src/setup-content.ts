@@ -16,6 +16,7 @@ export type EquipmentSlot = "weapon" | "armor";
 export type CoreCardAction =
   | { readonly type: "equip"; readonly slot: EquipmentSlot }
   | { readonly type: "draw-two" }
+  | { readonly type: "cancel-effect" }
   | null;
 
 export interface CardDefinition {
@@ -372,7 +373,11 @@ export const SETUP_CARDS: readonly CardDefinition[] = [
   { id: "xyy.card.zp02", name: "天罡战气", coreAction: null },
   { id: "xyy.card.zp03", name: "金蚕王", coreAction: null },
   { id: "xyy.card.zp04", name: "天玄五音", coreAction: null },
-  { id: "xyy.card.tp01", name: "冰心诀", coreAction: null },
+  {
+    id: "xyy.card.tp01",
+    name: "冰心诀",
+    coreAction: { type: "cancel-effect" },
+  },
   { id: "xyy.card.tp02", name: "灵葫仙丹", coreAction: null },
   { id: "xyy.card.tp03", name: "隐蛊", coreAction: null },
   { id: "xyy.card.tp04", name: "洞冥宝镜", coreAction: null },

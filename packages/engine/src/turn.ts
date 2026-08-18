@@ -4,35 +4,10 @@ import type {
   PlayerId,
 } from "@xiaoyaoyou/protocol";
 import type { ApplyCommandResult, DomainEvent } from "./architecture.js";
-import type { MatchState, RngState, TeamId, TurnPhase } from "./index.js";
-import { shuffle } from "./random.js";
+import { planDraw } from "./card-zones.js";
+import type { MatchState, TeamId, TurnPhase } from "./index.js";
+import { beginCancellableCardEffect } from "./reaction.js";
 import { cardDefinition, type CardInstanceId } from "./setup-content.js";
-
-interface DrawPlan {
-  readonly cards: readonly CardInstanceId[];
-  readonly drawPile: readonly CardInstanceId[];
-  readonly discardPile: readonly CardInstanceId[];
-  readonly rng: RngState;
-}
-
-function drawPlan(state: Readonly<MatchState>, count: number): DrawPlan {
-  const cards: CardInstanceId[] = [];
-  let drawPile = [...state.drawPile];
-  let discardPile = [...state.discardPile];
-  let rng = state.rng;
-  while (cards.length < count) {
-    if (drawPile.length === 0) {
-      if (discardPile.length === 0) break;
-      const shuffled = shuffle(discardPile, rng);
-      drawPile = [...shuffled.values];
-      discardPile = [];
-      rng = shuffled.rng;
-    }
-    const card = drawPile.shift();
-    if (card !== undefined) cards.push(card);
-  }
-  return { cards, drawPile, discardPile, rng };
-}
 
 function numberPayload(event: Readonly<DomainEvent>, key: string): number {
   const value = event.payload[key];
@@ -209,7 +184,7 @@ export function reduceTurnEvent(
     if (player === undefined || requestedCount < 0 || !validReason) {
       throw new Error("Card draw event is not applicable.");
     }
-    const expected = drawPlan(state, requestedCount);
+    const expected = planDraw(state, requestedCount);
     if (
       !sameValues(cards, expected.cards) ||
       numberPayload(event, "rngCursor") !== expected.rng.cursor
@@ -342,7 +317,7 @@ function appendDraw(
   requestedCount: number,
   reason: "card-effect" | "reward",
 ): void {
-  const planned = drawPlan(builder.state, requestedCount);
+  const planned = planDraw(builder.state, requestedCount);
   builder.append("turn.cards-drawn", {
     playerId,
     requestedCount,
@@ -390,6 +365,7 @@ function endAction(builder: EventBuilder, playerId: PlayerId): void {
 export function applyTurnCommand(
   input: Readonly<MatchState>,
   envelope: Readonly<CommandEnvelope>,
+  serverReceivedAt: number,
 ): ApplyCommandResult {
   if (
     input.phase !== "playing" ||
@@ -444,6 +420,13 @@ export function applyTurnCommand(
         currentVersion: input.version,
       };
     }
+    if (definition.coreAction.type === "cancel-effect") {
+      return {
+        accepted: false,
+        reason: "not-available",
+        currentVersion: input.version,
+      };
+    }
     if (definition.coreAction.type === "equip") {
       if (
         command.targetPlayerIds.length !== 1 ||
@@ -468,15 +451,19 @@ export function applyTurnCommand(
           currentVersion: input.version,
         };
       }
+      return beginCancellableCardEffect(
+        input,
+        envelope,
+        serverReceivedAt,
+        cardInstanceId,
+        command.targetPlayerIds[0]!,
+      );
     }
     builder.append("turn.card-played", {
       playerId: envelope.playerId,
       cardInstanceId,
       targetPlayerIds: command.targetPlayerIds,
     });
-    if (definition.coreAction.type === "draw-two") {
-      appendDraw(builder, command.targetPlayerIds[0]!, 2, "card-effect");
-    }
   } else if (command.type === "end-action") {
     if (input.turn.phase !== "action") {
       return {

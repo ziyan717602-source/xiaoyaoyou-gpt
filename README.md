@@ -38,13 +38,13 @@ node scripts/bootstrap-local.mjs --smoke
 
 M01 无界面房间服务使用 `npm run dev:rooms` 启动，默认监听 `127.0.0.1:3001` 并写入 `.local/rooms.sqlite`。可通过 `PORT`、`HOST`、`DATABASE_PATH` 和逗号分隔的 `ALLOWED_ORIGINS` 覆盖；接口和状态语义见 [M01 房间生命周期](docs/room-lifecycle/m01-room-lifecycle.md)。它是后续 Web 客户端的真实房间 API，目前不代表完整牌局可玩。
 
-同一服务已接入 M02 的真实六人选角与确定性开局，以及 M03 的确定性回合核心：全员准备开始后，客户端通过 WebSocket 的 `availableActions` 选角、出牌、结束行动和按上限弃牌，支持中途服务重启恢复。开局规则见 [M02 确定性选角与开局](docs/setup/m02-seeded-setup.md)，回合/卡区/鼠儿果/武器防具/基础胜负见 [M03 确定性回合核心](docs/turn-core/m03-turn-core.md)。
+同一服务已接入 M02 的真实六人选角与确定性开局、M03 的确定性回合核心，以及 M04 的可序列化响应核心：全员准备开始后，客户端通过 WebSocket 的 `availableActions` 选角、出牌、结束行动、按上限弃牌、逐席响应或放弃；冰心诀可以取消鼠儿果并被另一张冰心诀反制，响应窗口中途重启后可原样续算。开局规则见 [M02 确定性选角与开局](docs/setup/m02-seeded-setup.md)，回合/卡区/鼠儿果/武器防具/基础胜负见 [M03 确定性回合核心](docs/turn-core/m03-turn-core.md)，响应/反制/隐私/恢复见 [M04 响应核心](docs/reaction-core/m04-reaction-core.md)。
 
 常用分层验证命令：`npm run check:fast`、`npm run check:full`、`npm run test:replay`、`npm run test:bots`、`npm run test:e2e`。
 
 ## 当前边界
 
-- 已迁移鼠儿果与标准武器/防具的基础动作；其余卡牌、角色技能、响应、伤害、濒死和超时仍按后续节点迁移，未完成内容不会伪装成无效果卡。
+- 已迁移鼠儿果、冰心诀与标准武器/防具的基础动作，以及通用响应窗口/嵌套取消；其余卡牌、角色技能、伤害、濒死和超时仍按后续节点迁移，未完成内容不会伪装成无效果卡。
 - 旧项目是行为参考，不直接作为生产服务端运行。
 - 资源、角色、美术、音乐和旧代码的公开发布授权尚待确认，见 [NOTICE.md](NOTICE.md)。
 - 基线入口见 [docs/migration-baseline/README.md](docs/migration-baseline/README.md)。

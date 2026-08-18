@@ -1,0 +1,427 @@
+import { describe, expect, it } from "vitest";
+import type { CommandEnvelope, PlayerId } from "@xiaoyaoyou/protocol";
+import {
+  applyCommand,
+  createPlayerView,
+  createSetupMatch,
+  reduceEvent,
+  SETUP_CARD_INSTANCES,
+  type ApplyCommandResult,
+  type CardInstanceId,
+  type MatchState,
+} from "./index.js";
+
+const seats = Array.from({ length: 6 }, (_, index) => ({
+  id: `p${index + 1}`,
+  nickname: `玩家 ${index + 1}`,
+}));
+
+function envelope(
+  state: MatchState,
+  playerId: PlayerId,
+  commandId: string,
+  command: CommandEnvelope["command"],
+): CommandEnvelope {
+  return {
+    protocolVersion: 1,
+    commandId,
+    matchId: state.matchId,
+    playerId,
+    clientSequence: state.version,
+    expectedVersion: state.version,
+    clientIssuedAt: 999_999_999,
+    command,
+  };
+}
+
+function applyPlayer(
+  state: MatchState,
+  playerId: PlayerId,
+  commandId: string,
+  command: CommandEnvelope["command"],
+  serverReceivedAt: number,
+): ApplyCommandResult {
+  return applyCommand(state, {
+    origin: "player",
+    envelope: envelope(state, playerId, commandId, command),
+    serverReceivedAt,
+  });
+}
+
+function accepted(
+  state: MatchState,
+  playerId: PlayerId,
+  commandId: string,
+  command: CommandEnvelope["command"],
+  serverReceivedAt: number,
+): MatchState {
+  const result = applyPlayer(
+    state,
+    playerId,
+    commandId,
+    command,
+    serverReceivedAt,
+  );
+  expect(result.accepted).toBe(true);
+  if (!result.accepted) throw new Error(result.reason);
+  let replayed = state;
+  for (const event of result.events) replayed = reduceEvent(replayed, event);
+  expect(replayed).toEqual(result.state);
+  return result.state;
+}
+
+function playing(seed = "m04-reaction-seed"): MatchState {
+  let state = createSetupMatch({
+    matchId: `m04-${seed}`,
+    rulesetVersion: "standard-fengmingyushi@1",
+    seed,
+    players: seats,
+  });
+  for (const playerId of state.turnOrder) {
+    state = accepted(
+      state,
+      playerId,
+      `choose-${playerId}`,
+      {
+        type: "choose-hero",
+        heroId: state.setup!.offers[playerId]!.candidateHeroIds[0]!,
+      },
+      0,
+    );
+  }
+  return state;
+}
+
+function clockwiseAfter(state: MatchState, sourceId: PlayerId): PlayerId[] {
+  const ordered = Object.values(state.players)
+    .filter((player) => player.alive)
+    .sort((left, right) => left.seat - right.seat)
+    .map((player) => player.id);
+  const sourceIndex = ordered.indexOf(sourceId);
+  return Array.from(
+    { length: ordered.length - 1 },
+    (_, offset) => ordered[(sourceIndex + offset + 1) % ordered.length]!,
+  );
+}
+
+function arrangeForCounters(state: MatchState): {
+  readonly state: MatchState;
+  readonly actor: PlayerId;
+  readonly first: PlayerId;
+  readonly second: PlayerId;
+  readonly third: PlayerId;
+} {
+  const actor = state.activePlayerId!;
+  const [first, second, third] = clockwiseAfter(state, actor);
+  const hands: Record<PlayerId, readonly CardInstanceId[]> = {
+    [actor]: ["xyy.card.jp04@7"],
+    [first!]: ["xyy.card.tp01@33"],
+    [second!]: ["xyy.card.tp01@34"],
+    [third!]: ["xyy.card.tp01@35"],
+  };
+  const claimed = new Set(Object.values(hands).flat());
+  return {
+    state: {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          { ...player, hand: hands[player.id] ?? [] },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    },
+    actor,
+    first: first!,
+    second: second!,
+    third: third!,
+  };
+}
+
+function begin(state: MatchState, actor: PlayerId, now = 1_000): MatchState {
+  return accepted(
+    state,
+    actor,
+    "play-original",
+    {
+      type: "play-card",
+      cardInstanceId: "xyy.card.jp04@7",
+      targetPlayerIds: [actor],
+    },
+    now,
+  );
+}
+
+function passAll(
+  state: MatchState,
+  prefix: string,
+  startNow: number,
+): MatchState {
+  const windowId = state.reactionWindow?.windowId;
+  if (windowId === undefined) throw new Error("Missing reaction window.");
+  let next = state;
+  let index = 0;
+  while (next.reactionWindow?.windowId === windowId) {
+    const priority =
+      next.reactionWindow.priorityOrder[next.reactionWindow.priorityIndex]!;
+    next = accepted(
+      next,
+      priority,
+      `${prefix}-${index}`,
+      { type: "pass-reaction", windowId },
+      startNow + index * 100,
+    );
+    index += 1;
+    if (index > 6) throw new Error("Reaction pass loop did not close.");
+  }
+  return next;
+}
+
+describe("M04 serializable reaction core", () => {
+  it("pays JP04, opens an absolute-deadline window, hides response ability, and resolves after all pass", () => {
+    const arranged = arrangeForCounters(playing());
+    let state = begin(arranged.state, arranged.actor, 12_000);
+    expect(state.players[arranged.actor]!.hand).toEqual([]);
+    expect(state.discardPile).toContain("xyy.card.jp04@7");
+    expect(state.effectStack).toHaveLength(1);
+    expect(state.effectStack[0]).toMatchObject({
+      kind: "card:xyy.card.jp04",
+      sourcePlayerId: arranged.actor,
+      targetIds: [arranged.actor],
+      status: "waiting",
+    });
+    expect(state.reactionWindow).toMatchObject({
+      effectId: state.effectStack[0]!.effectId,
+      priorityIndex: 0,
+      passedPlayerIds: [],
+      openedAt: 12_000,
+      deadlineAt: 27_000,
+    });
+    expect(
+      state.reactionWindow!.priorityOrder[state.reactionWindow!.priorityIndex],
+    ).toBe(arranged.first);
+    expect(createPlayerView(state, arranged.first).availableActions).toEqual([
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: state.effectStack[0]!.effectId,
+      },
+      { type: "pass-reaction", windowId: state.reactionWindow!.windowId },
+    ]);
+    expect(createPlayerView(state, arranged.second).availableActions).toEqual(
+      [],
+    );
+    expect(
+      JSON.stringify(createPlayerView(state, arranged.second)),
+    ).not.toContain("xyy.card.tp01@33");
+
+    state = passAll(state, "original-pass", 13_000);
+    expect(state.reactionWindow).toBeNull();
+    expect(state.effectStack).toEqual([]);
+    expect(state.players[arranged.actor]!.hand).toHaveLength(2);
+  });
+
+  it("resolves one Bingxin child and cancels the original without drawing", () => {
+    const arranged = arrangeForCounters(playing("single-cancel"));
+    let state = begin(arranged.state, arranged.actor);
+    const originalEffectId = state.effectStack[0]!.effectId;
+    state = accepted(
+      state,
+      arranged.first,
+      "play-first-bingxin",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: originalEffectId,
+      },
+      2_000,
+    );
+    expect(state.effectStack).toHaveLength(2);
+    expect(state.effectStack[0]!.status).toBe("pending");
+    expect(state.effectStack[1]).toMatchObject({
+      kind: "cancel-effect",
+      parentEffectId: originalEffectId,
+      targetIds: [originalEffectId],
+      status: "waiting",
+    });
+    state = passAll(state, "cancel-pass", 3_000);
+    expect(state.reactionWindow).toBeNull();
+    expect(state.effectStack).toEqual([]);
+    expect(state.players[arranged.actor]!.hand).toEqual([]);
+    expect(state.discardPile).toEqual(
+      expect.arrayContaining(["xyy.card.jp04@7", "xyy.card.tp01@33"]),
+    );
+  });
+
+  it("counters Bingxin, restores the original window after the counter source, and resolves once", () => {
+    const arranged = arrangeForCounters(playing("counter-cancel"));
+    let state = begin(arranged.state, arranged.actor);
+    const originalEffectId = state.effectStack[0]!.effectId;
+    state = accepted(
+      state,
+      arranged.first,
+      "bingxin-one",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: originalEffectId,
+      },
+      2_000,
+    );
+    const firstBingxinId = state.effectStack[1]!.effectId;
+    expect(
+      state.reactionWindow!.priorityOrder[state.reactionWindow!.priorityIndex],
+    ).toBe(arranged.second);
+    state = accepted(
+      state,
+      arranged.second,
+      "bingxin-two",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@34",
+        targetEffectId: firstBingxinId,
+      },
+      3_000,
+    );
+    state = passAll(state, "counter-pass", 4_000);
+
+    expect(state.effectStack.map((effect) => effect.status)).toEqual([
+      "waiting",
+    ]);
+    expect(state.reactionWindow?.effectId).toBe(originalEffectId);
+    expect(state.reactionWindow?.passedPlayerIds).toEqual([]);
+    const expectedNext = clockwiseAfter(state, arranged.second).find(
+      (playerId) => playerId !== arranged.actor,
+    );
+    expect(
+      state.reactionWindow!.priorityOrder[state.reactionWindow!.priorityIndex],
+    ).toBe(expectedNext);
+
+    const restarted = JSON.parse(JSON.stringify(state)) as MatchState;
+    const resolved = passAll(state, "restored-pass", 6_000);
+    const restartedResolved = passAll(restarted, "restored-pass", 6_000);
+    expect(restartedResolved).toEqual(resolved);
+    expect(resolved.reactionWindow).toBeNull();
+    expect(resolved.effectStack).toEqual([]);
+    expect(resolved.players[arranged.actor]!.hand).toHaveLength(2);
+  });
+
+  it("rejects nonpriority, wrong-effect, and foreign-card reactions without mutation", () => {
+    const arranged = arrangeForCounters(playing("reaction-rejections"));
+    const state = begin(arranged.state, arranged.actor);
+    const windowId = state.reactionWindow!.windowId;
+    const effectId = state.effectStack[0]!.effectId;
+    for (const [playerId, command, reason] of [
+      [arranged.second, { type: "pass-reaction", windowId }, "not-available"],
+      [
+        arranged.first,
+        {
+          type: "play-reaction-card",
+          cardInstanceId: "xyy.card.tp01@33",
+          targetEffectId: "wrong-effect",
+        },
+        "forbidden",
+      ],
+      [
+        arranged.first,
+        {
+          type: "play-reaction-card",
+          cardInstanceId: "xyy.card.tp01@34",
+          targetEffectId: effectId,
+        },
+        "forbidden",
+      ],
+    ] as const) {
+      expect(
+        applyPlayer(
+          state,
+          playerId,
+          `reject-${reason}-${playerId}`,
+          command,
+          2_000,
+        ),
+      ).toEqual({ accepted: false, reason, currentVersion: state.version });
+    }
+  });
+
+  it("supports a third nested counter without a hardcoded depth and resolves by parity", () => {
+    const arranged = arrangeForCounters(playing("three-counters"));
+    let state = begin(arranged.state, arranged.actor);
+    const originalId = state.effectStack[0]!.effectId;
+    state = accepted(
+      state,
+      arranged.first,
+      "nested-one",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: originalId,
+      },
+      2_000,
+    );
+    state = accepted(
+      state,
+      arranged.second,
+      "nested-two",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@34",
+        targetEffectId: state.effectStack.at(-1)!.effectId,
+      },
+      3_000,
+    );
+    state = accepted(
+      state,
+      arranged.third,
+      "nested-three",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@35",
+        targetEffectId: state.effectStack.at(-1)!.effectId,
+      },
+      4_000,
+    );
+    state = passAll(state, "nested-three-pass", 5_000);
+    expect(state.effectStack.map((effect) => effect.status)).toEqual([
+      "pending",
+      "waiting",
+    ]);
+    expect(state.reactionWindow?.effectId).toBe(state.effectStack[1]!.effectId);
+    state = passAll(state, "nested-one-pass", 7_000);
+    expect(state.reactionWindow).toBeNull();
+    expect(state.effectStack).toEqual([]);
+    expect(state.players[arranged.actor]!.hand).toEqual([]);
+  });
+
+  it("expires late input using server time and resets the deadline only after an accepted pass", () => {
+    const arranged = arrangeForCounters(playing("deadline"));
+    let state = begin(arranged.state, arranged.actor, 1_000);
+    const window = state.reactionWindow!;
+    expect(
+      applyPlayer(
+        state,
+        arranged.first,
+        "late-pass",
+        { type: "pass-reaction", windowId: window.windowId },
+        16_001,
+      ),
+    ).toEqual({
+      accepted: false,
+      reason: "expired-window",
+      currentVersion: state.version,
+    });
+    state = accepted(
+      state,
+      arranged.first,
+      "on-deadline-pass",
+      { type: "pass-reaction", windowId: window.windowId },
+      16_000,
+    );
+    expect(state.reactionWindow).toMatchObject({
+      openedAt: 16_000,
+      deadlineAt: 31_000,
+      passedPlayerIds: [arranged.first],
+    });
+  });
+});

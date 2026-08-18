@@ -151,7 +151,11 @@ export class MatchService {
             },
           };
         }
-        const applied = applyCommand(state, { origin: "player", envelope });
+        const applied = applyCommand(state, {
+          origin: "player",
+          envelope,
+          serverReceivedAt: Date.now(),
+        });
         if (!applied.accepted) {
           return {
             state: state as MatchState,

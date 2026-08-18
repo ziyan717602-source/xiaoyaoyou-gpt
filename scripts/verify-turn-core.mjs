@@ -6,6 +6,7 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const json = (path) => JSON.parse(read(path));
 const contract = json("contracts/turn-core.contract.json");
 const engine = read("packages/engine/src/turn.ts");
+const cardZones = read("packages/engine/src/card-zones.ts");
 const view = read("packages/engine/src/index.ts");
 const content = read("packages/engine/src/setup-content.ts");
 const protocol = read("packages/protocol/src/index.ts");
@@ -48,11 +49,14 @@ for (const token of [
   "turn.cards-discarded",
   "turn.advanced",
   "match.finished",
-  "drawPlan",
   "nextAlivePlayer",
 ]) {
   assert(engine.includes(token), `Missing M03 engine boundary ${token}.`);
 }
+assert(
+  cardZones.includes("planDraw"),
+  "Missing shared deterministic draw planner.",
+);
 for (const token of [
   "turnActions",
   "cardDefinition",

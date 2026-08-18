@@ -192,6 +192,12 @@ export type AvailableAction =
     }
   | { readonly type: "end-action" }
   | {
+      readonly type: "play-reaction-card";
+      readonly cardInstanceId: CardInstanceId;
+      readonly targetEffectId: EffectId;
+    }
+  | { readonly type: "pass-reaction"; readonly windowId: WindowId }
+  | {
       readonly type: "discard-cards";
       readonly count: number;
       readonly cardInstanceIds: readonly CardInstanceId[];
@@ -208,8 +214,19 @@ export interface PlayerView {
   readonly setup: SetupView | null;
   readonly availableActions: readonly AvailableAction[];
   readonly effectStack: readonly EffectFrame[];
-  readonly reactionWindow: ReactionWindow | null;
+  readonly reactionWindow: ReactionWindowView | null;
   readonly pendingChoice: PendingChoice | null;
+}
+
+export interface ReactionWindowView {
+  readonly windowId: WindowId;
+  readonly effectId: EffectId;
+  readonly parentWindowId: WindowId | null;
+  readonly priorityPlayerId: PlayerId | null;
+  readonly passedPlayerIds: readonly PlayerId[];
+  readonly status: ReactionWindow["status"];
+  readonly openedAt: number;
+  readonly deadlineAt: number;
 }
 
 export function createInitialMatch(input: CreateMatchInput): MatchState {
@@ -332,7 +349,9 @@ export function createPlayerView(
         },
         ...(ownOffer.rerolled ? [] : [{ type: "reroll-hero" as const }]),
       ]
-    : turnActions(state, viewerId);
+    : state.reactionWindow === null
+      ? turnActions(state, viewerId)
+      : reactionActions(state, viewerId);
   return {
     matchId: state.matchId,
     version: state.version,
@@ -380,12 +399,56 @@ export function createPlayerView(
           },
     availableActions,
     effectStack: state.effectStack,
-    reactionWindow: state.reactionWindow,
+    reactionWindow:
+      state.reactionWindow === null
+        ? null
+        : {
+            windowId: state.reactionWindow.windowId,
+            effectId: state.reactionWindow.effectId,
+            parentWindowId: state.reactionWindow.parentWindowId,
+            priorityPlayerId:
+              state.reactionWindow.priorityOrder[
+                state.reactionWindow.priorityIndex
+              ] ?? null,
+            passedPlayerIds: state.reactionWindow.passedPlayerIds,
+            status: state.reactionWindow.status,
+            openedAt: state.reactionWindow.openedAt,
+            deadlineAt: state.reactionWindow.deadlineAt,
+          },
     pendingChoice:
       state.pendingChoice?.playerIds.includes(viewerId) === true
         ? state.pendingChoice
         : null,
   };
+}
+
+function reactionActions(
+  state: Readonly<MatchState>,
+  viewerId: PlayerId,
+): AvailableAction[] {
+  const window = state.reactionWindow;
+  if (
+    state.phase !== "playing" ||
+    window === null ||
+    window.status !== "open" ||
+    window.priorityOrder[window.priorityIndex] !== viewerId
+  ) {
+    return [];
+  }
+  const player = state.players[viewerId];
+  if (player === undefined || !player.alive) return [];
+  const reactions = player.hand.flatMap((cardInstanceId) =>
+    cardDefinition(cardInstanceId).coreAction?.type === "cancel-effect"
+      ? [
+          {
+            type: "play-reaction-card" as const,
+            cardInstanceId,
+            targetEffectId: window.effectId,
+          },
+        ]
+      : [],
+  );
+  return [...reactions, { type: "pass-reaction", windowId: window.windowId }];
 }
 
 function turnActions(

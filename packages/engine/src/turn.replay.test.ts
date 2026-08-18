@@ -22,6 +22,7 @@ function apply(
 ): { readonly state: MatchState; readonly events: readonly DomainEvent[] } {
   const result = applyCommand(state, {
     origin: "player",
+    serverReceivedAt: 0,
     envelope: {
       protocolVersion: 1,
       commandId,

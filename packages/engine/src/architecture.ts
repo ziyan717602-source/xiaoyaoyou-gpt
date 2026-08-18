@@ -25,7 +25,11 @@ export interface DomainEvent {
 }
 
 export type EngineCommand =
-  | { readonly origin: "player"; readonly envelope: CommandEnvelope }
+  | {
+      readonly origin: "player";
+      readonly envelope: CommandEnvelope;
+      readonly serverReceivedAt: number;
+    }
   | {
       readonly origin: "system-timeout";
       readonly commandId: CommandId;

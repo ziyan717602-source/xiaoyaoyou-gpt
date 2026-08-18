@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-reaction-core-v1",
+  "scope": "M04-REACTION-CORE",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "window": {
+    "oneOpenTopLevel": true,
+    "eligible": "all-living-players-except-current-effect-source",
+    "initialPriority": "next-eligible-seat-after-effect-source",
+    "pass": "current-priority-only-then-next-eligible-seat",
+    "close": "all-currently-eligible-players-pass-consecutively",
+    "deadlineMs": 15000,
+    "deadlineSource": "authoritative-server-received-time",
+    "clientIssuedAt": "audit-only",
+    "disconnect": "does-not-reset-deadline",
+    "systemTimeoutExecution": "M06"
+  },
+  "effects": {
+    "stableId": "match-id-plus-command-id",
+    "stack": "parent-before-child",
+    "statuses": [
+      "pending",
+      "waiting",
+      "resolving",
+      "cancelled",
+      "resolved",
+      "fizzled"
+    ],
+    "continuation": "json-only-resume-with-plus-locals",
+    "cost": "reaction-card-leaves-hand-on-accepted-command-no-implicit-refund"
+  },
+  "bingxin": {
+    "card": "xyy.card.tp01",
+    "operation": "cancel-effect-by-stable-target-effect-id",
+    "validTarget": "current-waiting-effect",
+    "singleCancel": "resolved-bingxin-cancels-target-and-original-does-not-resolve",
+    "counterCancel": "resolved-child-bingxin-cancels-parent-bingxin-and-keeps-original-pending",
+    "resume": "restore-original-window-with-passes-cleared",
+    "resumePriority": "next-eligible-seat-after-counter-source",
+    "depth": "bounded-by-physical-response-cards-not-hardcoded"
+  },
+  "m04CancellableAction": {
+    "card": "xyy.card.jp04",
+    "beforeWindow": "pay-card-and-create-pending-draw-two-effect",
+    "allPass": "target-draws-two-exactly-once",
+    "cancelled": "target-draws-zero"
+  },
+  "commands": ["play-reaction-card", "pass-reaction"],
+  "privacy": {
+    "public": ["declared-effect-stack", "current-window", "priority-player"],
+    "private": ["own-response-card-actions", "own-hand"],
+    "forbidden": [
+      "other-hand-ids",
+      "whether-nonpriority-player-can-respond",
+      "secret-dependent-error-detail",
+      "secret-dependent-message-count"
+    ],
+    "actions": "only-current-priority-player-receives-pass-and-own-legal-response-cards"
+  },
+  "persistence": {
+    "waitPoint": "effect-stack-window-continuation-deadline-and-passes-in-snapshot",
+    "restart": "mid-window-state-and-deadline-restore-exactly",
+    "events": "strict-sequence-single-command-version-and-json-replay",
+    "idempotency": "same-command-id-content-returns-first-result-without-new-events"
+  },
+  "authority": {
+    "confirmed": [
+      "tp01-consumes-card-and-cancels-current-valid-card-effect",
+      "cancelled-original-does-not-run",
+      "all-pass-original-runs-once"
+    ],
+    "provisionalAutonomous": [
+      "SEM-004-countered-cancellation-restores-parent-window-after-child-source",
+      "SEM-006-teammates-do-not-see-response-cards"
+    ]
+  },
+  "legacyEvidence": [
+    "oracle/golden-traces/bingxin-response.trace.json",
+    "PSDGamepkg/JNS/JP06.cs:416-450",
+    "PSDGamepkg/XIG.cs:551-635",
+    "PSDGamepkg/XIG.cs:1572-1625"
+  ],
+  "acceptanceMap": {
+    "M04-01": "jp04-payment-creates-stable-waiting-effect-and-response-window",
+    "M04-02": "priority-rotates-by-seat-and-all-pass-resolves-original-once",
+    "M04-03": "tp01-payment-creates-child-cancel-effect-and-child-window",
+    "M04-04": "single-bingxin-cancels-original-and-prevents-draw-two",
+    "M04-05": "countered-bingxin-restores-original-pending-continuation",
+    "M04-06": "restored-window-clears-passes-and-starts-after-counter-source",
+    "M04-07": "nested-counter-depth-is-data-driven-and-terminates",
+    "M04-08": "wrong-priority-card-effect-window-or-version-is-rejected-without-mutation",
+    "M04-09": "only-priority-player-sees-own-response-actions-without-other-hand-leakage",
+    "M04-10": "absolute-fifteen-second-deadline-uses-server-time-and-persists",
+    "M04-11": "json-event-replay-and-mid-window-restart-match-uninterrupted-state",
+    "M04-12": "six-real-connections-cancel-counter-pass-and-restart-with-idempotency"
+  }
+}

@@ -54,6 +54,11 @@ export type ClientCommand =
     }
   | { readonly type: "end-action" }
   | {
+      readonly type: "play-reaction-card";
+      readonly cardInstanceId: string;
+      readonly targetEffectId: EffectId;
+    }
+  | {
       readonly type: "discard-cards";
       readonly cardInstanceIds: readonly string[];
     }
@@ -245,6 +250,16 @@ export const clientMessageSchema = {
                   additionalProperties: false,
                   required: ["type"],
                   properties: { type: { const: "end-action" } },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "cardInstanceId", "targetEffectId"],
+                  properties: {
+                    type: { const: "play-reaction-card" },
+                    cardInstanceId: identifierSchema,
+                    targetEffectId: identifierSchema,
+                  },
                 },
                 {
                   type: "object",

@@ -23,6 +23,7 @@ function command(
 ): MatchState {
   const result = applyCommand(state, {
     origin: "player",
+    serverReceivedAt: 0,
     envelope: {
       protocolVersion: 1,
       commandId,
@@ -84,13 +85,42 @@ describe("M03 six-player engine bots", () => {
   it("runs 1,000 real turns using only projected availableActions", () => {
     let state = started("m03-1000-turn-bots");
     let commandSequence = 0;
+    let reactionCardsPlayed = 0;
     for (let completedTurns = 0; completedTurns < 1_000; completedTurns += 1) {
       const actor = state.activePlayerId!;
       let actionGuard = 0;
       while (state.turn?.phase === "action") {
         actionGuard += 1;
-        if (actionGuard > 56)
+        if (actionGuard > 128)
           throw new Error("Bot action phase did not converge.");
+        if (state.reactionWindow !== null) {
+          const priority =
+            state.reactionWindow.priorityOrder[
+              state.reactionWindow.priorityIndex
+            ]!;
+          const pass = createPlayerView(state, priority).availableActions.find(
+            (action) => action.type === "pass-reaction",
+          );
+          const reaction = createPlayerView(
+            state,
+            priority,
+          ).availableActions.find(
+            (action) => action.type === "play-reaction-card",
+          );
+          if (pass?.type !== "pass-reaction") {
+            throw new Error("Priority Bot did not receive pass-reaction.");
+          }
+          if (reaction?.type === "play-reaction-card") {
+            reactionCardsPlayed += 1;
+          }
+          state = command(
+            state,
+            priority,
+            `bot-command-${commandSequence++}`,
+            reaction?.type === "play-reaction-card" ? reaction : pass,
+          );
+          continue;
+        }
         const view = createPlayerView(state, actor);
         const playable = view.availableActions.find(
           (action): action is Extract<AvailableAction, { type: "play-card" }> =>
@@ -123,5 +153,6 @@ describe("M03 six-player engine bots", () => {
     }
     expect(state.phase).toBe("playing");
     expect(state.version).toBeGreaterThan(2_000);
+    expect(reactionCardsPlayed).toBeGreaterThan(0);
   });
 });

@@ -47,6 +47,11 @@ describe("protocol runtime schema", () => {
       },
       { type: "end-action" },
       {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: "effect-1",
+      },
+      {
         type: "discard-cards",
         cardInstanceIds: ["xyy.card.jp01@1"],
       },
