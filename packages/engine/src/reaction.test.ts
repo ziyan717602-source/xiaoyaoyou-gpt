@@ -601,9 +601,11 @@ describe("M04 serializable reaction core", () => {
     const opponents = Object.values(initial.players)
       .filter((player) => player.alive && player.team !== actorTeam)
       .map((player) => player.id);
+    const staffBearer = allies.find((playerId) => playerId !== actor)!;
     const claimed = new Set<CardInstanceId>([
       "xyy.card.jp03@5",
       "xyy.card.tp01@33",
+      "xyy.card.wq02@48",
     ]);
     const prepared: MatchState = {
       ...initial,
@@ -612,13 +614,17 @@ describe("M04 serializable reaction core", () => {
           player.id,
           {
             ...player,
-            hp: player.maxHp - 1,
+            hp: player.maxHp - (player.id === staffBearer ? 2 : 1),
             hand:
               player.id === actor
                 ? ["xyy.card.jp03@5"]
                 : player.id === responder
                   ? ["xyy.card.tp01@33"]
                   : [],
+            equipment:
+              player.id === staffBearer
+                ? { weapon: "xyy.card.wq02@48", armor: null }
+                : { weapon: null, armor: null },
           },
         ]),
       ),
@@ -714,7 +720,7 @@ describe("M04 serializable reaction core", () => {
     cancelled = passAll(cancelled, "jp03-cancel-pass", 3_000);
     for (const playerId of allies) {
       expect(cancelled.players[playerId]!.hp).toBe(
-        cancelled.players[playerId]!.maxHp - 1,
+        cancelled.players[playerId]!.maxHp - (playerId === staffBearer ? 2 : 1),
       );
     }
 
@@ -743,6 +749,7 @@ describe("M04 serializable reaction core", () => {
     const claimed = new Set<CardInstanceId>([
       "xyy.card.tp02@36",
       "xyy.card.tp01@33",
+      "xyy.card.wq02@48",
     ]);
     const prepared: MatchState = {
       ...initial,
@@ -751,13 +758,17 @@ describe("M04 serializable reaction core", () => {
           player.id,
           {
             ...player,
-            hp: player.id === actor ? player.maxHp - 1 : player.hp,
+            hp: player.id === actor ? player.maxHp - 3 : player.hp,
             hand:
               player.id === actor
                 ? ["xyy.card.tp02@36"]
                 : player.id === responder
                   ? ["xyy.card.tp01@33"]
                   : [],
+            equipment:
+              player.id === actor
+                ? { weapon: "xyy.card.wq02@48", armor: null }
+                : { weapon: null, armor: null },
           },
         ]),
       ),
@@ -858,7 +869,7 @@ describe("M04 serializable reaction core", () => {
     );
     cancelled = passAll(cancelled, "tp02-cancel-pass", 3_000);
     expect(cancelled.players[actor]!.hp).toBe(
-      prepared.players[actor]!.maxHp - 1,
+      prepared.players[actor]!.maxHp - 3,
     );
     expect(cancelled.effectStack).toEqual([]);
   });

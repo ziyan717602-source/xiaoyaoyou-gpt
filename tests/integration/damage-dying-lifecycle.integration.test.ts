@@ -305,7 +305,9 @@ function injectCards(
   };
   const equipment = input.winnerFixture
     ? { weapon: "xyy.card.wq01@47", armor: "xyy.card.fj01@52" }
-    : { weapon: null, armor: null };
+    : input.rescuer === undefined
+      ? { weapon: null, armor: null }
+      : { weapon: "xyy.card.wq02@48", armor: null };
   const claimed = new Set([
     ...Object.values(hands).flat(),
     ...[equipment.weapon, equipment.armor].filter(
@@ -511,7 +513,7 @@ describe("M05 damage/dying over six real WebSockets", () => {
     expect(clients[0]!.latestView.dyingBatch).toBeNull();
     expect(
       clients[0]!.latestView.players.find((player) => player.id === target),
-    ).toMatchObject({ alive: true, hp: 2 });
+    ).toMatchObject({ alive: true, hp: 3 });
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

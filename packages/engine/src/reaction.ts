@@ -17,6 +17,7 @@ import {
   type AppliedDamage,
   type DamageIntent,
 } from "./damage-dying.js";
+import { planCureBatch, playersAfterCures } from "./healing.js";
 import type {
   Continuation,
   EffectFrame,
@@ -978,63 +979,67 @@ export function reduceReactionEvent(
         targetPlayerId === undefined
           ? undefined
           : state.players[targetPlayerId];
-      const amount = numberPayload(event, "amount");
-      const hpBefore = numberPayload(event, "hpBefore");
-      const hpAfter = numberPayload(event, "hpAfter");
       if (
         target === undefined ||
         !target.alive ||
-        target.id !== effect.sourcePlayerId ||
-        amount !== 2 ||
-        hpBefore !== target.hp ||
-        hpAfter !== Math.min(target.maxHp, target.hp + amount)
+        target.id !== effect.sourcePlayerId
       ) {
         throw new Error("Resolved heal-two disagrees with current HP.");
       }
+      const expected = planCureBatch(state, [
+        {
+          itemId: `${effectId}:cure:0`,
+          sourcePlayerId: effect.sourcePlayerId,
+          targetPlayerId: target.id,
+          amount: 2,
+          element: "neutral",
+        },
+      ]);
+      if (
+        JSON.stringify(event.payload.healingItems) !== JSON.stringify(expected)
+      ) {
+        throw new Error("Resolved heal-two disagrees with deterministic plan.");
+      }
       next = {
         ...state,
-        players: {
-          ...state.players,
-          [target.id]: { ...target, hp: hpAfter },
-        },
+        players: playersAfterCures(state, expected),
         effectStack: pruneTerminalTail(
           updateEffects(state, { [effectId]: "resolved" }),
         ),
         reactionWindow: null,
       };
     } else if (effect.kind === "card:xyy.card.jp03") {
-      const expected = effect.targetIds.map((targetPlayerId) => {
-        const target = state.players[targetPlayerId];
-        if (
-          target === undefined ||
-          !target.alive ||
-          target.team !== state.players[effect.sourcePlayerId ?? ""]?.team
-        ) {
-          throw new Error("Resolved team healing has an invalid target.");
-        }
-        return {
+      const source = state.players[effect.sourcePlayerId ?? ""];
+      if (
+        source === undefined ||
+        effect.targetIds.some((targetPlayerId) => {
+          const target = state.players[targetPlayerId];
+          return (
+            target === undefined || !target.alive || target.team !== source.team
+          );
+        })
+      ) {
+        throw new Error("Resolved team healing has an invalid target.");
+      }
+      const expected = planCureBatch(
+        state,
+        effect.targetIds.map((targetPlayerId, index) => ({
+          itemId: `${effectId}:cure:${index}`,
+          sourcePlayerId: effect.sourcePlayerId,
           targetPlayerId,
           amount: 1,
           element: "water",
-          hpBefore: target.hp,
-          hpAfter: Math.min(target.maxHp, target.hp + 1),
-        };
-      });
+          hpEvoMask: ["from-jp"],
+        })),
+      );
       if (
         JSON.stringify(event.payload.healingItems) !== JSON.stringify(expected)
       ) {
         throw new Error("Resolved team healing disagrees with current HP.");
       }
-      const players = { ...state.players };
-      for (const item of expected) {
-        players[item.targetPlayerId] = {
-          ...players[item.targetPlayerId]!,
-          hp: item.hpAfter,
-        };
-      }
       next = {
         ...state,
-        players,
+        players: playersAfterCures(state, expected),
         effectStack: pruneTerminalTail(
           updateEffects(state, { [effectId]: "resolved" }),
         ),
@@ -1160,28 +1165,35 @@ class EventBuilder {
           damageItems: damageItemsForEffect(effect),
         });
       } else if (effect.kind === "card:xyy.card.tp02") {
-        const target = this.state.players[effect.targetIds[0]!]!;
+        const targetPlayerId = effect.targetIds[0]!;
         this.append("effect.resolved", {
           effectId,
           resolvedAt: this.serverReceivedAt,
-          amount: 2,
-          hpBefore: target.hp,
-          hpAfter: Math.min(target.maxHp, target.hp + 2),
+          healingItems: planCureBatch(this.state, [
+            {
+              itemId: `${effectId}:cure:0`,
+              sourcePlayerId: effect.sourcePlayerId,
+              targetPlayerId,
+              amount: 2,
+              element: "neutral",
+            },
+          ]),
         });
       } else if (effect.kind === "card:xyy.card.jp03") {
         this.append("effect.resolved", {
           effectId,
           resolvedAt: this.serverReceivedAt,
-          healingItems: effect.targetIds.map((targetPlayerId) => {
-            const target = this.state.players[targetPlayerId]!;
-            return {
+          healingItems: planCureBatch(
+            this.state,
+            effect.targetIds.map((targetPlayerId, index) => ({
+              itemId: `${effectId}:cure:${index}`,
+              sourcePlayerId: effect.sourcePlayerId,
               targetPlayerId,
               amount: 1,
               element: "water",
-              hpBefore: target.hp,
-              hpAfter: Math.min(target.maxHp, target.hp + 1),
-            };
-          }),
+              hpEvoMask: ["from-jp"],
+            })),
+          ),
         });
       } else {
         this.append("effect.resolved", {

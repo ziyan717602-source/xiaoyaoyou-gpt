@@ -11,8 +11,17 @@ const turn = read("packages/engine/src/turn.ts");
 const view = read("packages/engine/src/index.ts");
 const unit = read("packages/engine/src/turn.test.ts");
 const replay = read("packages/engine/src/turn.replay.test.ts");
+const healing = read("packages/engine/src/healing.ts");
+const healingUnit = read("packages/engine/src/healing.test.ts");
+const reactionUnit = read("packages/engine/src/reaction.test.ts");
+const dyingUnit = read("packages/engine/src/damage-dying.test.ts");
+const reactionReplay = read("packages/engine/src/reaction.replay.test.ts");
+const dyingReplay = read("packages/engine/src/damage-dying.replay.test.ts");
 const network = read(
   "tests/integration/reaction-lifecycle.integration.test.ts",
+);
+const dyingNetwork = read(
+  "tests/integration/damage-dying-lifecycle.integration.test.ts",
 );
 
 function assert(condition, message) {
@@ -62,8 +71,28 @@ assert(
   network.includes("network-wq04-equipped-pawn"),
   "Missing WQ04 real-network scenario.",
 );
+for (const token of [
+  "export function planCureBatch",
+  'cardDefinition(weapon).id === "xyy.card.wq02"',
+  '!hpEvoMask.includes("termin-at")',
+  "appliedModifierCardInstanceIds",
+]) {
+  assert(healing.includes(token), `Missing WQ02 healing boundary ${token}.`);
+}
+for (const [source, token] of [
+  [healingUnit, "applies WQ02 once"],
+  [reactionUnit, 'weapon: "xyy.card.wq02@48"'],
+  [dyingUnit, 'weapon: "xyy.card.wq02@48"'],
+  [reactionReplay, 'weapon: "xyy.card.wq02@48"'],
+  [dyingReplay, 'weapon: "xyy.card.wq02@48"'],
+  [network, 'weapon: "xyy.card.wq02@48"'],
+  [dyingNetwork, 'weapon: "xyy.card.wq02@48"'],
+]) {
+  assert(source.includes(token), `Missing WQ02 verification token ${token}.`);
+}
 for (const file of [
   "docs/content-standard/cs01d-equipment-effects.md",
+  "docs/verification/receipts/cs01d-wq02.md",
   "docs/verification/receipts/cs01d-wq04.md",
 ]) {
   assert(existsSync(resolve(root, file)), `Missing CS01D evidence ${file}.`);
@@ -77,5 +106,5 @@ for (const command of [
 }
 
 console.log(
-  "Equipment contract passed: WQ04 pawn verified boundary; ten items remain partial for linked effects.",
+  "Equipment contract passed: WQ02 cure and WQ04 pawn boundaries verified; ten items remain partial for linked effects.",
 );

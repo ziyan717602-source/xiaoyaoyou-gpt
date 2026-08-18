@@ -61,8 +61,8 @@
         "evidence": ["M03-TURN-CORE"]
       },
       "xyy.card.wq02": {
-        "boundary": "weapon slot equip and replacement only; unique response effect pending",
-        "evidence": ["M03-TURN-CORE"]
+        "boundary": "equip/replacement and positive non-TERMIN_AT owner-cure plus-one are verified across normal, rescue and team healing; strength waits for CS03 battle",
+        "evidence": ["receipt:docs/verification/receipts/cs01d-wq02.md"]
       },
       "xyy.card.wq03": {
         "boundary": "weapon slot equip and replacement only; unique modifier pending",

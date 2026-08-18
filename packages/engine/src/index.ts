@@ -864,6 +864,13 @@ export type {
 export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
 export { beginDamageResponse } from "./reaction.js";
 export {
+  planCureBatch,
+  playersAfterCures,
+  type AppliedCure,
+  type CureIntent,
+  type HpEvolutionFlag,
+} from "./healing.js";
+export {
   ACTION_DEADLINE_MS,
   DISCONNECT_GRACE_MS,
   applySystemCommand,

@@ -287,6 +287,7 @@ describe("M04 reaction event replay", () => {
       .filter((player) => player.alive && player.team === team)
       .sort((left, right) => left.seat - right.seat)
       .map((player) => player.id);
+    const staffBearer = allies.find((playerId) => playerId !== actor)!;
     const initial: MatchState = {
       ...startedState,
       players: Object.fromEntries(
@@ -294,16 +295,20 @@ describe("M04 reaction event replay", () => {
           player.id,
           {
             ...player,
-            hp: player.maxHp - 1,
+            hp: player.maxHp - (player.id === staffBearer ? 2 : 1),
             hand:
               player.id === actor
                 ? (["xyy.card.jp03@5"] as readonly CardInstanceId[])
                 : [],
+            equipment:
+              player.id === staffBearer
+                ? { weapon: "xyy.card.wq02@48", armor: null }
+                : { weapon: null, armor: null },
           },
         ]),
       ),
       drawPile: SETUP_CARD_INSTANCES.filter(
-        (card) => card !== "xyy.card.jp03@5",
+        (card) => card !== "xyy.card.jp03@5" && card !== "xyy.card.wq02@48",
       ),
       discardPile: [],
     };
@@ -369,16 +374,20 @@ describe("M04 reaction event replay", () => {
           player.id,
           {
             ...player,
-            hp: player.id === actor ? player.maxHp - 2 : player.hp,
+            hp: player.id === actor ? player.maxHp - 3 : player.hp,
             hand:
               player.id === actor
                 ? (["xyy.card.tp02@36"] as readonly CardInstanceId[])
                 : [],
+            equipment:
+              player.id === actor
+                ? { weapon: "xyy.card.wq02@48", armor: null }
+                : { weapon: null, armor: null },
           },
         ]),
       ),
       drawPile: SETUP_CARD_INSTANCES.filter(
-        (card) => card !== "xyy.card.tp02@36",
+        (card) => card !== "xyy.card.tp02@36" && card !== "xyy.card.wq02@48",
       ),
       discardPile: [],
     };

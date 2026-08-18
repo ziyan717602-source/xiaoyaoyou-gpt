@@ -249,10 +249,16 @@ describe("M05 damage and dying core", () => {
     const target = Object.values(state.players)
       .sort((left, right) => left.seat - right.seat)
       .find((player) => player.id !== actor)!.id;
-    state = arrange(state, {
-      [actor]: ["xyy.card.jp05@10"],
-      [target]: ["xyy.card.tp02@36"],
-    });
+    state = arrange(
+      state,
+      {
+        [actor]: ["xyy.card.jp05@10"],
+        [target]: ["xyy.card.tp02@36"],
+      },
+      {
+        [target]: { weapon: "xyy.card.wq02@48", armor: null },
+      },
+    );
     state = {
       ...state,
       players: {
@@ -294,7 +300,7 @@ describe("M05 damage and dying core", () => {
       },
       3_000,
     );
-    expect(state.players[target]).toMatchObject({ hp: 2, alive: true });
+    expect(state.players[target]).toMatchObject({ hp: 3, alive: true });
     expect(state.dyingBatch).toBeNull();
     expect(state.pendingChoice).toBeNull();
     expect(state.discardPile).toEqual(

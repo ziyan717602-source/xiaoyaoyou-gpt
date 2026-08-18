@@ -15,8 +15,8 @@
       "name": "天蛇杖",
       "rule": "while enabled, base battle strength plus one and each positive non-TERMIN_AT cure to the owner gains one HP",
       "status": "partial",
-      "verifiedBoundary": "weapon equip and replacement",
-      "linkedPending": ["CS01D-HEALING-MODIFIERS", "CS03-BATTLE-DECKS:strength"]
+      "verifiedBoundary": "equip/replacement plus deterministic positive non-TERMIN_AT owner-cure increase across TP02 normal, TP02 rescue and JP03 team healing",
+      "linkedPending": ["CS03-BATTLE-DECKS:strength"]
     },
     "xyy.card.wq03": {
       "name": "魔刀天叱",
@@ -99,6 +99,8 @@
     "wq04PawnZones": "own-hand-or-own-weapon-slot",
     "wq04PawnResponse": "explicit-pawn-mode-pays-card-and-draws-two-without-Bingxin",
     "equipmentVisibility": "weapon-and-armor-slots-are-public-but-actions-remain-owner-only",
+    "healingPipeline": "all cure entry points create deterministic serializable cure items before HP mutation",
+    "wq02ModifierScope": "each positive non-TERMIN_AT cure item targeting the enabled owner gains exactly one regardless of cure source",
     "disabledEquipment": "all-growth-and-special-effects-must-check-the-corresponding-disabled-state-once-that-state-exists",
     "damageMasks": [
       "TUX_INAVO",
@@ -119,7 +121,7 @@
     "CS01D-07": "WQ04-pawn-replays-identically-across-JSON-restart",
     "CS01D-08": "WQ04-equipped-pawn-works-over-six-real-WebSockets-and-server-restart",
     "CS01D-09": "only-the-owner-receives-WQ04-pawn-availableAction",
-    "CS01D-10": "WQ02-healing-modifier-obeys-TERMIN_AT",
+    "CS01D-10": "WQ02-modifies-TP02-normal-TP02-rescue-and-JP03-items-once-while-obeying-TERMIN_AT-and-equipment-ownership",
     "CS01D-11": "FJ01-FJ05-triggered-effects-obey-cost-window-and-mask-rules",
     "CS01D-12": "base-strength-and-hit-growth-waits-for-real-CS03-battle-state",
     "CS01D-13": "all-completed-equipment-modes-conserve-the-56-card-action-deck",

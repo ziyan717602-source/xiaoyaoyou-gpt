@@ -8,6 +8,7 @@ const contract = JSON.parse(read("contracts/core-card-audit.contract.json"));
 const plan = JSON.parse(read("content/standard-plan.json"));
 const setup = read("packages/engine/src/setup-content.ts");
 const reaction = read("packages/engine/src/reaction.ts");
+const healing = read("packages/engine/src/healing.ts");
 const dying = read("packages/engine/src/damage-dying.ts");
 const view = read("packages/engine/src/index.ts");
 const reactionTest = read("packages/engine/src/reaction.test.ts");
@@ -39,11 +40,22 @@ for (const token of [
 for (const token of [
   '"heal-two"',
   'effect.kind === "card:xyy.card.tp02"',
-  "amount !== 2",
-  "Math.min(target.maxHp, target.hp + amount)",
+  "healingItems: planCureBatch",
+  "playersAfterCures(state, expected)",
 ]) {
   assert(reaction.includes(token), `Missing TP02 reaction boundary ${token}.`);
 }
+for (const token of [
+  "export function planCureBatch",
+  "baseAmount: intent.amount",
+  "Math.min(target.maxHp, hpBefore + amount)",
+]) {
+  assert(healing.includes(token), `Missing TP02 cure-plan boundary ${token}.`);
+}
+assert(
+  reaction.includes("amount: 2"),
+  "TP02 normal mode must retain base cure two.",
+);
 assert(
   dying.includes('rescueAction?.type !== "rescue-two"'),
   "Rescue validation must use the separate rescue mode.",

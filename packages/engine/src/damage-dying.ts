@@ -12,6 +12,7 @@ import type {
   PlayerState,
   TeamId,
 } from "./index.js";
+import { planCureBatch, playersAfterCures } from "./healing.js";
 import { cardDefinition, type CardInstanceId } from "./setup-content.js";
 import { reduceTurnEvent } from "./turn.js";
 
@@ -359,17 +360,29 @@ export function reduceDyingEvent(
     ) {
       throw new Error("Rescue card event is not applicable.");
     }
+    const expectedCures = planCureBatch(state, [
+      {
+        itemId: `${event.eventId}:cure:0`,
+        sourcePlayerId: playerId,
+        targetPlayerId,
+        amount: 2,
+        element: "neutral",
+      },
+    ]);
+    if (
+      JSON.stringify(event.payload.healingItems) !==
+      JSON.stringify(expectedCures)
+    ) {
+      throw new Error("Rescue healing disagrees with deterministic plan.");
+    }
+    const curedPlayers = playersAfterCures(state, expectedCures);
     const intermediate: MatchState = {
       ...state,
       players: {
-        ...state.players,
+        ...curedPlayers,
         [playerId]: {
-          ...player,
+          ...curedPlayers[playerId]!,
           hand: player.hand.filter((card) => card !== cardInstanceId),
-        },
-        [targetPlayerId]: {
-          ...target,
-          hp: Math.min(target.maxHp, target.hp + 2),
         },
       },
       discardPile: [...state.discardPile, cardInstanceId],
@@ -595,11 +608,21 @@ export function applyDyingCommand(
         currentVersion: input.version,
       };
     }
+    const nextEventId = `${input.matchId}:event:${input.eventSequence + 1}`;
     builder.append("rescue.card-played", {
       playerId: envelope.playerId,
       targetPlayerId: command.targetPlayerId,
       cardInstanceId,
       rescuedAt: serverReceivedAt,
+      healingItems: planCureBatch(input, [
+        {
+          itemId: `${nextEventId}:cure:0`,
+          sourcePlayerId: envelope.playerId,
+          targetPlayerId: command.targetPlayerId,
+          amount: 2,
+          element: "neutral",
+        },
+      ]),
     });
   } else {
     return {

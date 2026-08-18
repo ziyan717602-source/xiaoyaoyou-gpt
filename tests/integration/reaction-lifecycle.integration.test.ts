@@ -271,7 +271,10 @@ function injectTp02Fixture(
       [actor]: ["xyy.card.tp02@36", "xyy.card.tp02@37"],
       [first]: ["xyy.card.tp01@33"],
     };
-    const claimed = new Set(Object.values(hands).flat());
+    const claimed = new Set([
+      ...Object.values(hands).flat(),
+      "xyy.card.wq02@48",
+    ]);
     const now = Date.now();
     const fixture: MatchState = {
       ...state,
@@ -280,8 +283,12 @@ function injectTp02Fixture(
           player.id,
           {
             ...player,
-            hp: player.id === actor ? player.maxHp - 1 : player.hp,
+            hp: player.id === actor ? player.maxHp - 3 : player.hp,
             hand: hands[player.id] ?? [],
+            equipment:
+              player.id === actor
+                ? { weapon: "xyy.card.wq02@48", armor: null }
+                : { weapon: null, armor: null },
           },
         ]),
       ),

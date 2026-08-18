@@ -70,7 +70,11 @@ function fixture(): {
   const actorSeat = ordered.findIndex((player) => player.id === actor);
   const target = ordered[(actorSeat + 1) % ordered.length]!.id;
   const rescuer = ordered[(actorSeat + 2) % ordered.length]!.id;
-  const claimed = new Set(["xyy.card.jp05@10", "xyy.card.tp02@36"]);
+  const claimed = new Set([
+    "xyy.card.jp05@10",
+    "xyy.card.tp02@36",
+    "xyy.card.wq02@48",
+  ]);
   state = {
     ...state,
     players: Object.fromEntries(
@@ -85,6 +89,10 @@ function fixture(): {
               : player.id === rescuer
                 ? ["xyy.card.tp02@36"]
                 : [],
+          equipment:
+            player.id === target
+              ? { weapon: "xyy.card.wq02@48", armor: null }
+              : { weapon: null, armor: null },
         },
       ]),
     ),
@@ -290,7 +298,7 @@ describe("M05 damage/dying event replay", () => {
     expect(replayed).toEqual(uninterrupted.state);
     expect(uninterrupted.state.players[setup.target]).toMatchObject({
       alive: true,
-      hp: 2,
+      hp: 3,
     });
     expect(uninterrupted.state.dyingBatch).toBeNull();
   });
