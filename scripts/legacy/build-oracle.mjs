@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -96,13 +96,24 @@ for (const [name, projectPath] of projects) {
   ]);
 }
 
+const runtimeInputs = [
+  ["reference/psd48-master/~ex-lib/psd.db3", "psd.db3"],
+  ["reference/psd48-master/lib/sqlite3.dll", "sqlite3.dll"],
+];
+for (const [source, target] of runtimeInputs) {
+  copyFileSync(join(workspaceRoot, source), join(outputRoot, target));
+}
+
 run(process.execPath, [
   "--disable-warning=ExperimentalWarning",
   join(workspaceRoot, "scripts", "legacy", "inventory.mjs"),
   "--verify",
 ]);
 
-const output = projects.map(([, , fileName]) => {
+const output = [
+  ...projects.map(([, , fileName]) => fileName),
+  ...runtimeInputs.map(([, fileName]) => fileName),
+].map((fileName) => {
   const path = join(outputRoot, fileName);
   if (!existsSync(path))
     throw new Error(`Expected output is missing: ${fileName}`);

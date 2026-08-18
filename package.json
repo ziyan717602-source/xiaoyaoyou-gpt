@@ -21,6 +21,7 @@
     "goal:preflight": "node scripts/goal-preflight.mjs",
     "oracle:build": "node scripts/legacy/build-oracle.mjs",
     "oracle:inventory": "node --disable-warning=ExperimentalWarning scripts/legacy/inventory.mjs --verify",
+    "oracle:protocol-smoke": "npm run oracle:build && node scripts/legacy/protocol-smoke.mjs",
     "oracle:refresh-inventory": "node --disable-warning=ExperimentalWarning scripts/legacy/inventory.mjs --write",
     "test": "vitest run",
     "test:unit": "vitest run packages --exclude **/*.replay.test.ts --exclude **/*.bot.test.ts",
