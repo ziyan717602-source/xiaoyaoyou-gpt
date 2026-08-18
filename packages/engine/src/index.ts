@@ -7,18 +7,40 @@ import type {
   WindowId,
 } from "@xiaoyaoyou/protocol";
 import { PROTOCOL_VERSION } from "@xiaoyaoyou/protocol";
+import type { CardInstanceId, HeroId } from "./setup-content.js";
 
-export const MATCH_SCHEMA_VERSION = 1 as const;
+export const MATCH_SCHEMA_VERSION = 2 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
+export type TeamId = 1 | 2;
+
+export interface HeroOffer {
+  readonly candidateHeroIds: readonly HeroId[];
+  readonly replacementHeroId: HeroId;
+  readonly replacementIndex: number;
+  readonly rerolled: boolean;
+  readonly selectedHeroId: HeroId | null;
+}
+
+export interface SetupState {
+  readonly status: "selecting-heroes" | "completed";
+  readonly seedCommitment: string;
+  readonly offers: Readonly<Record<PlayerId, HeroOffer>>;
+}
 
 export interface PlayerState {
   readonly id: PlayerId;
   readonly seat: number;
   readonly nickname: string;
+  readonly turnIndex: number | null;
+  readonly team: TeamId | null;
+  readonly heroId: HeroId | null;
+  readonly alive: boolean;
   readonly hp: number;
   readonly maxHp: number;
+  readonly strength: number;
+  readonly dexterity: number;
   readonly hand: readonly string[];
 }
 
@@ -84,9 +106,14 @@ export interface MatchState {
   readonly rulesetVersion: string;
   readonly matchId: MatchId;
   readonly version: number;
+  readonly eventSequence: number;
   readonly phase: MatchPhase;
   readonly activePlayerId: PlayerId | null;
+  readonly turnOrder: readonly PlayerId[];
   readonly players: Readonly<Record<PlayerId, PlayerState>>;
+  readonly drawPile: readonly CardInstanceId[];
+  readonly discardPile: readonly CardInstanceId[];
+  readonly setup: SetupState | null;
   readonly effectStack: readonly EffectFrame[];
   readonly reactionWindow: ReactionWindow | null;
   readonly pendingChoice: PendingChoice | null;
@@ -107,11 +134,30 @@ export interface PublicPlayerView {
   readonly id: PlayerId;
   readonly seat: number;
   readonly nickname: string;
+  readonly turnIndex: number | null;
+  readonly team: TeamId | null;
+  readonly heroId: HeroId | null;
+  readonly alive: boolean;
   readonly hp: number;
   readonly maxHp: number;
   readonly handCount: number;
   readonly hand: readonly string[] | null;
 }
+
+export interface SetupView {
+  readonly status: SetupState["status"];
+  readonly seedCommitment: string;
+  readonly selectedPlayerIds: readonly PlayerId[];
+  readonly ownOffer: {
+    readonly candidateHeroIds: readonly HeroId[];
+    readonly rerolled: boolean;
+    readonly selectedHeroId: HeroId | null;
+  } | null;
+}
+
+export type AvailableAction =
+  | { readonly type: "choose-hero"; readonly heroIds: readonly HeroId[] }
+  | { readonly type: "reroll-hero" };
 
 export interface PlayerView {
   readonly matchId: MatchId;
@@ -119,6 +165,8 @@ export interface PlayerView {
   readonly phase: MatchPhase;
   readonly activePlayerId: PlayerId | null;
   readonly players: readonly PublicPlayerView[];
+  readonly setup: SetupView | null;
+  readonly availableActions: readonly AvailableAction[];
   readonly effectStack: readonly EffectFrame[];
   readonly reactionWindow: ReactionWindow | null;
   readonly pendingChoice: PendingChoice | null;
@@ -136,8 +184,14 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
         id: player.id,
         seat,
         nickname: player.nickname,
+        turnIndex: null,
+        team: null,
+        heroId: null,
+        alive: false,
         hp: 0,
         maxHp: 0,
+        strength: 0,
+        dexterity: 0,
         hand: [],
       } satisfies PlayerState,
     ]),
@@ -150,9 +204,14 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     rulesetVersion: input.rulesetVersion,
     matchId: input.matchId,
     version: 0,
+    eventSequence: 0,
     phase: "lobby",
     activePlayerId: null,
+    turnOrder: [],
     players,
+    drawPile: [],
+    discardPile: [],
+    setup: null,
     effectStack: [],
     reactionWindow: null,
     pendingChoice: null,
@@ -168,6 +227,9 @@ export function createPlayerView(
     throw new Error(`Unknown viewer: ${viewerId}`);
   }
 
+  const ownOffer = state.setup?.offers[viewerId] ?? null;
+  const canChoose =
+    state.phase === "setup" && ownOffer?.selectedHeroId === null;
   return {
     matchId: state.matchId,
     version: state.version,
@@ -179,11 +241,45 @@ export function createPlayerView(
         id: player.id,
         seat: player.seat,
         nickname: player.nickname,
+        turnIndex: player.turnIndex,
+        team: player.team,
+        heroId:
+          state.phase !== "setup" || player.id === viewerId
+            ? player.heroId
+            : null,
+        alive: player.alive,
         hp: player.hp,
         maxHp: player.maxHp,
         handCount: player.hand.length,
         hand: player.id === viewerId ? player.hand : null,
       })),
+    setup:
+      state.setup === null
+        ? null
+        : {
+            status: state.setup.status,
+            seedCommitment: state.setup.seedCommitment,
+            selectedPlayerIds: Object.entries(state.setup.offers)
+              .filter(([, offer]) => offer.selectedHeroId !== null)
+              .map(([playerId]) => playerId),
+            ownOffer:
+              ownOffer === null
+                ? null
+                : {
+                    candidateHeroIds: ownOffer.candidateHeroIds,
+                    rerolled: ownOffer.rerolled,
+                    selectedHeroId: ownOffer.selectedHeroId,
+                  },
+          },
+    availableActions: canChoose
+      ? [
+          {
+            type: "choose-hero",
+            heroIds: ownOffer.candidateHeroIds,
+          },
+          ...(ownOffer.rerolled ? [] : [{ type: "reroll-hero" as const }]),
+        ]
+      : [],
     effectStack: state.effectStack,
     reactionWindow: state.reactionWindow,
     pendingChoice:
@@ -235,3 +331,13 @@ export type {
   EngineCommand,
   ResumeResult,
 } from "./architecture.js";
+export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
+export {
+  SELECTABLE_HEROES,
+  SETUP_CARD_INSTANCES,
+  SETUP_HEROES,
+  heroDefinition,
+  type CardInstanceId,
+  type HeroDefinition,
+  type HeroId,
+} from "./setup-content.js";

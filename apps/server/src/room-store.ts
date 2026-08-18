@@ -6,6 +6,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import type Database from "better-sqlite3";
+import { createSetupMatch } from "@xiaoyaoyou/engine";
 import type {
   MatchId,
   PlayerId,
@@ -14,10 +15,11 @@ import type {
   RoomStatus,
   RoomView,
 } from "@xiaoyaoyou/protocol";
-import { openSqliteDatabase } from "./persistence.js";
+import { insertPersistedMatch, openSqliteDatabase } from "./persistence.js";
 
 const INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_CAPACITY = 6;
+const RULESET_VERSION = "standard-fengmingyushi@1";
 
 export type RoomErrorCode =
   | "invalid-nickname"
@@ -304,6 +306,10 @@ export class SqliteRoomStore {
     return this.#view(roomId);
   }
 
+  hostPlayerId(roomId: RoomId): PlayerId {
+    return this.#room(roomId).host_player_id;
+  }
+
   #duplicate(
     roomId: RoomId,
     playerId: PlayerId,
@@ -401,6 +407,7 @@ export class SqliteRoomStore {
     token: string;
     commandId: string;
     expectedVersion: number;
+    seed?: string;
     now?: number;
   }): RoomMutationResult {
     const now = input.now ?? Date.now();
@@ -432,13 +439,39 @@ export class SqliteRoomStore {
       ) {
         throw new RoomError("not-all-ready", 409);
       }
-      const matchId: MatchId = randomUUID();
+      const matchId: MatchId = input.roomId;
+      const seed = input.seed ?? reconnectToken();
+      const setupState = createSetupMatch({
+        matchId,
+        rulesetVersion: RULESET_VERSION,
+        seed,
+        players: (
+          this.#database
+            .prepare(
+              "SELECT player_id, nickname FROM room_seats WHERE room_id = ? ORDER BY seat_index",
+            )
+            .all(input.roomId) as Array<{
+            player_id: string;
+            nickname: string;
+          }>
+        ).map((seat) => ({
+          id: seat.player_id,
+          nickname: seat.nickname,
+        })),
+      });
       this.#database
         .prepare(
           `UPDATE rooms SET status = 'started', match_id = ?, version = version + 1,
            updated_at = ?, started_at = ? WHERE room_id = ?`,
         )
         .run(matchId, now, now, input.roomId);
+      insertPersistedMatch(this.#database, {
+        matchId,
+        rulesetVersion: RULESET_VERSION,
+        persistenceVersion: setupState.persistenceVersion,
+        state: setupState,
+        now,
+      });
       return this.#receipt(
         input.roomId,
         input.playerId,

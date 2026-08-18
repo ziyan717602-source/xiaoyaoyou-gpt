@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-seeded-setup-v1",
+  "scope": "M02-SETUP-AND-TEAMS",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "players": {
+    "count": 6,
+    "roomSeat": "stable-identity-never-reassigned",
+    "turnOrder": "seeded-fisher-yates-over-ascending-room-seat",
+    "teams": "turn-index-even-team-1-odd-team-2",
+    "teamSize": 3,
+    "firstPlayer": "turn-order-index-0"
+  },
+  "heroes": {
+    "catalogCount": 34,
+    "directlySelectableCount": 30,
+    "nonSelectableForms": [
+      "xyy.hero.xj103",
+      "xyy.hero.xj207",
+      "xyy.hero.xj304",
+      "xyy.hero.xj507"
+    ],
+    "offerPerPlayer": 3,
+    "seededReplacementPerPlayer": 1,
+    "replacementUses": 1,
+    "allocation": "24-unique-heroes-six-disjoint-private-offers"
+  },
+  "cards": {
+    "regularCatalogEntries": 24,
+    "physicalInstances": 56,
+    "initialHandPerPlayer": 3,
+    "dealOrder": "three-consecutive-top-cards-per-player-in-turn-order",
+    "remainingDrawPile": 38,
+    "specialCardsInRegularPile": false
+  },
+  "rng": {
+    "algorithm": "sha256-counter-v1",
+    "counterInput": "uint32-seed-byte-length-plus-uint64be-counter-plus-seed-bytes",
+    "boundedDraw": "uint32-rejection-sampling",
+    "shuffle": "fisher-yates",
+    "preparationOrder": [
+      "turn-order",
+      "hero-pool",
+      "regular-card-pile",
+      "six-replacement-indices"
+    ],
+    "seed": "server-random-256-bit-secret-in-snapshot",
+    "clientView": "sha256-commitment-only"
+  },
+  "commands": {
+    "types": ["choose-hero", "reroll-hero"],
+    "optimisticConcurrency": "expected-version",
+    "singleWriter": "one-match-actor",
+    "idempotency": "match-id-plus-command-id-plus-canonical-command-hash",
+    "acceptedMutation": "events-receipt-version-and-wait-point-snapshot-one-transaction"
+  },
+  "privacy": {
+    "duringSelectionPublic": ["selected-player-ids", "seed-commitment"],
+    "playerPrivate": ["own-offer", "own-selected-hero"],
+    "afterSelectionPublic": [
+      "turn-order",
+      "team",
+      "hero",
+      "stats",
+      "hand-count"
+    ],
+    "alwaysPrivate": ["other-hand-ids", "draw-pile-order", "rng-seed"]
+  },
+  "persistence": {
+    "roomStartAndInitialSnapshot": "same-sqlite-transaction",
+    "setupCommands": "append-only-events-plus-hash-chain",
+    "restart": "snapshot-plus-events-byte-semantic-equivalence"
+  },
+  "legacyEvidence": [
+    "PSDGamepkg/VW/Aywi.cs:145-260",
+    "PSDGamepkg/XI.cs:1339-1427",
+    "PSDBase/Card/Hero.cs:210-238",
+    "PSDGamepkg/XIR.cs:23-60"
+  ],
+  "acceptanceMap": {
+    "M02-01": "stable-seat-seeded-turn-order-and-three-v-three",
+    "M02-02": "scoped-thirty-of-thirty-four-direct-selection-pool",
+    "M02-03": "three-private-candidates-and-one-deterministic-reroll",
+    "M02-04": "fifty-six-physical-card-instances-and-three-card-hands",
+    "M02-05": "seeded-first-player-and-versioned-rng",
+    "M02-06": "private-setup-and-hand-projections",
+    "M02-07": "pure-events-and-json-round-trip-replay",
+    "M02-08": "atomic-room-start-and-match-snapshot",
+    "M02-09": "single-lane-idempotent-network-commands",
+    "M02-10": "six-real-connections-mid-setup-restart-and-completion"
+  }
+}

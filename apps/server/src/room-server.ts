@@ -10,6 +10,7 @@ import {
   SqliteRoomStore,
   type RoomMutationResult,
 } from "./room-store.js";
+import { MatchService } from "./match-service.js";
 
 interface RoomServerOptions {
   readonly databasePath: string;
@@ -19,6 +20,7 @@ interface RoomServerOptions {
 
 export interface RoomAppServer extends AppServer {
   readonly roomStore: SqliteRoomStore;
+  readonly matchService: MatchService;
 }
 
 interface Bucket {
@@ -77,20 +79,33 @@ export async function buildRoomServer(
   const roomStore = new SqliteRoomStore(options.databasePath);
   let closing = false;
   let server!: AppServer;
-  const publish = async (roomId: RoomId): Promise<void> => {
+  let matchService!: MatchService;
+  const publishRoom = async (roomId: RoomId): Promise<void> => {
     if (closing) return;
     await server.publishPlayerViews(roomId, (playerId) => {
       const room = roomStore.seatedView(roomId, playerId);
       return { version: room.version, view: room };
     });
   };
-  const schedulePublish = (roomId: RoomId): void => {
+  const publishMatch = async (matchId: RoomId): Promise<void> => {
+    if (closing) return;
+    await server.publishPlayerViews(matchId, (playerId) =>
+      matchService.view(matchId, playerId),
+    );
+  };
+  const publishCurrent = async (roomId: RoomId): Promise<void> => {
+    const room = roomStore.seatedView(roomId, roomStore.hostPlayerId(roomId));
+    if (room.status === "started") await publishMatch(roomId);
+    else await publishRoom(roomId);
+  };
+  const scheduleCurrentPublish = (roomId: RoomId): void => {
     queueMicrotask(() => {
-      void publish(roomId).catch((error: unknown) => {
+      void publishCurrent(roomId).catch((error: unknown) => {
         server.app.log.error({ err: error, roomId }, "room-publish-failed");
       });
     });
   };
+  matchService = new MatchService(options.databasePath, publishMatch);
 
   const buildOptions: BuildServerOptions = {
     ...(options.logger === undefined ? {} : { logger: options.logger }),
@@ -101,16 +116,19 @@ export async function buildRoomServer(
       roomStore.authenticate(roomId, playerId, token),
     currentPlayerView: ({ matchId, playerId }) => {
       const room = roomStore.seatedView(matchId, playerId);
-      return { version: room.version, view: room };
+      return room.status === "started"
+        ? matchService.view(matchId, playerId)
+        : { version: room.version, view: room };
     },
+    handleCommand: (_seat, envelope) => matchService.handleCommand(envelope),
     onAuthenticated: ({ matchId, playerId }, token) => {
       roomStore.markConnected(matchId, playerId, token);
-      schedulePublish(matchId);
+      scheduleCurrentPublish(matchId);
     },
     onDisconnected: ({ matchId, playerId }) => {
       if (closing) return;
       roomStore.markDisconnected(matchId, playerId);
-      schedulePublish(matchId);
+      scheduleCurrentPublish(matchId);
     },
   };
   server = await buildServer(buildOptions);
@@ -180,7 +198,7 @@ export async function buildRoomServer(
         request.body.inviteCode,
         request.body.nickname,
       );
-      await publish(session.room.roomId);
+      await publishRoom(session.room.roomId);
       reply.header("cache-control", "no-store").code(201);
       return session;
     },
@@ -252,7 +270,7 @@ export async function buildRoomServer(
         expectedVersion: request.body.expectedVersion,
         ready: request.body.ready,
       });
-      await publish(request.params.roomId);
+      await publishRoom(request.params.roomId);
       return result;
     },
   );
@@ -291,7 +309,7 @@ export async function buildRoomServer(
           action === "start"
             ? roomStore.startRoom(input)
             : roomStore.endRoom(input);
-        await publish(request.params.roomId);
+        await publishRoom(request.params.roomId);
         return result;
       },
     );
@@ -300,9 +318,11 @@ export async function buildRoomServer(
   return {
     ...server,
     roomStore,
+    matchService,
     closeGracefully: async () => {
       closing = true;
       await server.closeGracefully();
+      await matchService.close();
       roomStore.close();
     },
   };

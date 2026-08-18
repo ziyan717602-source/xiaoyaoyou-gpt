@@ -253,6 +253,48 @@ function parseReceipt(row: ReceiptRow): CommandReceipt {
   };
 }
 
+export function insertPersistedMatch<State>(
+  database: Database.Database,
+  input: CreatePersistedMatch<State>,
+  supportedPersistenceVersion = 1,
+): void {
+  if (input.persistenceVersion !== supportedPersistenceVersion) {
+    throw new Error(
+      `Unsupported match persistence version ${input.persistenceVersion}.`,
+    );
+  }
+  const stateJson = JSON.stringify(input.state);
+  const stateHash = hashText(stateJson);
+  database
+    .prepare(
+      `INSERT INTO matches
+       (match_id, version, last_event_sequence, ruleset_version, persistence_version, created_at, updated_at)
+       VALUES (?, 0, 0, ?, ?, ?, ?)`,
+    )
+    .run(
+      input.matchId,
+      input.rulesetVersion,
+      input.persistenceVersion,
+      input.now,
+      input.now,
+    );
+  database
+    .prepare(
+      `INSERT INTO snapshots
+      (match_id, match_version, event_sequence, persistence_version, ruleset_version, state_json, state_hash, event_hash, saved_at)
+       VALUES (?, 0, 0, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      input.matchId,
+      input.persistenceVersion,
+      input.rulesetVersion,
+      stateJson,
+      stateHash,
+      "0".repeat(64),
+      input.now,
+    );
+}
+
 export class SqliteEventStore {
   readonly #database: Database.Database;
   readonly #supportedPersistenceVersion: number;
@@ -267,42 +309,12 @@ export class SqliteEventStore {
   }
 
   createMatch<State>(input: CreatePersistedMatch<State>): void {
-    if (input.persistenceVersion !== this.#supportedPersistenceVersion) {
-      throw new Error(
-        `Unsupported match persistence version ${input.persistenceVersion}.`,
-      );
-    }
-    const stateJson = JSON.stringify(input.state);
-    const stateHash = hashText(stateJson);
     this.#database.transaction(() => {
-      this.#database
-        .prepare(
-          `INSERT INTO matches
-           (match_id, version, last_event_sequence, ruleset_version, persistence_version, created_at, updated_at)
-           VALUES (?, 0, 0, ?, ?, ?, ?)`,
-        )
-        .run(
-          input.matchId,
-          input.rulesetVersion,
-          input.persistenceVersion,
-          input.now,
-          input.now,
-        );
-      this.#database
-        .prepare(
-          `INSERT INTO snapshots
-          (match_id, match_version, event_sequence, persistence_version, ruleset_version, state_json, state_hash, event_hash, saved_at)
-           VALUES (?, 0, 0, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(
-          input.matchId,
-          input.persistenceVersion,
-          input.rulesetVersion,
-          stateJson,
-          stateHash,
-          "0".repeat(64),
-          input.now,
-        );
+      insertPersistedMatch(
+        this.#database,
+        input,
+        this.#supportedPersistenceVersion,
+      );
     })();
   }
 

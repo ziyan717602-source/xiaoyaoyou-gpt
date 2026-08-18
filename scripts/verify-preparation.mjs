@@ -48,10 +48,22 @@ for (const discrepancy of catalog.discrepancies) {
 const semantics = json("contracts/semantics.contract.json");
 const probes = json("contracts/technical-probes.contract.json");
 const architecture = json("contracts/architecture.contract.json");
-assert(
-  semantics.temporaryDecisions.length === 6,
-  "Semantic decisions drifted.",
+const semanticDecisionIds = semantics.temporaryDecisions.map(
+  (decision) => decision.id,
 );
+const expectedDecisionIds = semanticDecisionIds.map(
+  (_, index) => `SEM-${String(index + 1).padStart(3, "0")}`,
+);
+assert(
+  JSON.stringify(semanticDecisionIds) === JSON.stringify(expectedDecisionIds),
+  "Semantic decision IDs must be unique and contiguous.",
+);
+const semanticDecisionsDocument = read("docs/rules-semantics/decisions.md");
+for (const decisionId of semanticDecisionIds)
+  assert(
+    semanticDecisionsDocument.includes(`\`${decisionId}\``),
+    `Semantic decision ${decisionId} is absent from the decision log.`,
+  );
 assert(probes.probes.length === 3, "Three technical probes are required.");
 assert(
   Object.keys(architecture.acceptanceMap).length === 9,

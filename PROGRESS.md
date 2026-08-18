@@ -1,8 +1,8 @@
 # 当前目标检查点
 
 - 分支：`codex/goal-mvp`
-- 当前节点：`M02-SETUP-AND-TEAMS`
-- 最近验证完成：`M01-ROOM-LIFECYCLE`
+- 当前节点：`M03-TURN-CORE`
+- 最近验证完成：`M02-SETUP-AND-TEAMS`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -14,9 +14,10 @@
 - P08 架构证据：`contracts/architecture.contract.json`、`docs/architecture/`、`docs/adr/0004-production-runtime-stack.md`、`docs/verification/receipts/p08-production-architecture.md`
 - P10 准备证据：`docs/preparation-report.md`、`docs/verification/receipts/p10-go-no-go.md`、`pre-goal-20260819`
 - M01 房间证据：`contracts/room-lifecycle.contract.json`、`docs/room-lifecycle/m01-room-lifecycle.md`、`docs/verification/receipts/m01-room-lifecycle.md`
-- 当前工作：实现六人确定性选角、队伍、初始牌堆/手牌和先手初始化，并从 M01 的持久 `matchId` 衔接到规则引擎。
-- 下一 ready 节点：`M02-SETUP-AND-TEAMS`。
+- M02 开局证据：`contracts/setup.contract.json`、`docs/setup/m02-seeded-setup.md`、`docs/verification/receipts/m02-setup-and-teams.md`
+- 当前工作：实现正式回合/阶段、摸牌、出牌、目标、装备、弃牌与基本胜负的确定性核心，为复杂响应和濒死节点提供稳定动作管线。
+- 下一 ready 节点：`M03-TURN-CORE`。
 - 阻塞：无。
-- 临时规则决定：`SEM-001` 至 `SEM-006`，见 `docs/rules-semantics/decisions.md`。
+- 临时规则决定：`SEM-001` 至 `SEM-007`，见 `docs/rules-semantics/decisions.md`。
 
 详细历史只查 Git 提交和 `docs/verification/receipts/`；本文件完成节点后覆盖更新。

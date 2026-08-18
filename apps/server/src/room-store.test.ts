@@ -2,7 +2,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
+import { createPlayerView, type MatchState } from "@xiaoyaoyou/engine";
 import { afterEach, describe, expect, it } from "vitest";
+import { SqliteEventStore } from "./persistence.js";
 import { RoomError, SqliteRoomStore } from "./room-store.js";
 
 const temporaryRoots: string[] = [];
@@ -90,10 +92,22 @@ describe("M01 room lifecycle store", () => {
       token: sessions[0]!.reconnectToken,
       commandId: "start",
       expectedVersion: version,
+      seed: "room-store-m02-seed",
       now: 30,
     });
     expect(started.room.status).toBe("started");
     expect(started.room.matchId).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(started.room.matchId).toBe(started.room.roomId);
+    const matchStore = new SqliteEventStore(path);
+    const setupState = matchStore.recover<MatchState>(started.room.matchId!)
+      .snapshot.state;
+    expect(setupState.phase).toBe("setup");
+    expect(setupState.turnOrder).toHaveLength(6);
+    expect(setupState.setup?.seedCommitment).toMatch(/^[a-f0-9]{64}$/u);
+    expect(
+      JSON.stringify(createPlayerView(setupState, sessions[0]!.playerId)),
+    ).not.toContain("room-store-m02-seed");
+    matchStore.close();
     const duplicate = store.startRoom({
       roomId: sessions[0]!.room.roomId,
       playerId: sessions[0]!.playerId,

@@ -284,6 +284,11 @@
       "id": "SEM-006",
       "status": "provisional-autonomous",
       "decision": "Teammates do not see one another's hands; only explicitly declared team information is team-visible."
+    },
+    {
+      "id": "SEM-007",
+      "status": "provisional-autonomous",
+      "decision": "Room seats remain stable; seeded turn order alternates 3v3 teams and its first position starts."
     }
   ],
   "scenarios": [

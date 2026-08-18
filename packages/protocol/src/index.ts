@@ -43,6 +43,11 @@ export interface RoomSession {
 
 export type ClientCommand =
   | {
+      readonly type: "choose-hero";
+      readonly heroId: string;
+    }
+  | { readonly type: "reroll-hero" }
+  | {
       readonly type: "submit-choice";
       readonly choiceId: ChoiceId;
       readonly selections: readonly string[];
@@ -196,6 +201,21 @@ export const clientMessageSchema = {
             clientIssuedAt: { type: "integer", minimum: 0 },
             command: {
               oneOf: [
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "heroId"],
+                  properties: {
+                    type: { const: "choose-hero" },
+                    heroId: identifierSchema,
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type"],
+                  properties: { type: { const: "reroll-hero" } },
+                },
                 {
                   type: "object",
                   additionalProperties: false,

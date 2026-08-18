@@ -38,6 +38,8 @@ node scripts/bootstrap-local.mjs --smoke
 
 M01 无界面房间服务使用 `npm run dev:rooms` 启动，默认监听 `127.0.0.1:3001` 并写入 `.local/rooms.sqlite`。可通过 `PORT`、`HOST`、`DATABASE_PATH` 和逗号分隔的 `ALLOWED_ORIGINS` 覆盖；接口和状态语义见 [M01 房间生命周期](docs/room-lifecycle/m01-room-lifecycle.md)。它是后续 Web 客户端的真实房间 API，目前不代表完整牌局可玩。
 
+同一服务已接入 M02 的真实六人选角与确定性开局：全员准备开始后，客户端通过 WebSocket 的 `availableActions` 提交 `choose-hero` / `reroll-hero`，支持中途服务重启恢复。规则与证据见 [M02 确定性选角与开局](docs/setup/m02-seeded-setup.md)；正式回合和卡牌效果仍未完成。
+
 常用分层验证命令：`npm run check:fast`、`npm run check:full`、`npm run test:replay`、`npm run test:bots`、`npm run test:e2e`。
 
 ## 当前边界
