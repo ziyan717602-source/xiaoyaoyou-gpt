@@ -115,8 +115,8 @@
       "packages": ["standard"],
       "slice": "CS01D-EQUIPMENT-EFFECTS",
       "state": "partial",
-      "boundary": "armor slot equip and replacement only; unique card-zone effect pending",
-      "evidence": ["M03-TURN-CORE"],
+      "boundary": "equip/replacement and owner-only arbitrary hand-card conversion into the normal TP03 counter-chain are verified; disabled-equipment source waits for CS02",
+      "evidence": ["receipt:docs/verification/receipts/cs01d-fj02.md"],
       "dependencies": {
         "contentIds": ["xyy.card.tp03"],
         "primitives": [
@@ -419,7 +419,7 @@
       "packages": ["standard"],
       "slice": "CS01C-DEFENSE-AND-BUFFS",
       "state": "partial",
-      "boundary": "ordinary positive HP damage uses a serialized owner-only prevention gate, all matching batch items, Bingxin cancellation, timeout and restart; copy/locust modes pending CS01D/CS02",
+      "boundary": "ordinary positive HP damage plus FJ02 arbitrary-hand conversion use the serialized owner-only prevention and Bingxin chain; character-provided copy/locust modes wait for CS02",
       "evidence": ["receipt:docs/verification/receipts/cs01c-tp03.md"],
       "dependencies": {
         "contentIds": [],

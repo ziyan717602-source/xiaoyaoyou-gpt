@@ -60,6 +60,12 @@ export type ClientCommand =
       readonly targetEffectId: EffectId;
     }
   | {
+      readonly type: "play-converted-reaction-card";
+      readonly cardInstanceId: string;
+      readonly equipmentCardInstanceId: string;
+      readonly targetEffectId: EffectId;
+    }
+  | {
       readonly type: "activate-damage-equipment";
       readonly cardInstanceId: string;
       readonly targetEffectId: EffectId;
@@ -279,6 +285,22 @@ export const clientMessageSchema = {
                   properties: {
                     type: { const: "play-reaction-card" },
                     cardInstanceId: identifierSchema,
+                    targetEffectId: identifierSchema,
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: [
+                    "type",
+                    "cardInstanceId",
+                    "equipmentCardInstanceId",
+                    "targetEffectId",
+                  ],
+                  properties: {
+                    type: { const: "play-converted-reaction-card" },
+                    cardInstanceId: identifierSchema,
+                    equipmentCardInstanceId: identifierSchema,
                     targetEffectId: identifierSchema,
                   },
                 },

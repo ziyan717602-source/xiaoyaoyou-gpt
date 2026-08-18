@@ -176,6 +176,98 @@ describe("M05 damage/dying event replay", () => {
     });
   });
 
+  it("resumes an FJ02-converted TP03 child window and replays its payment", () => {
+    const setup = fixture();
+    const initialBase: MatchState = {
+      ...setup.state,
+      players: {
+        ...setup.state.players,
+        [setup.target]: {
+          ...setup.state.players[setup.target]!,
+          hand: ["xyy.card.jp01@1"],
+          equipment: { weapon: null, armor: "xyy.card.fj02@53" },
+        },
+      },
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.jp01@1" && card !== "xyy.card.fj02@53",
+      ),
+      discardPile: [],
+    };
+    const initial = beginDamageResponse(
+      initialBase,
+      "fj02-replay-effect",
+      setup.actor,
+      planDamageBatch(initialBase, [
+        {
+          itemId: "fj02-replay-damage",
+          sourcePlayerId: setup.actor,
+          targetPlayerId: setup.target,
+          amount: 2,
+          element: "thunder",
+        },
+      ]),
+      1_000,
+    );
+    const events: DomainEvent[] = [];
+    let uninterrupted = apply(
+      initial,
+      setup.target,
+      "fj02-replay-convert",
+      {
+        type: "play-converted-reaction-card",
+        cardInstanceId: "xyy.card.jp01@1",
+        equipmentCardInstanceId: "xyy.card.fj02@53",
+        targetEffectId: "fj02-replay-effect:damage-batch",
+      },
+      2_000,
+    );
+    events.push(...uninterrupted.events);
+    let resumed = {
+      ...uninterrupted,
+      state: JSON.parse(JSON.stringify(uninterrupted.state)) as MatchState,
+    };
+    let sequence = 0;
+    while (uninterrupted.state.reactionWindow !== null) {
+      const window = uninterrupted.state.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const command = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `fj02-replay-pass-${sequence}`;
+      const now = 3_000 + sequence;
+      const next = apply(
+        uninterrupted.state,
+        priority,
+        commandId,
+        command,
+        now,
+      );
+      const recovered = apply(resumed.state, priority, commandId, command, now);
+      expect(recovered).toEqual(next);
+      uninterrupted = next;
+      resumed = recovered;
+      events.push(...next.events);
+      sequence += 1;
+      if (sequence > 6) throw new Error("FJ02 child window did not close.");
+    }
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(resumed.state).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.players[setup.target]).toMatchObject({
+      hp: initialBase.players[setup.target]!.hp,
+      hand: [],
+      equipment: { armor: "xyy.card.fj02@53" },
+    });
+    expect(uninterrupted.state.discardPile).toContain("xyy.card.jp01@1");
+  });
+
   it("resumes FJ01 equipment rescue identically from a JSON checkpoint", () => {
     const setup = fixture();
     const claimed = new Set([

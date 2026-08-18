@@ -547,6 +547,203 @@ describe("M05 damage and dying core", () => {
     }
   });
 
+  it("lets FJ02 pay an arbitrary own hand card into the normal TP03 counter-chain", () => {
+    const initial = playing("fj02-hand-conversion");
+    const actor = initial.activePlayerId!;
+    const target = initial.turnOrder.find((playerId) => playerId !== actor)!;
+    const ordered = Object.values(initial.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const counter =
+      ordered[(ordered.findIndex((player) => player.id === target) + 1) % 6]!
+        .id;
+    const open = (seed: string, withCounter = false) => {
+      let state = arrange(
+        initial,
+        {
+          [target]: ["xyy.card.jp01@1"],
+          ...(withCounter ? { [counter]: ["xyy.card.tp01@33"] } : {}),
+        },
+        {
+          [target]: { weapon: null, armor: "xyy.card.fj02@53" },
+        },
+      );
+      const hpBefore = state.players[target]!.hp;
+      state = beginDamageResponse(
+        state,
+        `${seed}-effect`,
+        actor,
+        planDamageBatch(state, [
+          {
+            itemId: `${seed}-damage`,
+            sourcePlayerId: actor,
+            targetPlayerId: target,
+            amount: 2,
+            element: "thunder",
+          },
+        ]),
+        1_000,
+      );
+      return { state, hpBefore };
+    };
+
+    const successful = open("fj02-success");
+    const damageEffectId = successful.state.effectStack.at(-1)!.effectId;
+    expect(createPlayerView(successful.state, target).availableActions).toEqual(
+      [
+        {
+          type: "play-converted-reaction-card",
+          cardInstanceId: "xyy.card.jp01@1",
+          equipmentCardInstanceId: "xyy.card.fj02@53",
+          targetEffectId: damageEffectId,
+        },
+        {
+          type: "pass-reaction",
+          windowId: successful.state.reactionWindow!.windowId,
+        },
+      ],
+    );
+    expect(createPlayerView(successful.state, actor).availableActions).toEqual(
+      [],
+    );
+    for (const command of [
+      {
+        type: "play-converted-reaction-card" as const,
+        cardInstanceId: "xyy.card.tp01@33",
+        equipmentCardInstanceId: "xyy.card.fj02@53",
+        targetEffectId: damageEffectId,
+      },
+      {
+        type: "play-converted-reaction-card" as const,
+        cardInstanceId: "xyy.card.jp01@1",
+        equipmentCardInstanceId: "xyy.card.fj05@56",
+        targetEffectId: damageEffectId,
+      },
+      {
+        type: "play-converted-reaction-card" as const,
+        cardInstanceId: "xyy.card.jp01@1",
+        equipmentCardInstanceId: "xyy.card.fj02@53",
+        targetEffectId: "wrong-effect",
+      },
+    ]) {
+      expect(
+        applied(
+          successful.state,
+          target,
+          `fj02-reject-${command.cardInstanceId}-${command.targetEffectId}`,
+          command,
+          2_000,
+        ),
+      ).toEqual({
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: successful.state.version,
+      });
+    }
+    let resolved = accepted(
+      successful.state,
+      target,
+      "fj02-convert-success",
+      {
+        type: "play-converted-reaction-card",
+        cardInstanceId: "xyy.card.jp01@1",
+        equipmentCardInstanceId: "xyy.card.fj02@53",
+        targetEffectId: damageEffectId,
+      },
+      2_000,
+    );
+    expect(resolved.effectStack.at(-1)).toMatchObject({
+      kind: "card:xyy.card.tp03",
+      sourcePlayerId: target,
+      payload: {
+        cardInstanceId: "xyy.card.jp01@1",
+        equipmentCardInstanceId: "xyy.card.fj02@53",
+      },
+    });
+    expect(resolved.players[target]!.equipment.armor).toBe("xyy.card.fj02@53");
+    resolved = passAllReactions(resolved, 3_000);
+    expect(resolved.players[target]!.hp).toBe(successful.hpBefore);
+    expect(resolved.players[target]!.hand).toEqual([]);
+    expect(resolved.discardPile).toContain("xyy.card.jp01@1");
+
+    const cancelled = open("fj02-cancelled", true);
+    let countered = accepted(
+      cancelled.state,
+      target,
+      "fj02-convert-cancelled",
+      {
+        type: "play-converted-reaction-card",
+        cardInstanceId: "xyy.card.jp01@1",
+        equipmentCardInstanceId: "xyy.card.fj02@53",
+        targetEffectId: cancelled.state.effectStack.at(-1)!.effectId,
+      },
+      2_000,
+    );
+    countered = accepted(
+      countered,
+      counter,
+      "fj02-bingxin-counter",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: countered.effectStack.at(-1)!.effectId,
+      },
+      3_000,
+    );
+    countered = passAllReactions(countered, 4_000);
+    expect(countered.players[target]!.hp).toBe(cancelled.hpBefore - 2);
+    expect(countered.players[target]!.equipment.armor).toBe("xyy.card.fj02@53");
+
+    const timed = open("fj02-timeout");
+    const deadline = collectSystemDeadlines(timed.state).find((candidate) =>
+      candidate.targetId.startsWith("reaction:"),
+    )!;
+    const timeout = applyCommand(timed.state, {
+      origin: "system-timeout",
+      commandId: "fj02-default-pass",
+      matchId: timed.state.matchId,
+      expectedVersion: timed.state.version,
+      deadlineAt: deadline.deadlineAt,
+      targetId: deadline.targetId,
+    });
+    expect(timeout.accepted).toBe(true);
+    if (!timeout.accepted) throw new Error(timeout.reason);
+    expect(timeout.state.players[target]).toMatchObject({
+      hp: timed.hpBefore - 2,
+      hand: ["xyy.card.jp01@1"],
+      equipment: { armor: "xyy.card.fj02@53" },
+    });
+
+    let immune = arrange(
+      initial,
+      { [target]: ["xyy.card.jp01@1"] },
+      { [target]: { weapon: null, armor: "xyy.card.fj02@53" } },
+    );
+    const immuneHp = immune.players[target]!.hp;
+    immune = beginDamageResponse(
+      immune,
+      "fj02-tux-inavo",
+      actor,
+      planDamageBatch(immune, [
+        {
+          itemId: "fj02-tux-inavo-damage",
+          sourcePlayerId: actor,
+          targetPlayerId: target,
+          amount: 1,
+          element: "none",
+          hpEvoMask: ["tux-inavo"],
+        },
+      ]),
+      9_000,
+    );
+    expect(immune.reactionWindow).toBeNull();
+    expect(immune.players[target]).toMatchObject({
+      hp: immuneHp - 1,
+      hand: ["xyy.card.jp01@1"],
+      equipment: { armor: "xyy.card.fj02@53" },
+    });
+  });
+
   it("lets only the damaged owner use TP03, supports Bingxin cancellation, and excludes TUX_INAVO", () => {
     const initial = playing("tp03-damage-gate");
     const actor = initial.activePlayerId!;

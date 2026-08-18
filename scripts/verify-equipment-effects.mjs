@@ -153,10 +153,24 @@ for (const [source, token] of [
 ]) {
   assert(source.includes(token), `Missing FJ05 verification token ${token}.`);
 }
+assert(
+  protocol.includes('readonly type: "play-converted-reaction-card"'),
+  "Missing FJ02 conversion protocol command.",
+);
+for (const [source, token] of [
+  [view, 'type: "play-converted-reaction-card" as const'],
+  [reaction, 'event.type === "reaction.card-converted"'],
+  [dyingUnit, "fj02-convert-success"],
+  [dyingReplay, "resumes an FJ02-converted TP03 child window"],
+  [dyingNetwork, "network-fj02-convert"],
+]) {
+  assert(source.includes(token), `Missing FJ02 verification token ${token}.`);
+}
 for (const file of [
   "docs/content-standard/cs01d-equipment-effects.md",
   "docs/verification/receipts/cs01d-fj01.md",
   "docs/verification/receipts/cs01d-fj05.md",
+  "docs/verification/receipts/cs01d-fj02.md",
   "docs/verification/receipts/cs01d-fj03-fj04.md",
   "docs/verification/receipts/cs01d-wq02.md",
   "docs/verification/receipts/cs01d-wq04.md",
@@ -172,5 +186,5 @@ for (const command of [
 }
 
 console.log(
-  "Equipment contract passed: WQ02/WQ04/FJ01/FJ03/FJ04/FJ05 boundaries verified; ten items remain partial for linked effects.",
+  "Equipment contract passed: WQ02/WQ04/FJ01/FJ02/FJ03/FJ04/FJ05 boundaries verified; ten items remain partial for linked effects.",
 );

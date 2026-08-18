@@ -8,11 +8,8 @@
       "name": "隐蛊",
       "rule": "when the owner has positive normal HP damage in the current planned batch, pay this card to remove every non-TUX_INAVO damage item for that owner from that batch after this technique card's own Bingxin response resolves",
       "status": "partial",
-      "verifiedBoundary": "ordinary damage gate, all matching batch items, Bingxin cancellation, timeout, restart and six-socket privacy",
-      "linkedPending": [
-        "CS01D-EQUIPMENT-EFFECTS:FJ02-copy-mode",
-        "CS02-HERO-SKILLS:TP03-copy-and-locust-modes"
-      ]
+      "verifiedBoundary": "ordinary damage gate, all matching batch items, Bingxin cancellation, timeout, restart, six-socket privacy and FJ02 arbitrary-hand conversion",
+      "linkedPending": ["CS02-HERO-SKILLS:TP03-copy-and-locust-modes"]
     },
     "xyy.card.tp04": {
       "name": "洞冥宝镜",

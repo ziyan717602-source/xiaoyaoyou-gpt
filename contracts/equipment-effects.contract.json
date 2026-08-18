@@ -53,8 +53,8 @@
       "name": "天帝祭服",
       "rule": "while enabled, the owner may pay any own hand card as TP03 whenever TP03 is legal; the converted card uses the normal TP03 Bingxin chain",
       "status": "partial",
-      "verifiedBoundary": "armor equip and replacement",
-      "linkedPending": ["CS01D-EQUIPMENT-CONVERSION"]
+      "verifiedBoundary": "equip/replacement plus owner-only arbitrary hand-card payment into the normal TP03 child/counter chain, TUX_INAVO exclusion, timeout pass, replay and six-socket persistence",
+      "linkedPending": ["CS02-HERO-SKILLS:equipment-disabled-state"]
     },
     "xyy.card.fj03": {
       "name": "龙魂战铠",
@@ -119,6 +119,8 @@
     ],
     "damageMaskRepresentation": "canonical ordered arrays preserve combinable legacy flags in JSON events",
     "passiveDamageOrder": "equipment reduction or immunity is included in the deterministic damage plan before the TP03 response gate and HP mutation",
+    "fj02ConversionRepresentation": "the paid physical hand card and equipped FJ02 instance are recorded separately while the child effect kind is canonical card:xyy.card.tp03",
+    "fj02Timeout": "conversion is optional and the existing 15-second reaction timeout is a pass without payment",
     "battleGrowthCrossSlice": "do-not-apply-strength-or-hit-to-the-current-action-only-state-before-CS03"
   },
   "acceptanceMap": {

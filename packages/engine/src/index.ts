@@ -228,6 +228,12 @@ export type AvailableAction =
       readonly targetEffectId: EffectId;
     }
   | {
+      readonly type: "play-converted-reaction-card";
+      readonly cardInstanceId: CardInstanceId;
+      readonly equipmentCardInstanceId: CardInstanceId;
+      readonly targetEffectId: EffectId;
+    }
+  | {
       readonly type: "activate-damage-equipment";
       readonly cardInstanceId: CardInstanceId;
       readonly targetEffectId: EffectId;
@@ -700,8 +706,32 @@ function reactionActions(
           },
         ]
       : [];
+  const conversionActions =
+    targetEffect?.kind === "damage-batch" &&
+    armor !== null &&
+    cardDefinition(armor).id === "xyy.card.fj02" &&
+    damageItems.some(
+      (item) =>
+        item.targetPlayerId === viewerId &&
+        (item.amount ?? 0) > 0 &&
+        !item.hpEvoMask?.includes("tux-inavo"),
+    )
+      ? player.hand.flatMap((cardInstanceId) =>
+          cardDefinition(cardInstanceId).coreAction?.type === "prevent-damage"
+            ? []
+            : [
+                {
+                  type: "play-converted-reaction-card" as const,
+                  cardInstanceId,
+                  equipmentCardInstanceId: armor,
+                  targetEffectId: targetEffect.effectId,
+                },
+              ],
+        )
+      : [];
   return [
     ...equipmentActions,
+    ...conversionActions,
     ...reactions,
     { type: "pass-reaction", windowId: window.windowId },
   ];

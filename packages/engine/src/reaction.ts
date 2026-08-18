@@ -284,16 +284,24 @@ function fj05Preventable(
   );
 }
 
+function tp03Preventable(
+  item: Readonly<AppliedDamage>,
+  playerId: PlayerId,
+): boolean {
+  return (
+    item.targetPlayerId === playerId &&
+    item.amount > 0 &&
+    !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo")
+  );
+}
+
 function damageResponders(
   state: Readonly<MatchState>,
   items: readonly AppliedDamage[],
 ): readonly PlayerId[] {
   const targetIds = new Set(
     items
-      .filter(
-        (item) =>
-          item.amount > 0 && !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo"),
-      )
+      .filter((item) => tp03Preventable(item, item.targetPlayerId))
       .map((item) => item.targetPlayerId),
   );
   for (const player of Object.values(state.players)) {
@@ -512,11 +520,8 @@ export function reduceReactionEvent(
     const preventsCurrentDamage =
       action?.type === "prevent-damage" &&
       targetEffect?.kind === "damage-batch" &&
-      damageItemsForEffect(targetEffect).some(
-        (item) =>
-          item.targetPlayerId === playerId &&
-          item.amount > 0 &&
-          !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo"),
+      damageItemsForEffect(targetEffect).some((item) =>
+        tp03Preventable(item, playerId),
       );
     if (
       window === null ||
@@ -541,6 +546,79 @@ export function reduceReactionEvent(
       step: "awaiting-reactions",
       status: "waiting",
       payload: { cardInstanceId },
+    };
+    const intermediate: MatchState = {
+      ...state,
+      players: {
+        ...state.players,
+        [playerId]: {
+          ...player,
+          hand: player.hand.filter((card) => card !== cardInstanceId),
+        },
+      },
+      discardPile: [...state.discardPile, cardInstanceId],
+      effectStack: [
+        ...updateEffects(state, { [targetEffectId]: "pending" }),
+        effect,
+      ],
+    };
+    next = {
+      ...intermediate,
+      reactionWindow: makeWindow({
+        state: intermediate,
+        effect,
+        windowId,
+        parentWindow: window,
+        afterPlayerId: playerId,
+        openedAt,
+      }),
+    };
+  } else if (event.type === "reaction.card-converted") {
+    const playerId = stringPayload(event, "playerId");
+    const cardInstanceId = stringPayload(
+      event,
+      "cardInstanceId",
+    ) as CardInstanceId;
+    const equipmentCardInstanceId = stringPayload(
+      event,
+      "equipmentCardInstanceId",
+    ) as CardInstanceId;
+    const targetEffectId = stringPayload(event, "targetEffectId");
+    const effectId = stringPayload(event, "effectId");
+    const windowId = stringPayload(event, "windowId");
+    const openedAt = numberPayload(event, "openedAt");
+    const window = state.reactionWindow;
+    const player = state.players[playerId];
+    const targetEffect = effectById(state, targetEffectId);
+    const preventsCurrentDamage =
+      targetEffect?.kind === "damage-batch" &&
+      damageItemsForEffect(targetEffect).some((item) =>
+        tp03Preventable(item, playerId),
+      );
+    if (
+      window === null ||
+      window.status !== "open" ||
+      window.effectId !== targetEffectId ||
+      window.priorityOrder[window.priorityIndex] !== playerId ||
+      player === undefined ||
+      !player.hand.includes(cardInstanceId) ||
+      player.equipment.armor !== equipmentCardInstanceId ||
+      cardDefinition(equipmentCardInstanceId).id !== "xyy.card.fj02" ||
+      !preventsCurrentDamage ||
+      targetEffect?.status !== "waiting" ||
+      effectById(state, effectId) !== undefined
+    ) {
+      throw new Error("Converted reaction card event is not applicable.");
+    }
+    const effect: EffectFrame = {
+      effectId,
+      parentEffectId: targetEffectId,
+      kind: "card:xyy.card.tp03",
+      sourcePlayerId: playerId,
+      targetIds: [targetEffectId],
+      step: "awaiting-reactions",
+      status: "waiting",
+      payload: { cardInstanceId, equipmentCardInstanceId },
     };
     const intermediate: MatchState = {
       ...state,
@@ -954,10 +1032,8 @@ export function reduceReactionEvent(
         throw new Error("Resolved TP03 damage continuation is missing.");
       }
       const before = damageItemsForEffect(damageEffect);
-      const prevented = before.filter(
-        (item) =>
-          item.targetPlayerId === sourcePlayerId &&
-          !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo"),
+      const prevented = before.filter((item) =>
+        tp03Preventable(item, sourcePlayerId),
       );
       const preventedItemIds = stringsPayload(event, "preventedItemIds");
       if (
@@ -1267,11 +1343,7 @@ class EventBuilder {
           effectId,
           resolvedAt: this.serverReceivedAt,
           preventedItemIds: damageItemsForEffect(target)
-            .filter(
-              (item) =>
-                item.targetPlayerId === effect.sourcePlayerId &&
-                !hasHpEvolutionFlag(item.hpEvoMask, "tux-inavo"),
-            )
+            .filter((item) => tp03Preventable(item, effect.sourcePlayerId!))
             .map((item) => item.itemId),
         });
       } else if (effect.kind === "damage-batch") {
@@ -1592,6 +1664,44 @@ export function applyReactionCommand(
           element: "neutral",
         },
       ]),
+      openedAt: serverReceivedAt,
+    });
+    builder.resolveClosedWindows();
+  } else if (command.type === "play-converted-reaction-card") {
+    if (command.targetEffectId !== window.effectId) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    const cardInstanceId = command.cardInstanceId as CardInstanceId;
+    const equipmentCardInstanceId =
+      command.equipmentCardInstanceId as CardInstanceId;
+    const player = input.players[envelope.playerId]!;
+    const targetEffect = effectById(input, window.effectId);
+    if (
+      !player.hand.includes(cardInstanceId) ||
+      player.equipment.armor !== equipmentCardInstanceId ||
+      cardDefinition(equipmentCardInstanceId).id !== "xyy.card.fj02" ||
+      targetEffect?.kind !== "damage-batch" ||
+      !damageItemsForEffect(targetEffect).some((item) =>
+        tp03Preventable(item, envelope.playerId),
+      )
+    ) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    builder.append("reaction.card-converted", {
+      playerId: envelope.playerId,
+      cardInstanceId,
+      equipmentCardInstanceId,
+      targetEffectId: window.effectId,
+      effectId: `${input.matchId}:effect:${envelope.commandId}`,
+      windowId: `${input.matchId}:window:${envelope.commandId}`,
       openedAt: serverReceivedAt,
     });
     builder.resolveClosedWindows();
