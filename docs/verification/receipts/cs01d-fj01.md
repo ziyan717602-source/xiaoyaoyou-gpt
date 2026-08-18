@@ -18,6 +18,6 @@
 - 六 WebSocket + SQLite 场景从真实伤害/隐蛊 pass 进入濒死，由目标发动 FJ01，另外五个连接没有越权动作；随后同一房间继续完成胜负流程。
 - `npm run check:full`：unit 52/52、replay 18/18、bots 6/6、integration 7/7、Playwright 3/3、本地烟测 6 个客户端；构建、类型、格式、公开历史、协议闭合校验和 56 张行动牌守恒全部通过。
 - `npm audit --audit-level=low`：0 个已知漏洞；`git diff --check` 通过。
-- FJ01 战力和装备失效状态分别等待 CS03/CS02，不伪造占位状态。
+- 后续依赖复核确认当前范围没有防具失效生产者；FJ01 仅因战力等待 CS03，不伪造战斗占位状态。
 
 回滚点：提交 `feat(CS01D-4): add FJ01 zero-HP equipment rescue`。

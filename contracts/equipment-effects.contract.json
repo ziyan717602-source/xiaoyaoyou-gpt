@@ -16,7 +16,10 @@
       "rule": "while enabled, base battle strength plus one and each positive non-TERMIN_AT cure to the owner gains one HP",
       "status": "partial",
       "verifiedBoundary": "equip/replacement plus deterministic positive non-TERMIN_AT owner-cure increase across TP02 normal, TP02 rescue and JP03 team healing",
-      "linkedPending": ["CS03-BATTLE-DECKS:strength"]
+      "linkedPending": [
+        "CS03-BATTLE-DECKS:strength",
+        "CS03-BATTLE-DECKS:GL04-weapon-disabled-state"
+      ]
     },
     "xyy.card.wq03": {
       "name": "魔刀天叱",
@@ -30,7 +33,10 @@
       "rule": "while enabled hit plus one; during the owner's technique phase the physical card may be pawned from hand or weapon slot to draw two without a response window",
       "status": "partial",
       "verifiedBoundary": "equip/replacement plus hand-or-equipped pawn draw-two, replay, restart and six-socket isolation",
-      "linkedPending": ["CS03-BATTLE-DECKS:hit"]
+      "linkedPending": [
+        "CS03-BATTLE-DECKS:hit",
+        "CS03-BATTLE-DECKS:GL04-weapon-disabled-state"
+      ]
     },
     "xyy.card.wq05": {
       "name": "彩环",
@@ -44,44 +50,35 @@
       "rule": "while enabled base battle strength plus one; when the alive owner is at zero HP, the owner may discard this armor to revive and cure two, then dying detection resumes",
       "status": "partial",
       "verifiedBoundary": "equip/replacement plus owner-only zero-HP discard rescue, deterministic cure, dying-batch resume, replay and six-socket persistence",
-      "linkedPending": [
-        "CS02-HERO-SKILLS:equipment-disabled-state",
-        "CS03-BATTLE-DECKS:strength"
-      ]
+      "linkedPending": ["CS03-BATTLE-DECKS:strength"]
     },
     "xyy.card.fj02": {
       "name": "天帝祭服",
       "rule": "while enabled, the owner may pay any own hand card as TP03 whenever TP03 is legal; the converted card uses the normal TP03 Bingxin chain",
-      "status": "partial",
+      "status": "verified",
       "verifiedBoundary": "equip/replacement plus owner-only arbitrary hand-card payment into the normal TP03 child/counter chain, TUX_INAVO exclusion, timeout pass, replay and six-socket persistence",
-      "linkedPending": ["CS02-HERO-SKILLS:equipment-disabled-state"]
+      "linkedPending": []
     },
     "xyy.card.fj03": {
       "name": "龙魂战铠",
       "rule": "while enabled, reduce every positive owner damage item by one unless TERMIN_AT or DECR_INVAO, removing items reduced to zero",
-      "status": "partial",
+      "status": "verified",
       "verifiedBoundary": "equip/replacement plus per-item positive damage reduction, TERMIN_AT/DECR_INVAO bypass, zero-item removal, replay and six-socket persistence",
-      "linkedPending": ["CS02-HERO-SKILLS:equipment-disabled-state"]
+      "linkedPending": []
     },
     "xyy.card.fj04": {
       "name": "乾坤道袍",
       "rule": "while enabled base battle strength plus one and remove positive technique-card damage to the owner unless IMMUNE_INVAO",
       "status": "partial",
       "verifiedBoundary": "equip/replacement plus FROM_JP damage removal with IMMUNE_INVAO bypass, replay and six-socket persistence",
-      "linkedPending": [
-        "CS02-HERO-SKILLS:equipment-disabled-state",
-        "CS03-BATTLE-DECKS:strength"
-      ]
+      "linkedPending": ["CS03-BATTLE-DECKS:strength"]
     },
     "xyy.card.fj05": {
       "name": "踏云靴",
       "rule": "while enabled hit plus one; on owner damage the owner may discard this armor, remove every positive owner item unless DECR_INVAO or IMMUNE_INVAO (including TP03-immune damage), and cure one",
       "status": "partial",
       "verifiedBoundary": "equip/replacement plus owner-only damage-window discard, DECR_INVAO/IMMUNE_INVAO bypass, TUX_INAVO prevention, deterministic cure, replay and six-socket persistence",
-      "linkedPending": [
-        "CS02-HERO-SKILLS:equipment-disabled-state",
-        "CS03-BATTLE-DECKS:hit"
-      ]
+      "linkedPending": ["CS03-BATTLE-DECKS:hit"]
     }
   },
   "legacyEvidence": [
@@ -94,7 +91,10 @@
     "PSDGamepkg/JNS/JP06.cs:640-663 FJ03-damage-minus-one-mask-rules",
     "PSDGamepkg/JNS/JP06.cs:665-683 FJ04-technique-damage-immunity",
     "PSDGamepkg/JNS/JP06.cs:685-706 FJ05-discard-immunity-cure-one",
-    "PSDGamepkg/Artiad/ContentRule.cs:189-196 WQ04-pawn-price-two"
+    "PSDGamepkg/Artiad/ContentRule.cs:189-196 WQ04-pawn-price-two",
+    "PSDBase/Player.cs:81-165 reason-counted-card-and-equipment-disable-masks",
+    "PSDGamepkg/Artiad/Procedure.cs:297-374 generic-weapon-armor-trove-enable-disable",
+    "PSDGamepkg/JNS/FG04.cs:447-477 GL04-only-scoped-content-caller-disables-weapons-mask-0x1"
   ],
   "decisions": {
     "wq04PawnZones": "own-hand-or-own-weapon-slot",
@@ -102,7 +102,7 @@
     "equipmentVisibility": "weapon-and-armor-slots-are-public-but-actions-remain-owner-only",
     "healingPipeline": "all cure entry points create deterministic serializable cure items before HP mutation",
     "wq02ModifierScope": "each positive non-TERMIN_AT cure item targeting the enabled owner gains exactly one regardless of cure source",
-    "disabledEquipment": "all-growth-and-special-effects-must-check-the-corresponding-disabled-state-once-that-state-exists",
+    "disabledEquipment": "within standard-plus-fengmingyushi only GL04 calls the generic equipment-disable procedure and it disables weapon effects with mask 0x1; armor disable has no scoped content producer",
     "hpEvolutionMasks": [
       "TUX_INAVO",
       "IMMUNE_INVAO",
@@ -141,6 +141,7 @@
     "CS01D-15": "FJ02-hand-conversion-obeys-cost-window-and-mask-rules",
     "CS01D-16": "base-strength-and-hit-growth-waits-for-real-CS03-battle-state",
     "CS01D-17": "all-completed-equipment-modes-conserve-the-56-card-action-deck",
-    "CS01D-18": "full-fast-and-specialty-verification-pass"
+    "CS01D-18": "full-fast-and-specialty-verification-pass",
+    "CS01D-19": "disable-state-dependencies-are-bound-to-the-actual-GL04-CS03-source-and-standalone-FJ02-FJ03-are-verified"
   }
 }

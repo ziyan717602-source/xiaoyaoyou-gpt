@@ -20,6 +20,6 @@
 - 第一次完整回归让战斗 Bot 在 1000 回合内完成对局数降为 0：固定策略持续攻击最低 HP 的 FJ04 持有者。保留失败断言后，策略改为优先用 JP06 拆除对方乾坤道袍，并在仍有其他目标时不向免疫者浪费天雷破；完成对局、伤害牌、救援牌和死亡计数断言均未放宽。
 - 最终 `npm run check:full`：unit 51/51、replay 17/17、bots 6/6、integration 7/7、Playwright 3/3、本地烟测 6 个客户端；构建、类型、格式、公开历史和 56 张行动牌守恒全部通过。
 - `npm audit --audit-level=low`：0 个已知漏洞；`git diff --check` 通过。
-- FJ04 战力和两张卡的“装备失效”条件分别等待 CS03/CS02 的真实状态，不伪造布尔替代字段。
+- 后续依赖复核确认当前范围没有防具失效生产者：FJ03 转为 verified；FJ04 仅因战力等待 CS03 而保持 partial。
 
 回滚点：提交 `feat(CS01D-3): add masked FJ03 and FJ04 passives`。

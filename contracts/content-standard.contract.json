@@ -20,6 +20,20 @@
     "xyy.card.jp03": {
       "boundary": "primary living-team heal-one and alternate pawn draw-one modes are fully verified",
       "evidence": ["receipt:docs/verification/receipts/cs01b-jp03.md"]
+    },
+    "xyy.card.fj02": {
+      "boundary": "equip/replacement and owner-only arbitrary hand-card conversion into the normal TP03 counter-chain are fully verified",
+      "evidence": [
+        "receipt:docs/verification/receipts/cs01d-fj02.md",
+        "receipt:docs/verification/receipts/cs01d-dependency-audit.md"
+      ]
+    },
+    "xyy.card.fj03": {
+      "boundary": "equip/replacement and masked per-item damage minus-one are fully verified",
+      "evidence": [
+        "receipt:docs/verification/receipts/cs01d-fj03-fj04.md",
+        "receipt:docs/verification/receipts/cs01d-dependency-audit.md"
+      ]
     }
   },
   "baselinePartial": {
@@ -61,7 +75,7 @@
         "evidence": ["M03-TURN-CORE"]
       },
       "xyy.card.wq02": {
-        "boundary": "equip/replacement and positive non-TERMIN_AT owner-cure plus-one are verified across normal, rescue and team healing; strength waits for CS03 battle",
+        "boundary": "equip/replacement and positive non-TERMIN_AT owner-cure plus-one are verified; strength and GL04 weapon-disable integration wait for CS03 battle",
         "evidence": ["receipt:docs/verification/receipts/cs01d-wq02.md"]
       },
       "xyy.card.wq03": {
@@ -69,7 +83,7 @@
         "evidence": ["M03-TURN-CORE"]
       },
       "xyy.card.wq04": {
-        "boundary": "weapon equip/replacement and hand-or-equipped pawn draw-two are verified; hit growth waits for CS03 battle",
+        "boundary": "weapon equip/replacement and hand-or-equipped pawn draw-two are verified; hit growth and GL04 weapon-disable integration wait for CS03 battle",
         "evidence": ["receipt:docs/verification/receipts/cs01d-wq04.md"]
       },
       "xyy.card.wq05": {
@@ -77,23 +91,15 @@
         "evidence": ["M03-TURN-CORE"]
       },
       "xyy.card.fj01": {
-        "boundary": "equip/replacement and zero-HP owner discard-rescue are verified; strength waits for CS03 and disabled-equipment source for CS02",
+        "boundary": "equip/replacement and zero-HP owner discard-rescue are verified; strength waits for CS03",
         "evidence": ["receipt:docs/verification/receipts/cs01d-fj01.md"]
       },
-      "xyy.card.fj02": {
-        "boundary": "equip/replacement and owner-only arbitrary hand-card conversion into the normal TP03 counter-chain are verified; disabled-equipment source waits for CS02",
-        "evidence": ["receipt:docs/verification/receipts/cs01d-fj02.md"]
-      },
-      "xyy.card.fj03": {
-        "boundary": "equip/replacement and masked per-item damage minus-one are verified; disabled-equipment source waits for CS02",
-        "evidence": ["receipt:docs/verification/receipts/cs01d-fj03-fj04.md"]
-      },
       "xyy.card.fj04": {
-        "boundary": "equip/replacement and FROM_JP immunity with IMMUNE_INVAO bypass are verified; strength waits for CS03 and disabled-equipment source for CS02",
+        "boundary": "equip/replacement and FROM_JP immunity with IMMUNE_INVAO bypass are verified; strength waits for CS03",
         "evidence": ["receipt:docs/verification/receipts/cs01d-fj03-fj04.md"]
       },
       "xyy.card.fj05": {
-        "boundary": "equip/replacement and masked owner damage-window discard-immunity plus cure are verified; hit waits for CS03 and disabled-equipment source for CS02",
+        "boundary": "equip/replacement and masked owner damage-window discard-immunity plus cure are verified; hit waits for CS03",
         "evidence": ["receipt:docs/verification/receipts/cs01d-fj05.md"]
       }
     }

@@ -5,8 +5,8 @@
 - 标准包：177
 - 共享核心前置：28
 - 总跟踪：205
-- 当前 partial：43
-- 当前 verified：1
+- 当前 partial：41
+- 当前 verified：3
 - 当前 deferred：0
 - 当前 unstarted：161
 
@@ -28,19 +28,19 @@
 
 ## 已验证条目
 
-| ID              | 名称     | 完成边界                                                                          | 证据                                             |
-| --------------- | -------- | --------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `xyy.card.jp03` | 五气朝元 | primary living-team heal-one and alternate pawn draw-one modes are fully verified | receipt:docs/verification/receipts/cs01b-jp03.md |
+| ID              | 名称     | 完成边界                                                                                                              | 证据                                                                                                                |
+| --------------- | -------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `xyy.card.fj02` | 天帝祭服 | equip/replacement and owner-only arbitrary hand-card conversion into the normal TP03 counter-chain are fully verified | receipt:docs/verification/receipts/cs01d-fj02.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md      |
+| `xyy.card.fj03` | 龙魂战铠 | equip/replacement and masked per-item damage minus-one are fully verified                                             | receipt:docs/verification/receipts/cs01d-fj03-fj04.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md |
+| `xyy.card.jp03` | 五气朝元 | primary living-team heal-one and alternate pawn draw-one modes are fully verified                                     | receipt:docs/verification/receipts/cs01b-jp03.md                                                                    |
 
 ## 已有局部实现（不得误报为完成）
 
 | ID               | 名称        | 已实现边界                                                                                                                                                                     | 证据                                                  |
 | ---------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `xyy.card.fj01`  | 五彩霞衣    | equip/replacement and zero-HP owner discard-rescue are verified; strength waits for CS03 and disabled-equipment source for CS02                                                | receipt:docs/verification/receipts/cs01d-fj01.md      |
-| `xyy.card.fj02`  | 天帝祭服    | equip/replacement and owner-only arbitrary hand-card conversion into the normal TP03 counter-chain are verified; disabled-equipment source waits for CS02                      | receipt:docs/verification/receipts/cs01d-fj02.md      |
-| `xyy.card.fj03`  | 龙魂战铠    | equip/replacement and masked per-item damage minus-one are verified; disabled-equipment source waits for CS02                                                                  | receipt:docs/verification/receipts/cs01d-fj03-fj04.md |
-| `xyy.card.fj04`  | 乾坤道袍    | equip/replacement and FROM_JP immunity with IMMUNE_INVAO bypass are verified; strength waits for CS03 and disabled-equipment source for CS02                                   | receipt:docs/verification/receipts/cs01d-fj03-fj04.md |
-| `xyy.card.fj05`  | 踏云靴      | equip/replacement and masked owner damage-window discard-immunity plus cure are verified; hit waits for CS03 and disabled-equipment source for CS02                            | receipt:docs/verification/receipts/cs01d-fj05.md      |
+| `xyy.card.fj01`  | 五彩霞衣    | equip/replacement and zero-HP owner discard-rescue are verified; strength waits for CS03                                                                                       | receipt:docs/verification/receipts/cs01d-fj01.md      |
+| `xyy.card.fj04`  | 乾坤道袍    | equip/replacement and FROM_JP immunity with IMMUNE_INVAO bypass are verified; strength waits for CS03                                                                          | receipt:docs/verification/receipts/cs01d-fj03-fj04.md |
+| `xyy.card.fj05`  | 踏云靴      | equip/replacement and masked owner damage-window discard-immunity plus cure are verified; hit waits for CS03                                                                   | receipt:docs/verification/receipts/cs01d-fj05.md      |
 | `xyy.card.jp01`  | 偷盗        | ordinary-hand target selection, opaque slot choice, cancellable authoritative transfer, restart and deterministic timeout; protected-card exclusion pending CS02               | CS01B-JP01-HIDDEN-TRANSFER                            |
 | `xyy.card.jp04`  | 鼠儿果      | draw-two action and cancellable effect path; full legacy audit pending                                                                                                         | M03-TURN-CORE, M04-REACTION-CORE                      |
 | `xyy.card.jp05`  | 天雷破      | targeted thunder damage-two, cancellation, dying and victory path; full catalog verification pending                                                                           | M04-REACTION-CORE, M05-DAMAGE-DYING                   |
@@ -49,9 +49,9 @@
 | `xyy.card.tp02`  | 灵葫仙丹    | normal cancellable self-heal-two and dying rescue-two are implemented; linked cleanse/locust interaction pending                                                               | M05-DAMAGE-DYING, CS01A-CORE-CARD-AUDIT               |
 | `xyy.card.tp03`  | 隐蛊        | ordinary positive HP damage plus FJ02 arbitrary-hand conversion use the serialized owner-only prevention and Bingxin chain; character-provided copy/locust modes wait for CS02 | receipt:docs/verification/receipts/cs01c-tp03.md      |
 | `xyy.card.wq01`  | 无尘剑      | weapon slot equip and replacement only; unique modifier pending                                                                                                                | M03-TURN-CORE                                         |
-| `xyy.card.wq02`  | 天蛇杖      | equip/replacement and positive non-TERMIN_AT owner-cure plus-one are verified across normal, rescue and team healing; strength waits for CS03 battle                           | receipt:docs/verification/receipts/cs01d-wq02.md      |
+| `xyy.card.wq02`  | 天蛇杖      | equip/replacement and positive non-TERMIN_AT owner-cure plus-one are verified; strength and GL04 weapon-disable integration wait for CS03 battle                               | receipt:docs/verification/receipts/cs01d-wq02.md      |
 | `xyy.card.wq03`  | 魔刀天叱    | weapon slot equip and replacement only; unique modifier pending                                                                                                                | M03-TURN-CORE                                         |
-| `xyy.card.wq04`  | 魔剑        | weapon equip/replacement and hand-or-equipped pawn draw-two are verified; hit growth waits for CS03 battle                                                                     | receipt:docs/verification/receipts/cs01d-wq04.md      |
+| `xyy.card.wq04`  | 魔剑        | weapon equip/replacement and hand-or-equipped pawn draw-two are verified; hit growth and GL04 weapon-disable integration wait for CS03 battle                                  | receipt:docs/verification/receipts/cs01d-wq04.md      |
 | `xyy.card.wq05`  | 彩环        | weapon slot equip and replacement only; unique modifier pending                                                                                                                | M03-TURN-CORE                                         |
 | `xyy.hero.x3w01` | 南宫煌      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                   |
 | `xyy.hero.x3w02` | 温慧        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                   |

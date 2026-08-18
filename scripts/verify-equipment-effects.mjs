@@ -38,14 +38,16 @@ assert(
   "Expected ten CS01D equipment cards.",
 );
 assert(
-  Object.keys(contract.acceptanceMap).length === 18,
-  "Expected 18 CS01D acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 19,
+  "Expected 19 CS01D acceptance items.",
 );
 for (const id of Object.keys(contract.items)) {
   const item = plan.items.find((candidate) => candidate.id === id);
   assert(item !== undefined, `Missing planned item ${id}.`);
   assert(item.slice === "CS01D-EQUIPMENT-EFFECTS", `Wrong slice for ${id}.`);
-  assert(item.state === "partial", `${id} must remain partial.`);
+  const expectedState =
+    id === "xyy.card.fj02" || id === "xyy.card.fj03" ? "verified" : "partial";
+  assert(item.state === expectedState, `${id} must be ${expectedState}.`);
 }
 for (const token of [
   '{ readonly type: "pawn-draw-two" }',
@@ -171,6 +173,7 @@ for (const file of [
   "docs/verification/receipts/cs01d-fj01.md",
   "docs/verification/receipts/cs01d-fj05.md",
   "docs/verification/receipts/cs01d-fj02.md",
+  "docs/verification/receipts/cs01d-dependency-audit.md",
   "docs/verification/receipts/cs01d-fj03-fj04.md",
   "docs/verification/receipts/cs01d-wq02.md",
   "docs/verification/receipts/cs01d-wq04.md",
@@ -186,5 +189,5 @@ for (const command of [
 }
 
 console.log(
-  "Equipment contract passed: WQ02/WQ04/FJ01/FJ02/FJ03/FJ04/FJ05 boundaries verified; ten items remain partial for linked effects.",
+  "Equipment contract passed: FJ02/FJ03 verified; eight items remain partial for GL04/battle-linked effects.",
 );
