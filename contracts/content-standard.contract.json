@@ -77,8 +77,8 @@
         "evidence": ["M03-TURN-CORE"]
       },
       "xyy.card.fj01": {
-        "boundary": "armor slot equip and replacement only; unique healing modifier pending",
-        "evidence": ["M03-TURN-CORE"]
+        "boundary": "equip/replacement and zero-HP owner discard-rescue are verified; strength waits for CS03 and disabled-equipment source for CS02",
+        "evidence": ["receipt:docs/verification/receipts/cs01d-fj01.md"]
       },
       "xyy.card.fj02": {
         "boundary": "armor slot equip and replacement only; unique card-zone effect pending",

@@ -427,6 +427,64 @@ export function reduceDyingEvent(
       pendingChoice: null,
     };
     next = advanceBatch(intermediate, intermediate.dyingBatch!, rescuedAt);
+  } else if (event.type === "rescue.equipment-activated") {
+    const playerId = stringPayload(event, "playerId");
+    const targetPlayerId = stringPayload(event, "targetPlayerId");
+    const cardInstanceId = stringPayload(
+      event,
+      "cardInstanceId",
+    ) as CardInstanceId;
+    const rescuedAt = numberPayload(event, "rescuedAt");
+    const player = state.players[playerId];
+    if (
+      batch.status !== "awaiting-rescue" ||
+      state.pendingChoice?.status !== "open" ||
+      batch.priorityOrder[batch.priorityIndex] !== playerId ||
+      targetPlayerId !== playerId ||
+      targetPlayerId !== batch.currentTargetPlayerId ||
+      player === undefined ||
+      !player.alive ||
+      player.hp !== 0 ||
+      player.equipment.armor !== cardInstanceId ||
+      cardDefinition(cardInstanceId).id !== "xyy.card.fj01"
+    ) {
+      throw new Error("Rescue equipment event is not applicable.");
+    }
+    const expectedCures = planCureBatch(state, [
+      {
+        itemId: `${event.eventId}:cure:0`,
+        sourcePlayerId: playerId,
+        targetPlayerId,
+        amount: 2,
+        element: "neutral",
+      },
+    ]);
+    if (
+      JSON.stringify(event.payload.healingItems) !==
+      JSON.stringify(expectedCures)
+    ) {
+      throw new Error(
+        "Rescue equipment healing disagrees with deterministic plan.",
+      );
+    }
+    const curedPlayers = playersAfterCures(state, expectedCures);
+    const intermediate: MatchState = {
+      ...state,
+      players: {
+        ...curedPlayers,
+        [playerId]: {
+          ...curedPlayers[playerId]!,
+          equipment: { ...player.equipment, armor: null },
+        },
+      },
+      discardPile: [...state.discardPile, cardInstanceId],
+      dyingBatch: {
+        ...batch,
+        rescuedPlayerIds: [...batch.rescuedPlayerIds, targetPlayerId],
+      },
+      pendingChoice: null,
+    };
+    next = advanceBatch(intermediate, intermediate.dyingBatch!, rescuedAt);
   } else if (event.type === "death.player-died") {
     const playerId = stringPayload(event, "playerId");
     const player = state.players[playerId];
@@ -618,6 +676,37 @@ export function applyDyingCommand(
       passedAt: serverReceivedAt,
     });
     builder.resolveClosedRescue();
+  } else if (command.type === "activate-rescue-equipment") {
+    const cardInstanceId = command.cardInstanceId as CardInstanceId;
+    const player = input.players[envelope.playerId]!;
+    if (
+      command.targetPlayerId !== envelope.playerId ||
+      command.targetPlayerId !== batch.currentTargetPlayerId ||
+      player.equipment.armor !== cardInstanceId ||
+      cardDefinition(cardInstanceId).id !== "xyy.card.fj01"
+    ) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    const nextEventId = `${input.matchId}:event:${input.eventSequence + 1}`;
+    builder.append("rescue.equipment-activated", {
+      playerId: envelope.playerId,
+      targetPlayerId: command.targetPlayerId,
+      cardInstanceId,
+      rescuedAt: serverReceivedAt,
+      healingItems: planCureBatch(input, [
+        {
+          itemId: `${nextEventId}:cure:0`,
+          sourcePlayerId: envelope.playerId,
+          targetPlayerId: command.targetPlayerId,
+          amount: 2,
+          element: "neutral",
+        },
+      ]),
+    });
   } else if (command.type === "play-rescue-card") {
     if (command.targetPlayerId !== batch.currentTargetPlayerId) {
       return {

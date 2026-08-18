@@ -104,6 +104,99 @@ function fixture(): {
 }
 
 describe("M05 damage/dying event replay", () => {
+  it("resumes FJ01 equipment rescue identically from a JSON checkpoint", () => {
+    const setup = fixture();
+    const claimed = new Set([
+      "xyy.card.jp05@10",
+      "xyy.card.wq02@48",
+      "xyy.card.fj01@52",
+    ]);
+    const initial: MatchState = {
+      ...setup.state,
+      players: Object.fromEntries(
+        Object.values(setup.state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hp: player.id === setup.target ? 2 : player.hp,
+            hand: player.id === setup.actor ? ["xyy.card.jp05@10"] : [],
+            equipment:
+              player.id === setup.target
+                ? {
+                    weapon: "xyy.card.wq02@48",
+                    armor: "xyy.card.fj01@52",
+                  }
+                : { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+    const events: DomainEvent[] = [];
+    let result = apply(
+      initial,
+      setup.actor,
+      "fj01-replay-jp05",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [setup.target],
+      },
+      1_000,
+    );
+    events.push(...result.events);
+    let sequence = 0;
+    while (result.state.reactionWindow !== null) {
+      const window = result.state.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      result = apply(
+        result.state,
+        priority,
+        `fj01-replay-pass-${sequence}`,
+        { type: "pass-reaction", windowId: window.windowId },
+        2_000 + sequence,
+      );
+      events.push(...result.events);
+      sequence += 1;
+    }
+    const checkpoint = result.state;
+    const restarted = JSON.parse(JSON.stringify(checkpoint)) as MatchState;
+    const activation = {
+      type: "activate-rescue-equipment" as const,
+      cardInstanceId: "xyy.card.fj01@52",
+      targetPlayerId: setup.target,
+    };
+    const uninterrupted = apply(
+      checkpoint,
+      setup.target,
+      "fj01-replay-activate",
+      activation,
+      3_000,
+    );
+    const resumed = apply(
+      restarted,
+      setup.target,
+      "fj01-replay-activate",
+      activation,
+      3_000,
+    );
+    expect(resumed).toEqual(uninterrupted);
+    events.push(...uninterrupted.events);
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.players[setup.target]).toMatchObject({
+      hp: 3,
+      equipment: { weapon: "xyy.card.wq02@48", armor: null },
+    });
+  });
+
   it("resumes TP03 prevention identically from the serialized damage window", () => {
     const setup = fixture();
     const claimed = new Set(["xyy.card.jp05@10", "xyy.card.tp03@39"]);

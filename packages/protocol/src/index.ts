@@ -65,6 +65,11 @@ export type ClientCommand =
       readonly targetPlayerId: PlayerId;
     }
   | {
+      readonly type: "activate-rescue-equipment";
+      readonly cardInstanceId: string;
+      readonly targetPlayerId: PlayerId;
+    }
+  | {
       readonly type: "pass-rescue";
       readonly choiceId: ChoiceId;
     }
@@ -278,6 +283,16 @@ export const clientMessageSchema = {
                   required: ["type", "cardInstanceId", "targetPlayerId"],
                   properties: {
                     type: { const: "play-rescue-card" },
+                    cardInstanceId: identifierSchema,
+                    targetPlayerId: identifierSchema,
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "cardInstanceId", "targetPlayerId"],
+                  properties: {
+                    type: { const: "activate-rescue-equipment" },
                     cardInstanceId: identifierSchema,
                     targetPlayerId: identifierSchema,
                   },

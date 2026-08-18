@@ -393,6 +393,68 @@ describe("M05 damage and dying core", () => {
     );
   });
 
+  it("lets the zero-HP owner discard FJ01 to cure and resume the dying batch", () => {
+    let state = playing("fj01-self-rescue");
+    const actor = state.activePlayerId!;
+    const target = state.turnOrder.find((playerId) => playerId !== actor)!;
+    state = arrange(
+      state,
+      { [actor]: ["xyy.card.jp05@10"] },
+      {
+        [target]: {
+          weapon: "xyy.card.wq02@48",
+          armor: "xyy.card.fj01@52",
+        },
+      },
+    );
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [target]: { ...state.players[target]!, hp: 2 },
+      },
+    };
+    state = accepted(
+      state,
+      actor,
+      "fj01-play-jp05",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [target],
+      },
+      1_000,
+    );
+    state = passAllReactions(state, 2_000);
+    expect(state.players[target]!.hp).toBe(0);
+    expect(createPlayerView(state, target).availableActions[0]).toEqual({
+      type: "activate-rescue-equipment",
+      cardInstanceId: "xyy.card.fj01@52",
+      targetPlayerId: target,
+    });
+    state = accepted(
+      state,
+      target,
+      "fj01-activate",
+      {
+        type: "activate-rescue-equipment",
+        cardInstanceId: "xyy.card.fj01@52",
+        targetPlayerId: target,
+      },
+      3_000,
+    );
+    expect(state.players[target]).toMatchObject({
+      alive: true,
+      hp: 3,
+      equipment: { weapon: "xyy.card.wq02@48", armor: null },
+    });
+    expect(state.discardPile).toEqual(
+      expect.arrayContaining(["xyy.card.jp05@10", "xyy.card.fj01@52"]),
+    );
+    expect(state.dyingBatch).toBeNull();
+    expect(state.pendingChoice).toBeNull();
+  });
+
   it("lets only the damaged owner use TP03, supports Bingxin cancellation, and excludes TUX_INAVO", () => {
     const initial = playing("tp03-damage-gate");
     const actor = initial.activePlayerId!;

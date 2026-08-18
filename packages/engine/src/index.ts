@@ -233,6 +233,11 @@ export type AvailableAction =
       readonly cardInstanceId: CardInstanceId;
       readonly targetPlayerId: PlayerId;
     }
+  | {
+      readonly type: "activate-rescue-equipment";
+      readonly cardInstanceId: CardInstanceId;
+      readonly targetPlayerId: PlayerId;
+    }
   | { readonly type: "pass-rescue"; readonly choiceId: ChoiceId }
   | {
       readonly type: "submit-choice";
@@ -696,7 +701,24 @@ function rescueActions(
         ]
       : [],
   );
-  return [...rescueCards, { type: "pass-rescue", choiceId: choice.choiceId }];
+  const armor = player.equipment.armor;
+  const rescueEquipment =
+    viewerId === batch.currentTargetPlayerId &&
+    armor !== null &&
+    cardDefinition(armor).id === "xyy.card.fj01"
+      ? [
+          {
+            type: "activate-rescue-equipment" as const,
+            cardInstanceId: armor,
+            targetPlayerId: viewerId,
+          },
+        ]
+      : [];
+  return [
+    ...rescueEquipment,
+    ...rescueCards,
+    { type: "pass-rescue", choiceId: choice.choiceId },
+  ];
 }
 
 function turnActions(

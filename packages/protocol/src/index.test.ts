@@ -62,6 +62,11 @@ describe("protocol runtime schema", () => {
         cardInstanceId: "xyy.card.tp02@36",
         targetPlayerId: "player-2",
       },
+      {
+        type: "activate-rescue-equipment",
+        cardInstanceId: "xyy.card.fj01@52",
+        targetPlayerId: "player-1",
+      },
       { type: "pass-rescue", choiceId: "choice-1" },
       {
         type: "discard-cards",
