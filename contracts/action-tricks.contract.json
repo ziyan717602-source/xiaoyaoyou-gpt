@@ -7,7 +7,9 @@
     "xyy.card.jp01": {
       "name": "偷盗",
       "rule": "choose another living target with at least one unprotected hand card, privately choose one opaque hand slot, then transfer that exact card to the source owner after the response resolves",
-      "status": "pending-hidden-hand-choice-and-transfer"
+      "status": "partial",
+      "verifiedBoundary": "ordinary hands use private opaque slots, cancellable transfer, restart recovery and deterministic timeout",
+      "linkedPending": ["CS02-HERO-SKILLS:protected-card-exclusion"]
     },
     "xyy.card.jp02": {
       "name": "窥测天机",
@@ -41,7 +43,8 @@
     "jp03TeamTarget": "all-living-same-team-players-in-seat-order",
     "jp03Pawn": "explicit-mode-pawn-no-response-discard-one-draw-one",
     "jp06SelfTarget": "allowed-when-self-has-an-unprotected-hand-or-equipment-card",
-    "hiddenOpponentHand": "server-owned-opaque-slot-identities-never-card-instance-ids"
+    "hiddenOpponentHand": "server-owned-opaque-slot-identities-never-card-instance-ids",
+    "jp01ItemCompletion": "remain-partial-until-protected-card-producers-and-exclusion-are-implemented"
   },
   "acceptanceMap": {
     "CS01B-01": "four-action-trick-rules-and-cross-slice-dependencies-are-frozen-from-read-only-CSharp-evidence",

@@ -32,15 +32,30 @@ for (const id of Object.keys(contract.items)) {
   const item = plan.items.find((candidate) => candidate.id === id);
   assert(item !== undefined, `Missing planned item ${id}.`);
   assert(item.slice === "CS01B-ACTION-TRICKS", `Wrong slice for ${id}.`);
-  const expected = id === "xyy.card.jp03" ? "verified" : "unstarted";
+  const expected =
+    id === "xyy.card.jp03"
+      ? "verified"
+      : id === "xyy.card.jp01"
+        ? "partial"
+        : "unstarted";
   assert(item.state === expected, `${id} must be ${expected}.`);
 }
 for (const token of [
+  'type: "steal-one"',
   'type: "heal-team-one"',
   'type: "pawn-draw-one"',
   'id: "xyy.card.jp03"',
 ]) {
   assert(setup.includes(token), `Missing JP03 content token ${token}.`);
+}
+for (const token of [
+  'effect.kind === "card:xyy.card.jp01"',
+  '"effect.choice-opened"',
+  '"effect.choice-resolved"',
+  "opaque-hand-slot-",
+  "applyPendingChoiceTimeout",
+]) {
+  assert(reaction.includes(token), `Missing JP01 choice boundary ${token}.`);
 }
 for (const token of [
   'command.mode === "pawn"',
@@ -60,14 +75,30 @@ assert(
   view.includes('definition.coreAction?.type === "heal-team-one"'),
   "Player view must offer the JP03 primary mode.",
 );
-for (const token of ["jp03-wrong-team", "jp03-bingxin", "jp03-pawn"]) {
+for (const token of [
+  "jp01-self-target",
+  "jp01-bingxin",
+  "jp01-choice-timeout",
+  "jp03-wrong-team",
+  "jp03-bingxin",
+  "jp03-pawn",
+]) {
   assert(unitTest.includes(token), `Missing JP03 unit scenario ${token}.`);
 }
+assert(
+  replayTest.includes("resumes the opaque JP01 hand choice identically"),
+  "Missing JP01 JSON restart scenario.",
+);
 assert(
   replayTest.includes("replays JP03 team healing identically"),
   "Missing JP03 JSON restart scenario.",
 );
-for (const token of ["network-jp03-team-heal", "network-jp03-pawn"]) {
+for (const token of [
+  "network-jp01-play",
+  "network-jp01-select",
+  "network-jp03-team-heal",
+  "network-jp03-pawn",
+]) {
   assert(
     networkTest.includes(token),
     `Missing JP03 network scenario ${token}.`,
@@ -75,11 +106,12 @@ for (const token of ["network-jp03-team-heal", "network-jp03-pawn"]) {
 }
 for (const file of [
   "docs/content-standard/cs01b-action-tricks.md",
+  "docs/verification/receipts/cs01b-jp01.md",
   "docs/verification/receipts/cs01b-jp03.md",
 ]) {
   assert(existsSync(resolve(root, file)), `Missing CS01B evidence ${file}.`);
 }
 
 console.log(
-  `Action-trick contract passed: JP03 verified, ${Object.keys(contract.items).length - 1} items pending.`,
+  "Action-trick contract passed: JP03 verified, JP01 partial, 2 items pending.",
 );

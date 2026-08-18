@@ -21,7 +21,12 @@ import {
 } from "./index.js";
 import { seedCommitment, nextInt, shuffle } from "./random.js";
 import { applyDyingCommand, reduceDyingEvent } from "./damage-dying.js";
-import { applyReactionCommand, reduceReactionEvent } from "./reaction.js";
+import {
+  applyPendingChoiceCommand,
+  applyPendingChoiceTimeout,
+  applyReactionCommand,
+  reduceReactionEvent,
+} from "./reaction.js";
 import {
   SELECTABLE_HEROES,
   SETUP_CARD_INSTANCES,
@@ -358,6 +363,9 @@ export function applyCommand(
     if (input.dyingBatch !== null) {
       return applyDyingCommand(input, envelope, serverReceivedAt);
     }
+    if (input.pendingChoice !== null) {
+      return applyPendingChoiceCommand(input, envelope, serverReceivedAt);
+    }
     return input.reactionWindow === null
       ? applyTurnCommand(input, envelope, serverReceivedAt)
       : applyReactionCommand(input, envelope, serverReceivedAt);
@@ -584,6 +592,9 @@ function resolveTimeout(
       ),
       command.deadlineAt,
     );
+  }
+  if (deadline.targetId.startsWith("choice:")) {
+    return applyPendingChoiceTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("turn:")) {
     return applyTurnTimeout(state, command, deadline.playerId);

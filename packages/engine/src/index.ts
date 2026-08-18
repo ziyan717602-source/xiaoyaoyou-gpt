@@ -235,6 +235,13 @@ export type AvailableAction =
     }
   | { readonly type: "pass-rescue"; readonly choiceId: ChoiceId }
   | {
+      readonly type: "submit-choice";
+      readonly choiceId: ChoiceId;
+      readonly optionIds: readonly string[];
+      readonly minSelections: number;
+      readonly maxSelections: number;
+    }
+  | {
       readonly type: "discard-cards";
       readonly count: number;
       readonly cardInstanceIds: readonly CardInstanceId[];
@@ -473,9 +480,11 @@ export function createPlayerView(
       ]
     : state.dyingBatch !== null
       ? rescueActions(state, viewerId)
-      : state.reactionWindow === null
-        ? turnActions(state, viewerId)
-        : reactionActions(state, viewerId);
+      : state.pendingChoice !== null
+        ? pendingChoiceActions(state, viewerId)
+        : state.reactionWindow === null
+          ? turnActions(state, viewerId)
+          : reactionActions(state, viewerId);
   return {
     matchId: state.matchId,
     version: state.version,
@@ -550,6 +559,30 @@ export function createPlayerView(
         : null,
     dyingBatch: state.dyingBatch,
   };
+}
+
+function pendingChoiceActions(
+  state: Readonly<MatchState>,
+  viewerId: PlayerId,
+): AvailableAction[] {
+  const choice = state.pendingChoice;
+  if (
+    state.phase !== "playing" ||
+    choice === null ||
+    choice.status !== "open" ||
+    !choice.playerIds.includes(viewerId)
+  ) {
+    return [];
+  }
+  return [
+    {
+      type: "submit-choice",
+      choiceId: choice.choiceId,
+      optionIds: choice.optionIds,
+      minSelections: choice.minSelections,
+      maxSelections: choice.maxSelections,
+    },
+  ];
 }
 
 function reactionActions(
@@ -677,6 +710,27 @@ function turnActions(
             .map((candidate) => candidate.id),
         },
       ];
+    }
+    if (definition.coreAction?.type === "steal-one") {
+      const targetPlayerIds = Object.values(state.players)
+        .filter(
+          (candidate) =>
+            candidate.id !== viewerId &&
+            candidate.alive &&
+            candidate.hand.length > 0,
+        )
+        .sort((left, right) => left.seat - right.seat)
+        .map((candidate) => candidate.id);
+      return targetPlayerIds.length === 0
+        ? alternate
+        : [
+            ...alternate,
+            {
+              type: "play-card" as const,
+              cardInstanceId: instanceId,
+              targetPlayerIds,
+            },
+          ];
     }
     if (definition.coreAction?.type === "damage-two") {
       return [

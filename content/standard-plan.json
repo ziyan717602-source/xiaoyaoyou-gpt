@@ -7,10 +7,10 @@
     "standard": 177,
     "sharedCore": 28,
     "total": 205,
-    "partial": 40,
+    "partial": 41,
     "verified": 1,
     "deferred": 0,
-    "unstarted": 164
+    "unstarted": 163
   },
   "executionQueue": [
     {
@@ -209,9 +209,9 @@
       "kind": "card",
       "packages": ["standard"],
       "slice": "CS01B-ACTION-TRICKS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "partial",
+      "boundary": "ordinary-hand target selection, opaque slot choice, cancellable authoritative transfer, restart and deterministic timeout; protected-card exclusion pending CS02",
+      "evidence": ["CS01B-JP01-HIDDEN-TRANSFER"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

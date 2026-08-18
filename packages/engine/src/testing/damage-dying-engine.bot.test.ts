@@ -149,6 +149,20 @@ describe("M05 six-player combat bots", () => {
           } else {
             throw new Error("Rescue priority Bot has no legal action.");
           }
+        } else if (state.pendingChoice !== null) {
+          playerId = state.pendingChoice.playerIds[0]!;
+          const choice = createPlayerView(
+            state,
+            playerId,
+          ).availableActions.find((action) => action.type === "submit-choice");
+          if (choice?.type !== "submit-choice") {
+            throw new Error("Choice Bot has no legal submit action.");
+          }
+          nextCommand = {
+            type: "submit-choice",
+            choiceId: choice.choiceId,
+            selections: [choice.optionIds[0]!],
+          };
         } else if (state.reactionWindow !== null) {
           playerId =
             state.reactionWindow.priorityOrder[

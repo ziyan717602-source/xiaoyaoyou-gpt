@@ -374,6 +374,66 @@ function injectJp03Fixture(
   }
 }
 
+function injectJp01Fixture(
+  databasePath: string,
+  matchId: string,
+  actor: PlayerId,
+  target: PlayerId,
+): void {
+  const database = new Database(databasePath);
+  try {
+    const row = database
+      .prepare(
+        `SELECT rowid, state_json FROM snapshots
+         WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1`,
+      )
+      .get(matchId) as { rowid: number; state_json: string } | undefined;
+    if (row === undefined) throw new Error("Missing JP01 fixture snapshot.");
+    const state = JSON.parse(row.state_json) as MatchState;
+    const hands: Readonly<Record<PlayerId, readonly string[]>> = {
+      [actor]: ["xyy.card.jp01@1"],
+      [target]: ["xyy.card.jp04@7", "xyy.card.jp05@9"],
+    };
+    const claimed = new Set(Object.values(hands).flat());
+    const now = Date.now();
+    const fixture: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          { ...player, hand: hands[player.id] ?? [] },
+        ]),
+      ),
+      turn:
+        state.turn === null
+          ? null
+          : {
+              ...state.turn,
+              phase: "action",
+              openedAt: now,
+              deadlineAt: now + 15_000,
+            },
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+      effectStack: [],
+      reactionWindow: null,
+      pendingChoice: null,
+      dyingBatch: null,
+    };
+    const stateJson = JSON.stringify(fixture);
+    const stateHash = createHash("sha256")
+      .update(stateJson, "utf8")
+      .digest("hex");
+    database
+      .prepare(
+        "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE rowid = ?",
+      )
+      .run(stateJson, stateHash, row.rowid);
+  } finally {
+    database.close();
+  }
+}
+
 describe("M04 reaction lifecycle over six real WebSockets", () => {
   it("persists a child window across restart and completes a counter-chain", async () => {
     const root = mkdtempSync(
@@ -833,6 +893,122 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
     )!.hand;
     expect(handAfterPawn).toHaveLength(handBeforePawn.length);
     expect(handAfterPawn).not.toContain("xyy.card.jp03@6");
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    injectJp01Fixture(databasePath, room.roomId, actor, first);
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    let jp01ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    let jp01Actor = jp01ClientByPlayer.get(actor)!;
+    expect(jp01Actor.latestView.availableActions).toContainEqual({
+      type: "play-card",
+      cardInstanceId: "xyy.card.jp01@1",
+      targetPlayerIds: [first],
+    });
+    expect(JSON.stringify(jp01Actor.latestView)).not.toContain(
+      "xyy.card.jp04@7",
+    );
+    expect(JSON.stringify(jp01Actor.latestView)).not.toContain(
+      "xyy.card.jp05@9",
+    );
+    const steal = await sendCommand(
+      jp01Actor,
+      sessionByPlayer.get(actor)!,
+      "network-jp01-play",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp01@1",
+        targetPlayerIds: [first],
+      },
+    );
+    expect(steal.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    let jp01Pass = 0;
+    while (clients[0]!.latestView.reactionWindow !== null) {
+      const window = clients[0]!.latestView.reactionWindow!;
+      const response = await sendCommand(
+        jp01ClientByPlayer.get(window.priorityPlayerId)!,
+        sessionByPlayer.get(window.priorityPlayerId)!,
+        `network-jp01-pass-${jp01Pass}`,
+        version,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitForVersion(clients, version);
+      jp01Pass += 1;
+      if (jp01Pass > 6) throw new Error("JP01 response did not close.");
+    }
+    const persistedChoice = JSON.parse(
+      JSON.stringify(jp01Actor.latestView.pendingChoice),
+    ) as PlayerView["pendingChoice"];
+    expect(persistedChoice?.optionIds).toEqual([
+      "opaque-hand-slot-1",
+      "opaque-hand-slot-2",
+    ]);
+    expect(jp01Actor.latestView.availableActions).toEqual([
+      {
+        type: "submit-choice",
+        choiceId: persistedChoice!.choiceId,
+        optionIds: ["opaque-hand-slot-1", "opaque-hand-slot-2"],
+        minSelections: 1,
+        maxSelections: 1,
+      },
+    ]);
+    expect(JSON.stringify(jp01Actor.latestView)).not.toContain(
+      "xyy.card.jp04@7",
+    );
+    expect(JSON.stringify(jp01Actor.latestView)).not.toContain(
+      "xyy.card.jp05@9",
+    );
+    for (const [playerId, client] of jp01ClientByPlayer) {
+      if (playerId !== actor)
+        expect(client.latestView.pendingChoice).toBeNull();
+    }
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    jp01ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    jp01Actor = jp01ClientByPlayer.get(actor)!;
+    expect(jp01Actor.latestView.pendingChoice).toEqual(persistedChoice);
+    const selected = await sendCommand(
+      jp01Actor,
+      sessionByPlayer.get(actor)!,
+      "network-jp01-select",
+      version,
+      {
+        type: "submit-choice",
+        choiceId: persistedChoice!.choiceId,
+        selections: ["opaque-hand-slot-2"],
+      },
+    );
+    expect(selected.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    expect(jp01Actor.latestView.pendingChoice).toBeNull();
+    expect(
+      jp01Actor.latestView.players.find((player) => player.id === actor)!.hand,
+    ).toEqual(["xyy.card.jp05@9"]);
+    expect(
+      jp01ClientByPlayer
+        .get(first)!
+        .latestView.players.find((player) => player.id === first)!.hand,
+    ).toEqual(["xyy.card.jp04@7"]);
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });

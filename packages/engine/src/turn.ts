@@ -577,6 +577,28 @@ export function applyTurnCommand(
         cardInstanceId,
         expectedTargets,
       );
+    } else if (definition.coreAction.type === "steal-one") {
+      const target = input.players[command.targetPlayerIds[0] ?? ""];
+      if (
+        command.targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        target.id === envelope.playerId ||
+        !target.alive ||
+        target.hand.length === 0
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      return beginCancellableCardEffect(
+        input,
+        envelope,
+        serverReceivedAt,
+        cardInstanceId,
+        target.id,
+      );
     } else {
       const target = input.players[command.targetPlayerIds[0] ?? ""];
       if (

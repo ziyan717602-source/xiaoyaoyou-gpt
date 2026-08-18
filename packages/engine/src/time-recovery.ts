@@ -116,6 +116,25 @@ export function collectSystemDeadlines(
     }
     return deadlines;
   }
+  if (choice !== null && choice.status === "open") {
+    const playerId = choice.playerIds[0];
+    if (playerId !== undefined) {
+      const deadlineAt = effectiveDeadline(
+        state,
+        playerId,
+        choice.openedAt,
+        choice.deadlineAt,
+      );
+      deadlines.push({
+        id: `timeout:choice:${choice.choiceId}:${playerId}:${deadlineAt}`,
+        origin: "system-timeout",
+        deadlineAt,
+        targetId: `choice:${choice.choiceId}:${playerId}`,
+        playerId,
+      });
+    }
+    return deadlines;
+  }
   const reaction = state.reactionWindow;
   if (reaction?.status === "open") {
     const playerId = reaction.priorityOrder[reaction.priorityIndex];

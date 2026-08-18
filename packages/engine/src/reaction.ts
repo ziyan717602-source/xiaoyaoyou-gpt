@@ -5,7 +5,11 @@ import type {
   PlayerId,
   WindowId,
 } from "@xiaoyaoyou/protocol";
-import type { ApplyCommandResult, DomainEvent } from "./architecture.js";
+import type {
+  ApplyCommandResult,
+  DomainEvent,
+  EngineCommand,
+} from "./architecture.js";
 import { planDraw } from "./card-zones.js";
 import {
   applyPlannedDamage,
@@ -16,8 +20,10 @@ import type {
   Continuation,
   EffectFrame,
   MatchState,
+  PendingChoice,
   ReactionWindow,
 } from "./index.js";
+import { nextInt } from "./random.js";
 import { cardDefinition, type CardInstanceId } from "./setup-content.js";
 
 const REACTION_DEADLINE_MS = 15_000;
@@ -227,10 +233,18 @@ export function reduceReactionEvent(
       targetPlayerIds.length === 0 ||
       targets.some((target) => target?.alive !== true) ||
       !player.hand.includes(cardInstanceId) ||
-      !["draw-two", "damage-two", "heal-two", "heal-team-one"].includes(
-        action?.type ?? "",
-      ) ||
+      ![
+        "steal-one",
+        "draw-two",
+        "damage-two",
+        "heal-two",
+        "heal-team-one",
+      ].includes(action?.type ?? "") ||
       !validTeamTargets ||
+      (action?.type === "steal-one" &&
+        (targetPlayerIds.length !== 1 ||
+          targetPlayerIds[0] === playerId ||
+          targets[0]?.hand.length === 0)) ||
       effectById(state, effectId) !== undefined
     ) {
       throw new Error("Original effect event is not applicable.");
@@ -354,6 +368,143 @@ export function reduceReactionEvent(
         openedAt,
         deadlineAt: openedAt + REACTION_DEADLINE_MS,
       },
+    };
+  } else if (event.type === "effect.choice-opened") {
+    const effectId = stringPayload(event, "effectId");
+    const choiceId = stringPayload(event, "choiceId");
+    const openedAt = numberPayload(event, "openedAt");
+    const optionIds = stringsPayload(event, "optionIds");
+    const effect = effectById(state, effectId);
+    const window = state.reactionWindow;
+    const source = state.players[effect?.sourcePlayerId ?? ""];
+    const target = state.players[effect?.targetIds[0] ?? ""];
+    const expectedOptions = target?.hand.map(
+      (_, index) => `opaque-hand-slot-${index + 1}`,
+    );
+    if (
+      state.pendingChoice !== null ||
+      window === null ||
+      window.status !== "closed" ||
+      window.effectId !== effectId ||
+      effect?.kind !== "card:xyy.card.jp01" ||
+      effect.status !== "waiting" ||
+      source === undefined ||
+      !source.alive ||
+      target === undefined ||
+      !target.alive ||
+      target.id === source.id ||
+      target.hand.length === 0 ||
+      expectedOptions === undefined ||
+      !sameValues(optionIds, expectedOptions)
+    ) {
+      throw new Error("Steal choice event is not applicable.");
+    }
+    const choice: PendingChoice = {
+      choiceId,
+      playerIds: [source.id],
+      prompt: `steal-one:${target.id}`,
+      minSelections: 1,
+      maxSelections: 1,
+      optionIds,
+      optional: false,
+      status: "open",
+      openedAt,
+      deadlineAt: openedAt + REACTION_DEADLINE_MS,
+      fallback: "deterministic-random",
+      continuation: {
+        continuationId: `${choiceId}:continuation`,
+        effectId,
+        step: "after-hidden-hand-choice",
+        locals: { targetPlayerId: target.id },
+        resumeWith: "resolve-steal-one",
+      },
+    };
+    next = {
+      ...state,
+      effectStack: state.effectStack.map((candidate) =>
+        candidate.effectId === effectId
+          ? { ...candidate, step: "awaiting-choice", status: "resolving" }
+          : candidate,
+      ),
+      reactionWindow: null,
+      pendingChoice: choice,
+    };
+  } else if (event.type === "effect.fizzled") {
+    const effectId = stringPayload(event, "effectId");
+    const effect = effectById(state, effectId);
+    const window = state.reactionWindow;
+    const target = state.players[effect?.targetIds[0] ?? ""];
+    if (
+      window === null ||
+      window.status !== "closed" ||
+      window.effectId !== effectId ||
+      effect?.kind !== "card:xyy.card.jp01" ||
+      effect.status !== "waiting" ||
+      target === undefined ||
+      target.hand.length !== 0
+    ) {
+      throw new Error("Steal fizzle event is not applicable.");
+    }
+    next = {
+      ...state,
+      effectStack: pruneTerminalTail(
+        updateEffects(state, { [effectId]: "fizzled" }),
+      ),
+      reactionWindow: null,
+    };
+  } else if (event.type === "effect.choice-resolved") {
+    const effectId = stringPayload(event, "effectId");
+    const choiceId = stringPayload(event, "choiceId");
+    const playerId = stringPayload(event, "playerId");
+    const selectedOptionId = stringPayload(event, "selectedOptionId");
+    const cardInstanceId = stringPayload(
+      event,
+      "cardInstanceId",
+    ) as CardInstanceId;
+    const effect = effectById(state, effectId);
+    const choice = state.pendingChoice;
+    const source = state.players[playerId];
+    const target = state.players[effect?.targetIds[0] ?? ""];
+    const selectedIndex = choice?.optionIds.indexOf(selectedOptionId) ?? -1;
+    const timeout = event.payload.timeout === true;
+    const planned =
+      timeout && choice !== null
+        ? nextInt(state.rng, choice.optionIds.length)
+        : null;
+    if (
+      state.reactionWindow !== null ||
+      choice === null ||
+      choice.status !== "open" ||
+      choice.choiceId !== choiceId ||
+      !choice.playerIds.includes(playerId) ||
+      effect?.kind !== "card:xyy.card.jp01" ||
+      effect.status !== "resolving" ||
+      effect.sourcePlayerId !== playerId ||
+      source === undefined ||
+      target === undefined ||
+      selectedIndex < 0 ||
+      target.hand[selectedIndex] !== cardInstanceId ||
+      numberPayload(event, "rngCursor") !==
+        (planned?.rng.cursor ?? state.rng.cursor) ||
+      (timeout && choice.optionIds[planned!.value] !== selectedOptionId)
+    ) {
+      throw new Error("Steal choice resolution is not applicable.");
+    }
+    next = {
+      ...state,
+      players: {
+        ...state.players,
+        [source.id]: { ...source, hand: [...source.hand, cardInstanceId] },
+        [target.id]: {
+          ...target,
+          hand: target.hand.filter((card) => card !== cardInstanceId),
+        },
+      },
+      rng: planned?.rng ?? state.rng,
+      effectStack: pruneTerminalTail(
+        updateEffects(state, { [effectId]: "resolved" }),
+      ),
+      pendingChoice: null,
     };
   } else if (event.type === "effect.resolved") {
     const effectId = stringPayload(event, "effectId");
@@ -619,6 +770,24 @@ class EventBuilder {
           cardInstanceIds: planned.cards,
           rngCursor: planned.rng.cursor,
         });
+      } else if (effect.kind === "card:xyy.card.jp01") {
+        const target = this.state.players[effect.targetIds[0]!]!;
+        if (target.hand.length === 0) {
+          this.append("effect.fizzled", {
+            effectId,
+            resolvedAt: this.serverReceivedAt,
+            reason: "target-hand-empty-after-responses",
+          });
+        } else {
+          this.append("effect.choice-opened", {
+            effectId,
+            choiceId: `${effectId}:choice:hand`,
+            openedAt: this.serverReceivedAt,
+            optionIds: target.hand.map(
+              (_, index) => `opaque-hand-slot-${index + 1}`,
+            ),
+          });
+        }
       } else if (effect.kind === "card:xyy.card.jp05") {
         const targetPlayerId = effect.targetIds[0]!;
         const planned = planDamageBatch(this.state, [
@@ -706,6 +875,137 @@ export function beginCancellableCardEffect(
   });
   builder.resolveClosedWindows();
   return { accepted: true, state: builder.state, events: builder.events };
+}
+
+function resolvePendingStealChoice(
+  input: Readonly<MatchState>,
+  commandId: CommandId,
+  playerId: PlayerId,
+  selectedOptionId: string,
+  serverReceivedAt: number,
+  timeout: boolean,
+): ApplyCommandResult {
+  const choice = input.pendingChoice;
+  const effect =
+    choice === null
+      ? undefined
+      : effectById(input, choice.continuation.effectId);
+  const target = input.players[effect?.targetIds[0] ?? ""];
+  const selectedIndex = choice?.optionIds.indexOf(selectedOptionId) ?? -1;
+  const cardInstanceId = target?.hand[selectedIndex];
+  if (
+    choice === null ||
+    choice.status !== "open" ||
+    !choice.playerIds.includes(playerId) ||
+    effect?.kind !== "card:xyy.card.jp01" ||
+    cardInstanceId === undefined
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  const planned = timeout ? nextInt(input.rng, choice.optionIds.length) : null;
+  if (timeout && choice.optionIds[planned!.value] !== selectedOptionId) {
+    return {
+      accepted: false,
+      reason: "invalid",
+      currentVersion: input.version,
+    };
+  }
+  const builder = new EventBuilder(
+    input,
+    commandId,
+    input.version + 1,
+    serverReceivedAt,
+  );
+  builder.append("effect.choice-resolved", {
+    effectId: effect.effectId,
+    choiceId: choice.choiceId,
+    playerId,
+    selectedOptionId,
+    cardInstanceId,
+    timeout,
+    rngCursor: planned?.rng.cursor ?? input.rng.cursor,
+    resolvedAt: serverReceivedAt,
+  });
+  return { accepted: true, state: builder.state, events: builder.events };
+}
+
+export function applyPendingChoiceCommand(
+  input: Readonly<MatchState>,
+  envelope: Readonly<CommandEnvelope>,
+  serverReceivedAt: number,
+): ApplyCommandResult {
+  const choice = input.pendingChoice;
+  const command = envelope.command;
+  if (
+    command.type !== "submit-choice" ||
+    choice === null ||
+    choice.status !== "open" ||
+    command.choiceId !== choice.choiceId ||
+    command.selections.length !== 1 ||
+    !choice.optionIds.includes(command.selections[0]!)
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  if (
+    !Number.isSafeInteger(serverReceivedAt) ||
+    serverReceivedAt < 0 ||
+    serverReceivedAt > choice.deadlineAt
+  ) {
+    return {
+      accepted: false,
+      reason:
+        serverReceivedAt > choice.deadlineAt ? "expired-window" : "invalid",
+      currentVersion: input.version,
+    };
+  }
+  return resolvePendingStealChoice(
+    input,
+    envelope.commandId,
+    envelope.playerId,
+    command.selections[0]!,
+    serverReceivedAt,
+    false,
+  );
+}
+
+export function applyPendingChoiceTimeout(
+  input: Readonly<MatchState>,
+  command: Readonly<Extract<EngineCommand, { origin: "system-timeout" }>>,
+  playerId: PlayerId,
+): ApplyCommandResult {
+  const choice = input.pendingChoice;
+  if (
+    choice === null ||
+    choice.status !== "open" ||
+    choice.fallback !== "deterministic-random" ||
+    command.deadlineAt < choice.openedAt ||
+    command.deadlineAt > choice.deadlineAt ||
+    !choice.playerIds.includes(playerId) ||
+    choice.optionIds.length === 0
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  const planned = nextInt(input.rng, choice.optionIds.length);
+  return resolvePendingStealChoice(
+    input,
+    command.commandId,
+    playerId,
+    choice.optionIds[planned.value]!,
+    command.deadlineAt,
+    true,
+  );
 }
 
 export function applyReactionCommand(

@@ -28,6 +28,10 @@
       "evidence": ["M02-SETUP-AND-TEAMS"]
     },
     "cards": {
+      "xyy.card.jp01": {
+        "boundary": "ordinary-hand target selection, opaque slot choice, cancellable authoritative transfer, restart and deterministic timeout; protected-card exclusion pending CS02",
+        "evidence": ["CS01B-JP01-HIDDEN-TRANSFER"]
+      },
       "xyy.card.jp04": {
         "boundary": "draw-two action and cancellable effect path; full legacy audit pending",
         "evidence": ["M03-TURN-CORE", "M04-REACTION-CORE"]

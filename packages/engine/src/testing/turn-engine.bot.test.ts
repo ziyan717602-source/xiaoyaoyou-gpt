@@ -101,6 +101,27 @@ describe("M03 six-player engine bots", () => {
         actionGuard += 1;
         if (actionGuard > 128)
           throw new Error("Bot action phase did not converge.");
+        if (state.pendingChoice !== null) {
+          const choicePlayer = state.pendingChoice.playerIds[0]!;
+          const choice = createPlayerView(
+            state,
+            choicePlayer,
+          ).availableActions.find((action) => action.type === "submit-choice");
+          if (choice?.type !== "submit-choice") {
+            throw new Error("Choice Bot did not receive submit-choice.");
+          }
+          state = command(
+            state,
+            choicePlayer,
+            `bot-command-${commandSequence++}`,
+            {
+              type: "submit-choice",
+              choiceId: choice.choiceId,
+              selections: [choice.optionIds[0]!],
+            },
+          );
+          continue;
+        }
         if (state.reactionWindow !== null) {
           const priority =
             state.reactionWindow.priorityOrder[
