@@ -56,6 +56,59 @@ function started(seed = "m03-replay-restart-seed"): MatchState {
 }
 
 describe("M03 turn event replay", () => {
+  it("replays JN20302 direct healing across a JSON restart", () => {
+    const base = started("jn20302-replay");
+    const actor = base.activePlayerId!;
+    const target = base.turnOrder.find((id) => id !== actor)!;
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          player.id === actor
+            ? {
+                ...player,
+                heroId: "xyy.hero.xj203",
+                hand: ["xyy.card.jp01@1"],
+              }
+            : {
+                ...player,
+                hp: player.id === target ? 1 : player.hp,
+                hand: [],
+              },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.jp01@1",
+      ),
+      discardPile: [],
+    };
+    const command = {
+      type: "activate-hero-skill" as const,
+      cardInstanceIds: ["xyy.card.jp01@1"],
+      skillId: "xyy.skill.jn20302",
+      targetPlayerIds: [target],
+    };
+    const uninterrupted = apply(initial, actor, "jn20302-replay", command);
+    const restarted = apply(
+      JSON.parse(JSON.stringify(initial)) as MatchState,
+      actor,
+      "jn20302-replay",
+      command,
+    );
+    expect(restarted).toEqual(uninterrupted);
+    let replayed = initial;
+    for (const event of uninterrupted.events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.players[target]!.hp).toBe(3);
+    expect(uninterrupted.state.discardPile).toEqual(["xyy.card.jp01@1"]);
+  });
+
   it("replays 剑匣 discard bypass identically across a JSON restart", () => {
     const setupState = started("jn50402-7");
     const ownerId = setupState.activePlayerId!;

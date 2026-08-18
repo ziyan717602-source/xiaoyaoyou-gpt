@@ -13,6 +13,7 @@ import type {
 } from "./architecture.js";
 import { planDraw } from "./card-zones.js";
 import type { MatchState, TeamId, TurnPhase } from "./index.js";
+import { planCureBatch, playersAfterCures } from "./healing.js";
 import {
   beginCancellableCardEffect,
   beginSkillConvertedCardEffect,
@@ -20,6 +21,7 @@ import {
 import { nextInt } from "./random.js";
 import {
   cardDefinition,
+  cardIdOf,
   heroHasSkill,
   type CardInstanceId,
 } from "./setup-content.js";
@@ -135,6 +137,62 @@ export function reduceTurnEvent(
         openedAt: changedAt,
         deadlineAt: changedAt + ACTION_DEADLINE_MS,
       },
+    };
+  } else if (event.type === "turn.hero-skill-activated") {
+    const playerId = stringPayload(event, "playerId");
+    const cardInstanceIds = stringsPayload(
+      event,
+      "cardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const targetPlayerIds = stringsPayload(
+      event,
+      "targetPlayerIds",
+    ) as readonly PlayerId[];
+    const skillId = stringPayload(event, "skillId");
+    const player = state.players[playerId];
+    const target = state.players[targetPlayerIds[0] ?? ""];
+    if (
+      state.turn.phase !== "action" ||
+      state.activePlayerId !== playerId ||
+      player === undefined ||
+      player.heroId === null ||
+      skillId !== "xyy.skill.jn20302" ||
+      !heroHasSkill(player.heroId, "xyy.skill.jn20302") ||
+      cardInstanceIds.length !== 1 ||
+      !player.hand.includes(cardInstanceIds[0]!) ||
+      !cardIdOf(cardInstanceIds[0]!).startsWith("xyy.card.jp") ||
+      targetPlayerIds.length !== 1 ||
+      target === undefined ||
+      !target.alive
+    ) {
+      throw new Error("JN20302 event is not applicable.");
+    }
+    const expectedCures = planCureBatch(state, [
+      {
+        itemId: `${event.eventId}:cure:0`,
+        sourcePlayerId: playerId,
+        targetPlayerId: target.id,
+        amount: 2,
+        element: "neutral",
+      },
+    ]);
+    if (
+      JSON.stringify(event.payload.healingItems) !==
+      JSON.stringify(expectedCures)
+    ) {
+      throw new Error("JN20302 healing disagrees with deterministic plan.");
+    }
+    const curedPlayers = playersAfterCures(state, expectedCures);
+    next = {
+      ...state,
+      players: {
+        ...curedPlayers,
+        [playerId]: {
+          ...curedPlayers[playerId]!,
+          hand: player.hand.filter((card) => card !== cardInstanceIds[0]),
+        },
+      },
+      discardPile: [...state.discardPile, cardInstanceIds[0]!],
     };
   } else if (event.type === "turn.card-pawned") {
     const playerId = stringPayload(event, "playerId");
@@ -684,6 +742,51 @@ export function applyTurnCommand(
       playerId: envelope.playerId,
       cardInstanceId,
       targetPlayerIds: command.targetPlayerIds,
+    });
+  } else if (command.type === "activate-hero-skill") {
+    const player = input.players[envelope.playerId]!;
+    const cardInstanceIds = command.cardInstanceIds as CardInstanceId[];
+    const target = input.players[command.targetPlayerIds[0] ?? ""];
+    let techniqueCard = false;
+    try {
+      techniqueCard =
+        cardInstanceIds.length === 1 &&
+        cardIdOf(cardInstanceIds[0]!).startsWith("xyy.card.jp");
+    } catch {
+      techniqueCard = false;
+    }
+    if (
+      input.turn.phase !== "action" ||
+      command.skillId !== "xyy.skill.jn20302" ||
+      player.heroId === null ||
+      !heroHasSkill(player.heroId, "xyy.skill.jn20302") ||
+      !techniqueCard ||
+      !player.hand.includes(cardInstanceIds[0]!) ||
+      command.targetPlayerIds.length !== 1 ||
+      target === undefined ||
+      !target.alive
+    ) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    const nextEventId = `${input.matchId}:event:${input.eventSequence + 1}`;
+    builder.append("turn.hero-skill-activated", {
+      playerId: envelope.playerId,
+      cardInstanceIds,
+      skillId: "xyy.skill.jn20302",
+      targetPlayerIds: [target.id],
+      healingItems: planCureBatch(input, [
+        {
+          itemId: `${nextEventId}:cure:0`,
+          sourcePlayerId: envelope.playerId,
+          targetPlayerId: target.id,
+          amount: 2,
+          element: "neutral",
+        },
+      ]),
     });
   } else if (command.type === "play-skill-converted-card") {
     const player = input.players[envelope.playerId]!;

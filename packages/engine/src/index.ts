@@ -228,6 +228,14 @@ export type AvailableAction =
       readonly skillId: "xyy.skill.jn40301";
       readonly targetPlayerIds: readonly PlayerId[];
     }
+  | {
+      readonly type: "activate-hero-skill";
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly requiredCardCount: 1;
+      readonly skillId: "xyy.skill.jn20302";
+      readonly targetPlayerIds: readonly PlayerId[];
+      readonly requiredTargetCount: 1;
+    }
   | { readonly type: "end-action" }
   | {
       readonly type: "play-reaction-card";
@@ -1010,10 +1018,32 @@ function turnActions(
           },
         ]
       : [];
+  const techniqueCards = player.hand.filter((cardInstanceId) =>
+    cardIdOf(cardInstanceId).startsWith("xyy.card.jp"),
+  );
+  const heroSkillActions =
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn20302") &&
+    techniqueCards.length > 0
+      ? [
+          {
+            type: "activate-hero-skill" as const,
+            cardInstanceIds: techniqueCards,
+            requiredCardCount: 1 as const,
+            skillId: "xyy.skill.jn20302" as const,
+            targetPlayerIds: Object.values(state.players)
+              .filter((candidate) => candidate.alive)
+              .sort((left, right) => left.seat - right.seat)
+              .map((candidate) => candidate.id),
+            requiredTargetCount: 1 as const,
+          },
+        ]
+      : [];
   return [
     ...playable,
     ...equippedPawn,
     ...skillConversion,
+    ...heroSkillActions,
     { type: "end-action" },
   ];
 }

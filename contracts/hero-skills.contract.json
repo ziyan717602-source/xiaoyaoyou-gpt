@@ -45,6 +45,14 @@
       "status": "verified",
       "verifiedBoundary": "native ownership, exact two-card payment, action TP02 response chain, rescue priority, cure modifiers, timeout pass, JSON replay, SQLite restart and six-socket privacy",
       "linkedPending": []
+    },
+    "xyy.skill.jn20302": {
+      "name": "元灵归心术",
+      "owner": "xyy.hero.xj203",
+      "rule": "during her own action phase, the owner may repeatedly discard exactly one own JP-category hand card to directly cure any living player by two",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, JP filtering, any living target including self/full HP, repeat use, direct non-cancellable cure, equipment modifier, timeout no-payment, JSON replay, SQLite restart and six-socket privacy",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -56,7 +64,9 @@
     "PSDGamepkg/XIG.cs:2547 discard only when Tux.Count exceeds TuxLimit",
     "PSDGamepkg/JNS/XJ405.cs:443-462 JN20202 reuses TP01 validity and pays one TP-category hand card",
     "psd.db3:Skill:JN40301 OCCURS TP02 type 0/type 1 and description any two hand cards as TP02",
-    "PSDGamepkg/JNS/XJ405.cs:1037-1062 JN40301 requires/selects two hand cards and routes both modes through TP02"
+    "PSDGamepkg/JNS/XJ405.cs:1037-1062 JN40301 requires/selects two hand cards and routes both modes through TP02",
+    "psd.db3:Skill:JN20302 OCCURS R#GR and description each discarded technique card cures any player by two",
+    "PSDGamepkg/JNS/XJ405.cs:542-565 JN20302 selects one JP hand card and any in-play target, discards then calls Cure directly"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -68,7 +78,10 @@
     "jn20202Timeout": "conversion is optional and the existing 15-second reaction timeout is a pass without payment",
     "jn40301ConversionRepresentation": "one command carries the exact two physical payment cards and skill source; action mode creates the canonical TP02 effect while rescue mode enters the existing dying cure path",
     "jn40301ChoiceProjection": "the owner sees one authoritative action with all own eligible hand cards and requiredCardCount two, avoiding quadratic pair enumeration",
-    "jn40301Timeout": "both uses are optional; action timeout ends action and rescue timeout passes without paying cards"
+    "jn40301Timeout": "both uses are optional; action timeout ends action and rescue timeout passes without paying cards",
+    "activeSkillCommand": "active hero skills use a narrow command carrying selected physical cards, target players and a server-validated skill id; each migrated skill owns its exact validation and event semantics",
+    "jn20302Resolution": "discard and cure are one authoritative turn event; it does not create a card effect or reaction window because legacy calls Cure directly rather than G0CC",
+    "jn20302RepeatAndTimeout": "there is no per-turn marker; the action remains available while another JP hand card exists, and generic optional action timeout ends the phase without payment"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -100,6 +113,14 @@
     "CS02-27": "JN40301-pays-both-physical-cards-and-records-the-skill-source",
     "CS02-28": "JN40301-optional-timeouts-do-not-pay-cards",
     "CS02-29": "JN40301-replays-identically-after-a-JSON-checkpoint",
-    "CS02-30": "JN40301-rescue-priority-persists-through-SQLite-restart-with-six-socket-privacy"
+    "CS02-30": "JN40301-rescue-priority-persists-through-SQLite-restart-with-six-socket-privacy",
+    "CS02-31": "JN20302-is-offered-only-to-its-native-owner-during-own-action-with-a-JP-hand-card",
+    "CS02-32": "JN20302-rejects-non-JP-external-multiple-card-forged-skill-and-illegal-target-inputs",
+    "CS02-33": "JN20302-discards-one-physical-card-and-cures-any-living-target-by-two",
+    "CS02-34": "JN20302-uses-normal-cure-modifiers-and-HP-cap",
+    "CS02-35": "JN20302-resolves-directly-without-a-reaction-window",
+    "CS02-36": "JN20302-remains-repeatable-while-another-JP-hand-card-exists",
+    "CS02-37": "JN20302-replays-identically-after-a-JSON-checkpoint",
+    "CS02-38": "JN20302-persists-through-SQLite-restart-with-six-socket-privacy"
   }
 }

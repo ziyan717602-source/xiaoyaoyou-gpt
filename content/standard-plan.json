@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 41,
-    "verified": 7,
+    "verified": 8,
     "deferred": 0,
-    "unstarted": 157
+    "unstarted": 156
   },
   "executionQueue": [
     {
@@ -1493,8 +1493,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN20302 repeatable direct healing are verified; JN20301 remains pending",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn20302.md"
+      ],
       "dependencies": {
         "contentIds": [
           "xyy.hero.xj201",
@@ -3785,9 +3788,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ203 repeatable technique-card discard to direct cure any living player is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn20302.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

@@ -76,6 +76,12 @@ describe("protocol runtime schema", () => {
         targetPlayerIds: ["player-1"],
       },
       {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.jp01@1"],
+        skillId: "xyy.skill.jn20302",
+        targetPlayerIds: ["player-2"],
+      },
+      {
         type: "activate-damage-equipment",
         cardInstanceId: "xyy.card.fj05@56",
         targetEffectId: "effect-1",

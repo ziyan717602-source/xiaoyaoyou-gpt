@@ -50,6 +50,10 @@
     "xyy.skill.jn40301": {
       "boundary": "native X3W03 two-hand-card conversion into TP02 action healing and dying rescue is verified through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn40301.md"]
+    },
+    "xyy.skill.jn20302": {
+      "boundary": "native XJ203 repeatable technique-card discard to direct cure any living player is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn20302.md"]
     }
   },
   "baselinePartial": {
@@ -84,6 +88,13 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn40301.md"
+        ]
+      },
+      "xyy.hero.xj203": {
+        "boundary": "setup identity and base stats plus JN20302 repeatable direct healing are verified; JN20301 remains pending",
+        "evidence": [
+          "M02-SETUP-AND-TEAMS",
+          "receipt:docs/verification/receipts/cs02-jn20302.md"
         ]
       }
     },

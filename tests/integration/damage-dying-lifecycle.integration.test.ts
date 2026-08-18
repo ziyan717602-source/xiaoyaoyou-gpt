@@ -426,6 +426,35 @@ function injectJn50501Damage(
   );
 }
 
+function injectJn20302(
+  state: MatchState,
+  input: { actor: PlayerId; target: PlayerId },
+): MatchState {
+  const arranged = injectCards(state, input);
+  const claimed = new Set(["xyy.card.jp01@1", "xyy.card.wq02@48"]);
+  return {
+    ...arranged,
+    players: Object.fromEntries(
+      Object.values(arranged.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          heroId: player.id === input.actor ? "xyy.hero.xj203" : player.heroId,
+          hp: player.id === input.target ? 1 : player.hp,
+          maxHp: player.id === input.target ? 5 : player.maxHp,
+          hand: player.id === input.actor ? ["xyy.card.jp01@1"] : [],
+          equipment:
+            player.id === input.target
+              ? { weapon: "xyy.card.wq02@48", armor: null }
+              : { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+    discardPile: [],
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -976,6 +1005,76 @@ describe("M05 damage/dying over six real WebSockets", () => {
     });
     expect(clients[0]!.latestView.reactionWindow).toBeNull();
     expect(clients[0]!.latestView.dyingBatch).toBeNull();
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn20302(state, { actor, target }),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    const jn20302Action = {
+      type: "activate-hero-skill" as const,
+      cardInstanceIds: ["xyy.card.jp01@1"],
+      skillId: "xyy.skill.jn20302",
+      targetPlayerIds: [target],
+    };
+    expect(clients[indexOf(actor)]!.latestView.availableActions).toContainEqual(
+      {
+        ...jn20302Action,
+        requiredCardCount: 1,
+        targetPlayerIds: clients[0]!.latestView.players
+          .filter((player) => player.alive)
+          .sort((left, right) => left.seat - right.seat)
+          .map((player) => player.id),
+        requiredTargetCount: 1,
+      },
+    );
+    for (const [clientIndex, client] of clients.entries()) {
+      if (clientIndex === indexOf(actor)) continue;
+      expect(client.latestView.availableActions).not.toContainEqual(
+        expect.objectContaining({ type: "activate-hero-skill" }),
+      );
+    }
+    response = await send(
+      clients[indexOf(actor)]!,
+      sessions[indexOf(actor)]!,
+      "network-jn20302-cure",
+      version,
+      jn20302Action,
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === target),
+    ).toMatchObject({ hp: 4, equipment: { weapon: "xyy.card.wq02@48" } });
+    expect(
+      clients[indexOf(actor)]!.latestView.players.find(
+        (player) => player.id === actor,
+      ),
+    ).toMatchObject({ hand: [], handCount: 0 });
+    expect(clients[0]!.latestView.reactionWindow).toBeNull();
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    expect(clients[0]!.latestView.version).toBeGreaterThanOrEqual(version);
+    version = clients[0]!.latestView.version;
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === target),
+    ).toMatchObject({ hp: 4 });
+    expect(
+      clients[indexOf(actor)]!.latestView.players.find(
+        (player) => player.id === actor,
+      ),
+    ).toMatchObject({ hand: [], handCount: 0 });
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

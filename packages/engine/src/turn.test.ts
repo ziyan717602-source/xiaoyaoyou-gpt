@@ -152,6 +152,75 @@ function expectConserved(state: MatchState): void {
 }
 
 describe("M03 deterministic turn core", () => {
+  it("uses JN20302 to discard one technique card and directly cure any living target", () => {
+    let state = playing("jn20302-active");
+    const actor = state.activePlayerId!;
+    const target = state.turnOrder.find((id) => id !== actor)!;
+    state = arrange(
+      state,
+      {
+        [actor]: ["xyy.card.jp01@1", "xyy.card.jp02@3", "xyy.card.zp01@16"],
+      },
+      { [target]: { weapon: "xyy.card.wq02@48" } },
+    );
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj203" },
+        [target]: {
+          ...state.players[target]!,
+          hp: 1,
+          maxHp: 5,
+        },
+      },
+    };
+    expect(createPlayerView(state, actor).availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.jp02@3"],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn20302",
+      targetPlayerIds: Object.values(state.players)
+        .sort((left, right) => left.seat - right.seat)
+        .map((player) => player.id),
+      requiredTargetCount: 1,
+    });
+    expect(createPlayerView(state, target).availableActions).toEqual([]);
+    const forged = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn20302-forged", {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn20302",
+        targetPlayerIds: [target],
+      }),
+    });
+    expect(forged).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    state = dispatch(state, actor, "jn20302-cure", {
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.jp01@1"],
+      skillId: "xyy.skill.jn20302",
+      targetPlayerIds: [target],
+    });
+    expect(state.reactionWindow).toBeNull();
+    expect(state.effectStack).toEqual([]);
+    expect(state.players[target]!.hp).toBe(4);
+    expect(state.players[actor]!.hand).toEqual([
+      "xyy.card.jp02@3",
+      "xyy.card.zp01@16",
+    ]);
+    expect(state.discardPile).toEqual(["xyy.card.jp01@1"]);
+    expect(createPlayerView(state, actor).availableActions).toContainEqual(
+      expect.objectContaining({
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.jp02@3"],
+      }),
+    );
+    expectConserved(state);
+  });
+
   it("uses JN40301 to pay two hand cards into the normal TP02 chain", () => {
     let state = playing("jn40301-action");
     const actor = state.activePlayerId!;

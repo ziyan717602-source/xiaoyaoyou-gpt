@@ -59,6 +59,12 @@ export type ClientCommand =
       readonly skillId: string;
       readonly targetPlayerIds: readonly PlayerId[];
     }
+  | {
+      readonly type: "activate-hero-skill";
+      readonly cardInstanceIds: readonly string[];
+      readonly skillId: string;
+      readonly targetPlayerIds: readonly PlayerId[];
+    }
   | { readonly type: "end-action" }
   | {
       readonly type: "play-reaction-card";
@@ -299,6 +305,30 @@ export const clientMessageSchema = {
                       type: "array",
                       minItems: 2,
                       maxItems: 2,
+                      items: identifierSchema,
+                    },
+                    skillId: identifierSchema,
+                    targetPlayerIds: {
+                      type: "array",
+                      maxItems: 6,
+                      items: identifierSchema,
+                    },
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: [
+                    "type",
+                    "cardInstanceIds",
+                    "skillId",
+                    "targetPlayerIds",
+                  ],
+                  properties: {
+                    type: { const: "activate-hero-skill" },
+                    cardInstanceIds: {
+                      type: "array",
+                      maxItems: 56,
                       items: identifierSchema,
                     },
                     skillId: identifierSchema,
