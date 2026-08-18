@@ -186,8 +186,8 @@ async function waitForVersion(
   );
 }
 
-describe("M02 six-player setup over the real network", () => {
-  it("survives restart and preserves idempotency, privacy, teams, hands, and first player", async () => {
+describe("M02/M03 six-player setup and first turn over the real network", () => {
+  it("survives restarts and preserves setup, turn, idempotency, and privacy", async () => {
     const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-setup-integration-"));
     roots.push(root);
     const databasePath = join(root, "setup.sqlite");
@@ -377,6 +377,98 @@ describe("M02 six-player setup over the real network", () => {
           .every((player) => player.hand === null && player.handCount === 3),
       ).toBe(true);
     }
+
+    const endAction = await sendCommand(
+      clients[firstIndex]!,
+      sessions[firstIndex]!,
+      "network-end-action",
+      version,
+      { type: "end-action" },
+    );
+    expect(endAction).toMatchObject({
+      type: "command-accepted",
+      duplicate: false,
+      version: version + 1,
+    });
+    version += 1;
+    for (const client of clients) await waitForVersion(client, version);
+    expect(clients[firstIndex]!.latestView.turn).toEqual({
+      number: 1,
+      phase: "discard",
+    });
+    expect(clients[firstIndex]!.latestView.availableActions).toEqual([
+      {
+        type: "discard-cards",
+        count: 1,
+        cardInstanceIds: clients[firstIndex]!.latestView.players.find(
+          (player) => player.id === firstPlayer.id,
+        )!.hand,
+      },
+    ]);
+    expect(
+      clients
+        .filter((_, index) => index !== firstIndex)
+        .every((client) => client.latestView.availableActions.length === 0),
+    ).toBe(true);
+
+    const discardCard = clients[firstIndex]!.latestView.players.find(
+      (player) => player.id === firstPlayer.id,
+    )!.hand![0]!;
+    const discard = await sendCommand(
+      clients[firstIndex]!,
+      sessions[firstIndex]!,
+      "network-discard",
+      version,
+      { type: "discard-cards", cardInstanceIds: [discardCard] },
+    );
+    expect(discard).toMatchObject({
+      type: "command-accepted",
+      duplicate: false,
+      version: version + 1,
+    });
+    version += 1;
+    for (const client of clients) await waitForVersion(client, version);
+    const secondPlayer = clients[0]!.latestView.players.find(
+      (player) => player.turnIndex === 1,
+    )!;
+    expect(
+      clients.every(
+        (client) => client.latestView.activePlayerId === secondPlayer.id,
+      ),
+    ).toBe(true);
+    expect(
+      clients.every((client) => client.latestView.turn?.number === 2),
+    ).toBe(true);
+    expect(
+      clients.every((client) => client.latestView.turn?.phase === "action"),
+    ).toBe(true);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    expect(
+      clients.every((client) => client.latestView.version === version),
+    ).toBe(true);
+    expect(
+      clients.every(
+        (client) => client.latestView.activePlayerId === secondPlayer.id,
+      ),
+    ).toBe(true);
+    const duplicateEnd = await sendCommand(
+      clients[firstIndex]!,
+      sessions[firstIndex]!,
+      "network-end-action",
+      version,
+      { type: "end-action" },
+    );
+    expect(duplicateEnd).toMatchObject({
+      type: "command-accepted",
+      duplicate: true,
+      version: version - 1,
+    });
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });

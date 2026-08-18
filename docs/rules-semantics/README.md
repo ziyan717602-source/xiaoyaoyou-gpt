@@ -12,7 +12,7 @@
 
 - 房间只允许六个固定座位；准备后不再加入新玩家，也没有观战者。
 - `turn` 保存当前回合玩家和阶段；需要处理效果或玩家输入时进入 `resolving`，完成后返回保存的续算点。
-- 回合阶段的稳定名称为 `turn-start / event / action / encounter / battle / reward / turn-end`。旧 `R1OC` 等代码只保留为 oracle 映射，不成为新协议 API。
+- 回合阶段的稳定名称为 `turn-start / event / action / encounter / battle / reward / discard / turn-end`。`discard` 对应旧版奖励阶段后的手牌上限整理；旧 `R1OC` 等代码只保留为 oracle 映射，不成为新协议 API。
 - `finished` 后游戏状态不可变，只允许写入归档元数据。
 
 ## 2. 稳定身份与因果链

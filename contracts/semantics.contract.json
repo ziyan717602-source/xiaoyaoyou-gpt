@@ -45,6 +45,7 @@
       "encounter",
       "battle",
       "reward",
+      "discard",
       "turn-end"
     ],
     "terminalRule": "finished-is-immutable-except-archival-metadata"

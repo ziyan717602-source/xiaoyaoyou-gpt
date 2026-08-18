@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createInitialMatch,
   createPlayerView,
+  migrateMatchState,
   type MatchState,
 } from "./index.js";
 
@@ -57,5 +58,38 @@ describe("match state baseline", () => {
     expect(
       view.players.find((player) => player.id === "player-2")?.handCount,
     ).toBe(2);
+  });
+
+  it("explicitly migrates M02 schema v2 snapshots and rejects unknown versions", () => {
+    const current = createSixPlayerMatch();
+    const legacy = JSON.parse(JSON.stringify(current)) as Record<
+      string,
+      unknown
+    >;
+    legacy.schemaVersion = 2;
+    delete legacy.turn;
+    delete legacy.winner;
+    for (const player of Object.values(
+      legacy.players as Record<string, Record<string, unknown>>,
+    )) {
+      delete player.handLimit;
+      delete player.equipment;
+    }
+
+    const migrated = migrateMatchState(legacy);
+    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.turn).toBeNull();
+    expect(migrated.winner).toBeNull();
+    expect(
+      Object.values(migrated.players).every(
+        (player) =>
+          player.handLimit === 3 &&
+          player.equipment.weapon === null &&
+          player.equipment.armor === null,
+      ),
+    ).toBe(true);
+    expect(() => migrateMatchState({ ...legacy, schemaVersion: 99 })).toThrow(
+      "Unsupported match schema version 99",
+    );
   });
 });

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   createInitialMatch,
+  migrateMatchState,
   projectPlayerView,
   type MatchState,
 } from "@xiaoyaoyou/engine";
@@ -41,7 +42,10 @@ function makeInitialState(): MatchState {
     players: Object.fromEntries(
       Object.values(base.players).map((player) => [
         player.id,
-        { ...player, hand: [`local-private-card-seat-${player.seat + 1}`] },
+        {
+          ...player,
+          hand: [`xyy.card.local-private@${player.seat + 1}` as const],
+        },
       ]),
     ),
   };
@@ -103,7 +107,9 @@ mkdirSync(dirname(databasePath), { recursive: true });
 const store = new SqliteEventStore(databasePath);
 let state: MatchState;
 try {
-  state = store.recover<MatchState>(LOCAL_MATCH_ID).snapshot.state;
+  state = migrateMatchState(
+    store.recover<MatchState>(LOCAL_MATCH_ID).snapshot.state,
+  );
 } catch (error) {
   if (!(error instanceof Error) || !error.message.startsWith("Unknown match")) {
     throw error;
@@ -149,8 +155,8 @@ if (smoke) {
     const serialized = JSON.stringify(view);
     return localSeats.every((_, cardIndex) =>
       cardIndex === viewerIndex
-        ? serialized.includes(`local-private-card-seat-${cardIndex + 1}`)
-        : !serialized.includes(`local-private-card-seat-${cardIndex + 1}`),
+        ? serialized.includes(`xyy.card.local-private@${cardIndex + 1}`)
+        : !serialized.includes(`xyy.card.local-private@${cardIndex + 1}`),
     );
   });
   const health = await fetch(`${httpUrl}/health`).then((response) =>

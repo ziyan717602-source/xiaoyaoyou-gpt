@@ -12,6 +12,18 @@ export interface HeroDefinition {
   readonly selectable: boolean;
 }
 
+export type EquipmentSlot = "weapon" | "armor";
+export type CoreCardAction =
+  | { readonly type: "equip"; readonly slot: EquipmentSlot }
+  | { readonly type: "draw-two" }
+  | null;
+
+export interface CardDefinition {
+  readonly id: CardId;
+  readonly name: string;
+  readonly coreAction: CoreCardAction;
+}
+
 // Values are the scoped Hero rows for legacy level 4 (packages 1 + 2).
 export const SETUP_HEROES: readonly HeroDefinition[] = [
   {
@@ -349,6 +361,73 @@ const CARD_SERIALS: Readonly<Record<CardId, readonly number[]>> = {
   "xyy.card.fj05": [56],
 };
 
+export const SETUP_CARDS: readonly CardDefinition[] = [
+  { id: "xyy.card.jp01", name: "偷盗", coreAction: null },
+  { id: "xyy.card.jp02", name: "窥测天机", coreAction: null },
+  { id: "xyy.card.jp03", name: "五气朝元", coreAction: null },
+  { id: "xyy.card.jp04", name: "鼠儿果", coreAction: { type: "draw-two" } },
+  { id: "xyy.card.jp05", name: "天雷破", coreAction: null },
+  { id: "xyy.card.jp06", name: "铜钱镖", coreAction: null },
+  { id: "xyy.card.zp01", name: "金蝉脱壳", coreAction: null },
+  { id: "xyy.card.zp02", name: "天罡战气", coreAction: null },
+  { id: "xyy.card.zp03", name: "金蚕王", coreAction: null },
+  { id: "xyy.card.zp04", name: "天玄五音", coreAction: null },
+  { id: "xyy.card.tp01", name: "冰心诀", coreAction: null },
+  { id: "xyy.card.tp02", name: "灵葫仙丹", coreAction: null },
+  { id: "xyy.card.tp03", name: "隐蛊", coreAction: null },
+  { id: "xyy.card.tp04", name: "洞冥宝镜", coreAction: null },
+  {
+    id: "xyy.card.wq01",
+    name: "无尘剑",
+    coreAction: { type: "equip", slot: "weapon" },
+  },
+  {
+    id: "xyy.card.wq02",
+    name: "天蛇杖",
+    coreAction: { type: "equip", slot: "weapon" },
+  },
+  {
+    id: "xyy.card.wq03",
+    name: "魔刀天叱",
+    coreAction: { type: "equip", slot: "weapon" },
+  },
+  {
+    id: "xyy.card.wq04",
+    name: "魔剑",
+    coreAction: { type: "equip", slot: "weapon" },
+  },
+  {
+    id: "xyy.card.wq05",
+    name: "彩环",
+    coreAction: { type: "equip", slot: "weapon" },
+  },
+  {
+    id: "xyy.card.fj01",
+    name: "五彩霞衣",
+    coreAction: { type: "equip", slot: "armor" },
+  },
+  {
+    id: "xyy.card.fj02",
+    name: "天帝祭服",
+    coreAction: { type: "equip", slot: "armor" },
+  },
+  {
+    id: "xyy.card.fj03",
+    name: "龙魂战铠",
+    coreAction: { type: "equip", slot: "armor" },
+  },
+  {
+    id: "xyy.card.fj04",
+    name: "乾坤道袍",
+    coreAction: { type: "equip", slot: "armor" },
+  },
+  {
+    id: "xyy.card.fj05",
+    name: "踏云靴",
+    coreAction: { type: "equip", slot: "armor" },
+  },
+] as const;
+
 export const SETUP_CARD_INSTANCES: readonly CardInstanceId[] = Object.entries(
   CARD_SERIALS,
 ).flatMap(([cardId, serials]) =>
@@ -361,4 +440,17 @@ export function heroDefinition(heroId: HeroId): HeroDefinition {
   const hero = SETUP_HEROES.find((candidate) => candidate.id === heroId);
   if (hero === undefined) throw new Error(`Unknown setup hero ${heroId}.`);
   return hero;
+}
+
+export function cardIdOf(instanceId: string): CardId {
+  const separator = instanceId.lastIndexOf("@");
+  if (separator <= 0) throw new Error(`Invalid card instance ${instanceId}.`);
+  return instanceId.slice(0, separator) as CardId;
+}
+
+export function cardDefinition(instanceId: string): CardDefinition {
+  const cardId = cardIdOf(instanceId);
+  const card = SETUP_CARDS.find((candidate) => candidate.id === cardId);
+  if (card === undefined) throw new Error(`Unknown card ${cardId}.`);
+  return card;
 }

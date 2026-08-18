@@ -7,13 +7,28 @@ import type {
   WindowId,
 } from "@xiaoyaoyou/protocol";
 import { PROTOCOL_VERSION } from "@xiaoyaoyou/protocol";
+import { cardDefinition } from "./setup-content.js";
 import type { CardInstanceId, HeroId } from "./setup-content.js";
 
-export const MATCH_SCHEMA_VERSION = 2 as const;
+export const MATCH_SCHEMA_VERSION = 3 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
 export type TeamId = 1 | 2;
+export type TurnPhase =
+  | "turn-start"
+  | "event"
+  | "action"
+  | "encounter"
+  | "battle"
+  | "reward"
+  | "discard"
+  | "turn-end";
+
+export interface TurnState {
+  readonly number: number;
+  readonly phase: TurnPhase;
+}
 
 export interface HeroOffer {
   readonly candidateHeroIds: readonly HeroId[];
@@ -41,7 +56,12 @@ export interface PlayerState {
   readonly maxHp: number;
   readonly strength: number;
   readonly dexterity: number;
-  readonly hand: readonly string[];
+  readonly handLimit: number;
+  readonly hand: readonly CardInstanceId[];
+  readonly equipment: {
+    readonly weapon: CardInstanceId | null;
+    readonly armor: CardInstanceId | null;
+  };
 }
 
 export interface EffectFrame {
@@ -109,6 +129,8 @@ export interface MatchState {
   readonly eventSequence: number;
   readonly phase: MatchPhase;
   readonly activePlayerId: PlayerId | null;
+  readonly turn: TurnState | null;
+  readonly winner: TeamId | "draw" | null;
   readonly turnOrder: readonly PlayerId[];
   readonly players: Readonly<Record<PlayerId, PlayerState>>;
   readonly drawPile: readonly CardInstanceId[];
@@ -140,8 +162,13 @@ export interface PublicPlayerView {
   readonly alive: boolean;
   readonly hp: number;
   readonly maxHp: number;
+  readonly handLimit: number;
   readonly handCount: number;
-  readonly hand: readonly string[] | null;
+  readonly hand: readonly CardInstanceId[] | null;
+  readonly equipment: {
+    readonly weapon: CardInstanceId | null;
+    readonly armor: CardInstanceId | null;
+  };
 }
 
 export interface SetupView {
@@ -157,13 +184,26 @@ export interface SetupView {
 
 export type AvailableAction =
   | { readonly type: "choose-hero"; readonly heroIds: readonly HeroId[] }
-  | { readonly type: "reroll-hero" };
+  | { readonly type: "reroll-hero" }
+  | {
+      readonly type: "play-card";
+      readonly cardInstanceId: CardInstanceId;
+      readonly targetPlayerIds: readonly PlayerId[];
+    }
+  | { readonly type: "end-action" }
+  | {
+      readonly type: "discard-cards";
+      readonly count: number;
+      readonly cardInstanceIds: readonly CardInstanceId[];
+    };
 
 export interface PlayerView {
   readonly matchId: MatchId;
   readonly version: number;
   readonly phase: MatchPhase;
   readonly activePlayerId: PlayerId | null;
+  readonly turn: TurnState | null;
+  readonly winner: TeamId | "draw" | null;
   readonly players: readonly PublicPlayerView[];
   readonly setup: SetupView | null;
   readonly availableActions: readonly AvailableAction[];
@@ -192,7 +232,9 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
         maxHp: 0,
         strength: 0,
         dexterity: 0,
+        handLimit: 3,
         hand: [],
+        equipment: { weapon: null, armor: null },
       } satisfies PlayerState,
     ]),
   );
@@ -207,6 +249,8 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     eventSequence: 0,
     phase: "lobby",
     activePlayerId: null,
+    turn: null,
+    winner: null,
     turnOrder: [],
     players,
     drawPile: [],
@@ -216,6 +260,56 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     reactionWindow: null,
     pendingChoice: null,
     rng: { algorithm: "sha256-counter-v1", seed: input.seed, cursor: 0 },
+  };
+}
+
+/** Explicit in-memory forward migration; persistence bytes remain untouched until the next accepted snapshot. */
+export function migrateMatchState(value: unknown): MatchState {
+  if (value === null || typeof value !== "object") {
+    throw new Error("Match snapshot is not an object.");
+  }
+  const raw = value as Record<string, unknown>;
+  if (raw.schemaVersion === MATCH_SCHEMA_VERSION) {
+    const current = value as MatchState;
+    if (
+      !("turn" in raw) ||
+      !("winner" in raw) ||
+      Object.values(current.players).some(
+        (player) =>
+          typeof player.handLimit !== "number" ||
+          player.equipment === undefined,
+      )
+    ) {
+      throw new Error("Match schema v3 snapshot is missing required fields.");
+    }
+    return current;
+  }
+  if (raw.schemaVersion !== 2) {
+    throw new Error(
+      `Unsupported match schema version ${String(raw.schemaVersion)}.`,
+    );
+  }
+  const legacy = value as Omit<MatchState, "schemaVersion"> & {
+    readonly schemaVersion: 2;
+  };
+  const players = Object.fromEntries(
+    Object.values(legacy.players).map((player) => [
+      player.id,
+      {
+        ...player,
+        handLimit: typeof player.handLimit === "number" ? player.handLimit : 3,
+        equipment: player.equipment ?? { weapon: null, armor: null },
+      },
+    ]),
+  );
+  return {
+    ...legacy,
+    schemaVersion: MATCH_SCHEMA_VERSION,
+    turn:
+      legacy.turn ??
+      (legacy.phase === "playing" ? { number: 1, phase: "action" } : null),
+    winner: legacy.winner ?? null,
+    players,
   };
 }
 
@@ -230,11 +324,22 @@ export function createPlayerView(
   const ownOffer = state.setup?.offers[viewerId] ?? null;
   const canChoose =
     state.phase === "setup" && ownOffer?.selectedHeroId === null;
+  const availableActions: AvailableAction[] = canChoose
+    ? [
+        {
+          type: "choose-hero",
+          heroIds: ownOffer.candidateHeroIds,
+        },
+        ...(ownOffer.rerolled ? [] : [{ type: "reroll-hero" as const }]),
+      ]
+    : turnActions(state, viewerId);
   return {
     matchId: state.matchId,
     version: state.version,
     phase: state.phase,
     activePlayerId: state.activePlayerId,
+    turn: state.turn,
+    winner: state.winner,
     players: Object.values(state.players)
       .sort((left, right) => left.seat - right.seat)
       .map((player) => ({
@@ -250,8 +355,10 @@ export function createPlayerView(
         alive: player.alive,
         hp: player.hp,
         maxHp: player.maxHp,
+        handLimit: player.handLimit,
         handCount: player.hand.length,
         hand: player.id === viewerId ? player.hand : null,
+        equipment: player.equipment,
       })),
     setup:
       state.setup === null
@@ -271,15 +378,7 @@ export function createPlayerView(
                     selectedHeroId: ownOffer.selectedHeroId,
                   },
           },
-    availableActions: canChoose
-      ? [
-          {
-            type: "choose-hero",
-            heroIds: ownOffer.candidateHeroIds,
-          },
-          ...(ownOffer.rerolled ? [] : [{ type: "reroll-hero" as const }]),
-        ]
-      : [],
+    availableActions,
     effectStack: state.effectStack,
     reactionWindow: state.reactionWindow,
     pendingChoice:
@@ -287,6 +386,60 @@ export function createPlayerView(
         ? state.pendingChoice
         : null,
   };
+}
+
+function turnActions(
+  state: Readonly<MatchState>,
+  viewerId: PlayerId,
+): AvailableAction[] {
+  if (
+    state.phase !== "playing" ||
+    state.activePlayerId !== viewerId ||
+    state.turn === null
+  ) {
+    return [];
+  }
+  const player = state.players[viewerId];
+  if (player === undefined || !player.alive) return [];
+  if (state.turn.phase === "discard") {
+    const count = player.hand.length - player.handLimit;
+    return count > 0
+      ? [
+          {
+            type: "discard-cards",
+            count,
+            cardInstanceIds: player.hand,
+          },
+        ]
+      : [];
+  }
+  if (state.turn.phase !== "action") return [];
+  const playable = player.hand.flatMap((instanceId) => {
+    const definition = cardDefinition(instanceId);
+    if (definition.coreAction?.type === "equip") {
+      return [
+        {
+          type: "play-card" as const,
+          cardInstanceId: instanceId,
+          targetPlayerIds: [viewerId],
+        },
+      ];
+    }
+    if (definition.coreAction?.type === "draw-two") {
+      return [
+        {
+          type: "play-card" as const,
+          cardInstanceId: instanceId,
+          targetPlayerIds: Object.values(state.players)
+            .filter((candidate) => candidate.alive)
+            .sort((left, right) => left.seat - right.seat)
+            .map((candidate) => candidate.id),
+        },
+      ];
+    }
+    return [];
+  });
+  return [...playable, { type: "end-action" }];
 }
 
 export const projectPlayerView = createPlayerView;
@@ -333,11 +486,18 @@ export type {
 } from "./architecture.js";
 export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
 export {
+  SETUP_CARDS,
   SELECTABLE_HEROES,
   SETUP_CARD_INSTANCES,
   SETUP_HEROES,
+  cardDefinition,
+  cardIdOf,
   heroDefinition,
+  type CardDefinition,
+  type CardId,
   type CardInstanceId,
+  type CoreCardAction,
+  type EquipmentSlot,
   type HeroDefinition,
   type HeroId,
 } from "./setup-content.js";

@@ -19,6 +19,7 @@ import {
   heroDefinition,
   type HeroId,
 } from "./setup-content.js";
+import { applyTurnCommand, reduceTurnEvent } from "./turn.js";
 
 const PLAYER_COUNT = 6;
 const HERO_CHOICES = 3;
@@ -83,6 +84,8 @@ function finalized(state: MatchState): MatchState {
     ...state,
     phase: "playing",
     activePlayerId: state.turnOrder[0] ?? null,
+    turn: { number: 1, phase: "action" },
+    winner: null,
     players,
     drawPile: state.drawPile.slice(drawOffset),
     setup: { ...state.setup, status: "completed" },
@@ -176,6 +179,12 @@ export function reduceEvent(
   state: Readonly<MatchState>,
   eventToReduce: Readonly<DomainEvent>,
 ): MatchState {
+  if (
+    eventToReduce.type.startsWith("turn.") ||
+    eventToReduce.type === "match.finished"
+  ) {
+    return reduceTurnEvent(state, eventToReduce);
+  }
   if (
     eventToReduce.matchId !== state.matchId ||
     eventToReduce.sequence !== state.eventSequence + 1 ||
@@ -277,6 +286,16 @@ export function applyCommand(
       reason: "stale-version",
       currentVersion: input.version,
     };
+  }
+  if (input.phase === "finished") {
+    return {
+      accepted: false,
+      reason: "match-finished",
+      currentVersion: input.version,
+    };
+  }
+  if (input.phase === "playing") {
+    return applyTurnCommand(input, envelope);
   }
   if (input.phase !== "setup" || input.setup === null) {
     return {

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   applyCommand,
   createPlayerView,
+  migrateMatchState,
   reduceEvent,
   type MatchState,
 } from "@xiaoyaoyou/engine";
@@ -78,7 +79,7 @@ export class MatchService {
 
   #recover(matchId: MatchId): MatchState {
     const recovery = this.#store.recover<MatchState>(matchId);
-    let state = recovery.snapshot.state;
+    let state = migrateMatchState(recovery.snapshot.state);
     for (const persisted of recovery.events) {
       state = reduceEvent(state, {
         eventId: persisted.eventId,

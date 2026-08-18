@@ -39,6 +39,34 @@ describe("protocol runtime schema", () => {
         },
       }).ok,
     ).toBe(true);
+    for (const command of [
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp04@7",
+        targetPlayerIds: ["player-2"],
+      },
+      { type: "end-action" },
+      {
+        type: "discard-cards",
+        cardInstanceIds: ["xyy.card.jp01@1"],
+      },
+    ]) {
+      expect(
+        validateClientMessage({
+          type: "command",
+          envelope: {
+            protocolVersion: PROTOCOL_VERSION,
+            commandId: `command-${command.type}`,
+            matchId: "match-1",
+            playerId: "player-1",
+            clientSequence: 1,
+            expectedVersion: 0,
+            clientIssuedAt: 1,
+            command,
+          },
+        }).ok,
+      ).toBe(true);
+    }
     expect(
       validateClientMessage({ type: "ping", nonce: "x".repeat(129) }).ok,
     ).toBe(false);

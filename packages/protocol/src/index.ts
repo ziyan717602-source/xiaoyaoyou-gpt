@@ -48,6 +48,16 @@ export type ClientCommand =
     }
   | { readonly type: "reroll-hero" }
   | {
+      readonly type: "play-card";
+      readonly cardInstanceId: string;
+      readonly targetPlayerIds: readonly PlayerId[];
+    }
+  | { readonly type: "end-action" }
+  | {
+      readonly type: "discard-cards";
+      readonly cardInstanceIds: readonly string[];
+    }
+  | {
       readonly type: "submit-choice";
       readonly choiceId: ChoiceId;
       readonly selections: readonly string[];
@@ -215,6 +225,39 @@ export const clientMessageSchema = {
                   additionalProperties: false,
                   required: ["type"],
                   properties: { type: { const: "reroll-hero" } },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "cardInstanceId", "targetPlayerIds"],
+                  properties: {
+                    type: { const: "play-card" },
+                    cardInstanceId: identifierSchema,
+                    targetPlayerIds: {
+                      type: "array",
+                      maxItems: 6,
+                      items: identifierSchema,
+                    },
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type"],
+                  properties: { type: { const: "end-action" } },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "cardInstanceIds"],
+                  properties: {
+                    type: { const: "discard-cards" },
+                    cardInstanceIds: {
+                      type: "array",
+                      maxItems: 56,
+                      items: identifierSchema,
+                    },
+                  },
                 },
                 {
                   type: "object",

@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc -b && npm run build -w @xiaoyaoyou/web",
     "bootstrap:smoke": "node scripts/bootstrap-local.mjs --smoke",
-    "check:fast": "npm run format:check && npm run typecheck && npm run check:public-history && npm run catalog:verify && npm run oracle:golden-traces && npm run semantics:verify && npm run ux:verify && npm run probes:verify && npm run verification:verify && npm run architecture:verify && npm run room:contract && npm run setup:contract && npm run test:unit",
+    "check:fast": "npm run format:check && npm run typecheck && npm run check:public-history && npm run catalog:verify && npm run oracle:golden-traces && npm run semantics:verify && npm run ux:verify && npm run probes:verify && npm run verification:verify && npm run architecture:verify && npm run room:contract && npm run setup:contract && npm run turn:contract && npm run test:unit",
     "check:full": "npm run check:fast && npm run build && npm run test:replay && npm run test:bots && npm run test:integration && npm run test:e2e && npm run local:smoke -w @xiaoyaoyou/server",
     "check:public-history": "node scripts/check-public-history.mjs",
     "catalog:oracle-verify": "node --disable-warning=ExperimentalWarning scripts/catalog.mjs --oracle-verify",
@@ -45,6 +45,9 @@
     "test:unit": "vitest run packages apps/server/src/room-store.test.ts --exclude **/*.replay.test.ts --exclude **/*.bot.test.ts",
     "test:rooms": "vitest run apps/server/src/room-store.test.ts && node --disable-warning=ExperimentalWarning node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts tests/integration/room-lifecycle.integration.test.ts",
     "test:setup": "vitest run packages/engine/src/setup.test.ts apps/server/src/room-store.test.ts && node --disable-warning=ExperimentalWarning node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts tests/integration/setup-lifecycle.integration.test.ts",
+    "test:turn": "vitest run packages/engine/src/turn.test.ts packages/engine/src/turn.replay.test.ts packages/engine/src/testing/turn-engine.bot.test.ts && node --disable-warning=ExperimentalWarning node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts tests/integration/setup-lifecycle.integration.test.ts",
+    "turn:contract": "node scripts/verify-turn-core.mjs",
+    "turn:verify": "npm run turn:contract && npm run test:turn",
     "test:replay": "vitest run --config vitest.replay.config.ts",
     "test:bots": "vitest run --config vitest.bots.config.ts",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",

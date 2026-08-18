@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-turn-core-v1",
+  "scope": "M03-TURN-CORE",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "players": 6,
+  "phases": [
+    "turn-start",
+    "event",
+    "action",
+    "encounter",
+    "battle",
+    "reward",
+    "discard",
+    "turn-end"
+  ],
+  "automaticEmptyPhases": {
+    "turnStart": "advance-through-event-to-action",
+    "event": "no-event-content-in-m03",
+    "encounter": "explicit-phase-event-then-skip-in-m03",
+    "battle": "explicit-phase-event-then-skip-in-m03"
+  },
+  "cards": {
+    "physicalInstances": 56,
+    "topOfPile": "array-index-zero",
+    "emptyDrawPile": "seeded-fisher-yates-discard-recycle",
+    "drawEvent": "records-card-instance-ids-and-final-rng-cursor",
+    "conservation": "every-instance-in-exactly-one-hand-equipment-draw-or-discard-zone",
+    "supportedCoreActions": {
+      "xyy.card.jp04": "one-living-target-draws-two",
+      "xyy.card.wq01..wq05": "self-equip-weapon-replaced-instance-discarded",
+      "xyy.card.fj01..fj05": "self-equip-armor-replaced-instance-discarded"
+    },
+    "deferredContent": "all-other-card-effects-not-offered-until-content-or-reaction-nodes"
+  },
+  "turn": {
+    "initialActivePlayer": "turn-order-index-zero",
+    "initialPhase": "action",
+    "noBattleRewardDraw": 1,
+    "battleRewardDraw": "deferred-with-battle-resolution",
+    "handLimit": 3,
+    "discard": "exact-excess-selected-from-own-hand",
+    "advance": "next-living-player-in-cyclic-turn-order"
+  },
+  "victory": {
+    "oneLivingTeam": "that-team-wins",
+    "zeroLivingTeams": "draw",
+    "twoLivingTeams": "continue"
+  },
+  "commands": ["play-card", "end-action", "discard-cards"],
+  "authority": {
+    "interactionSource": "server-player-view-available-actions-only",
+    "optimisticConcurrency": "expected-version",
+    "idempotency": "match-id-command-id-and-canonical-command-content",
+    "acceptedMutation": "events-receipt-version-and-wait-point-snapshot-one-transaction"
+  },
+  "privacy": {
+    "public": ["turn", "active-player", "hand-count", "equipment", "winner"],
+    "playerPrivate": [
+      "own-hand",
+      "own-playable-card-actions",
+      "own-discard-options"
+    ],
+    "serverSecret": ["draw-pile-order", "other-hands", "rng-seed"],
+    "nonActiveActions": "empty"
+  },
+  "replay": {
+    "eventSequence": "strictly-increasing",
+    "oneCommandVersion": "all-events-from-one-command-share-next-match-version",
+    "restart": "snapshot-plus-events-equals-uninterrupted-state",
+    "matchSchema": 3,
+    "forwardMigration": "explicit-v2-to-v3-adds-turn-winner-hand-limit-and-equipment"
+  },
+  "legacyEvidence": [
+    "PSDBase/Player.cs:354-367",
+    "PSDGamepkg/XIR.cs:622-701",
+    "PSDGamepkg/XIG.cs:1805-1870",
+    "PSDGamepkg/XIG.cs:2547-2548",
+    "PSDGamepkg/JNS/JP06.cs:332-343"
+  ],
+  "acceptanceMap": {
+    "M03-01": "all-eight-turn-phases-have-stable-serializable-state-and-events",
+    "M03-02": "jp04-draws-exactly-two-for-one-living-target",
+    "M03-03": "weapon-and-armor-equip-and-replace-without-card-loss",
+    "M03-04": "no-battle-reward-draws-one-and-empty-pile-recycles-deterministically",
+    "M03-05": "exact-excess-discard-enforces-hand-limit-three",
+    "M03-06": "next-living-player-and-basic-win-or-draw-are-deterministic",
+    "M03-07": "unsupported-or-illegal-actions-are-not-offered-and-rejected",
+    "M03-08": "all-fifty-six-card-instances-are-conserved-across-generated-long-play",
+    "M03-09": "event-replay-json-restart-and-command-idempotency-match-uninterrupted-run",
+    "M03-10": "six-real-player-views-preserve-hand-and-action-privacy-through-restart"
+  }
+}
