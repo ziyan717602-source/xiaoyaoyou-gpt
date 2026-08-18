@@ -221,6 +221,13 @@ export type AvailableAction =
       readonly targetPlayerIds: readonly PlayerId[];
       readonly mode?: "primary" | "pawn";
     }
+  | {
+      readonly type: "play-skill-converted-card";
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly requiredCardCount: 2;
+      readonly skillId: "xyy.skill.jn40301";
+      readonly targetPlayerIds: readonly PlayerId[];
+    }
   | { readonly type: "end-action" }
   | {
       readonly type: "play-reaction-card";
@@ -792,6 +799,20 @@ function rescueActions(
         ]
       : [],
   );
+  const skillConversion =
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn40301") &&
+    player.hand.length >= 2
+      ? [
+          {
+            type: "play-skill-converted-card" as const,
+            cardInstanceIds: player.hand,
+            requiredCardCount: 2 as const,
+            skillId: "xyy.skill.jn40301" as const,
+            targetPlayerIds: [batch.currentTargetPlayerId],
+          },
+        ]
+      : [];
   const armor = player.equipment.armor;
   const rescueEquipment =
     viewerId === batch.currentTargetPlayerId &&
@@ -807,6 +828,7 @@ function rescueActions(
       : [];
   return [
     ...rescueEquipment,
+    ...skillConversion,
     ...rescueCards,
     { type: "pass-rescue", choiceId: choice.choiceId },
   ];
@@ -974,7 +996,26 @@ function turnActions(
           },
         ]
       : [];
-  return [...playable, ...equippedPawn, { type: "end-action" }];
+  const skillConversion =
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn40301") &&
+    player.hand.length >= 2
+      ? [
+          {
+            type: "play-skill-converted-card" as const,
+            cardInstanceIds: player.hand,
+            requiredCardCount: 2 as const,
+            skillId: "xyy.skill.jn40301" as const,
+            targetPlayerIds: [viewerId],
+          },
+        ]
+      : [];
+  return [
+    ...playable,
+    ...equippedPawn,
+    ...skillConversion,
+    { type: "end-action" },
+  ];
 }
 
 export const projectPlayerView = createPlayerView;

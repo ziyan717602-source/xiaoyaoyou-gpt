@@ -177,6 +177,109 @@ function passAllRescue(state: MatchState, now: number): MatchState {
 }
 
 describe("M05 damage and dying core", () => {
+  it("lets JN40301 pay two hand cards as TP02 during rescue", () => {
+    let state = playing("jn40301-rescue");
+    const actor = state.activePlayerId!;
+    const ordered = Object.values(state.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const actorIndex = ordered.findIndex((player) => player.id === actor);
+    const target = ordered[(actorIndex + 1) % ordered.length]!.id;
+    const rescuer = ordered[(actorIndex + 2) % ordered.length]!.id;
+    state = arrange(state, {
+      [actor]: ["xyy.card.jp05@10"],
+      [rescuer]: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [target]: { ...state.players[target]!, hp: 2 },
+        [rescuer]: {
+          ...state.players[rescuer]!,
+          heroId: "xyy.hero.x3w03",
+        },
+      },
+    };
+    state = accepted(
+      state,
+      actor,
+      "jn40301-damage",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [target],
+      },
+      1_000,
+    );
+    state = passAllReactions(state, 2_000);
+    state = accepted(
+      state,
+      target,
+      "jn40301-target-pass",
+      { type: "pass-rescue", choiceId: state.pendingChoice!.choiceId },
+      3_000,
+    );
+    expect(createPlayerView(state, rescuer).availableActions).toEqual([
+      {
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+        requiredCardCount: 2,
+        skillId: "xyy.skill.jn40301",
+        targetPlayerIds: [target],
+      },
+      { type: "pass-rescue", choiceId: state.pendingChoice!.choiceId },
+    ]);
+    expect(createPlayerView(state, actor).availableActions).toEqual([]);
+    const forged = applied(
+      state,
+      rescuer,
+      "jn40301-rescue-forged",
+      {
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.jp01@1"],
+        skillId: "xyy.skill.jn40301",
+        targetPlayerIds: [target],
+      },
+      4_000,
+    );
+    expect(forged).toMatchObject({ accepted: false, reason: "forbidden" });
+    const optionalPass = accepted(
+      state,
+      rescuer,
+      "jn40301-rescue-pass-copy",
+      { type: "pass-rescue", choiceId: state.pendingChoice!.choiceId },
+      4_000,
+    );
+    expect(optionalPass.players[rescuer]!.hand).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.zp01@16",
+    ]);
+
+    state = accepted(
+      state,
+      rescuer,
+      "jn40301-rescue",
+      {
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn40301",
+        targetPlayerIds: [target],
+      },
+      4_000,
+    );
+    expect(state.players[target]).toMatchObject({ hp: 2, alive: true });
+    expect(state.players[rescuer]!.hand).toEqual([]);
+    expect(state.discardPile).toEqual(
+      expect.arrayContaining([
+        "xyy.card.jp05@10",
+        "xyy.card.jp01@1",
+        "xyy.card.zp01@16",
+      ]),
+    );
+    expect(state.dyingBatch).toBeNull();
+  });
+
   it("applies JN50501 water/fire immunity with IMMUNE_INVAO bypass", () => {
     const initial = playing("jn50501-elements");
     const actor = initial.activePlayerId!;

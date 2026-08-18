@@ -53,6 +53,12 @@ export type ClientCommand =
       readonly targetPlayerIds: readonly PlayerId[];
       readonly mode?: "primary" | "pawn";
     }
+  | {
+      readonly type: "play-skill-converted-card";
+      readonly cardInstanceIds: readonly string[];
+      readonly skillId: string;
+      readonly targetPlayerIds: readonly PlayerId[];
+    }
   | { readonly type: "end-action" }
   | {
       readonly type: "play-reaction-card";
@@ -276,6 +282,31 @@ export const clientMessageSchema = {
                       items: identifierSchema,
                     },
                     mode: { enum: ["primary", "pawn"] },
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: [
+                    "type",
+                    "cardInstanceIds",
+                    "skillId",
+                    "targetPlayerIds",
+                  ],
+                  properties: {
+                    type: { const: "play-skill-converted-card" },
+                    cardInstanceIds: {
+                      type: "array",
+                      minItems: 2,
+                      maxItems: 2,
+                      items: identifierSchema,
+                    },
+                    skillId: identifierSchema,
+                    targetPlayerIds: {
+                      type: "array",
+                      maxItems: 6,
+                      items: identifierSchema,
+                    },
                   },
                 },
                 {

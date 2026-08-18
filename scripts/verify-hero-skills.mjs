@@ -11,6 +11,7 @@ const plan = JSON.parse(read("content/standard-plan.json"));
 const setupSource = read("packages/engine/src/setup.ts");
 const setupUnit = read("packages/engine/src/setup.test.ts");
 const turnUnit = read("packages/engine/src/turn.test.ts");
+const turn = read("packages/engine/src/turn.ts");
 const replay = read("packages/engine/src/turn.replay.test.ts");
 const damage = read("packages/engine/src/damage-dying.ts");
 const damageUnit = read("packages/engine/src/damage-dying.test.ts");
@@ -121,6 +122,8 @@ const immunityHeroPlan = plan.items.find(
 );
 const refusalPlan = plan.items.find((item) => item.id === "xyy.skill.jn20202");
 const refusalHeroPlan = plan.items.find((item) => item.id === "xyy.hero.xj202");
+const cookingPlan = plan.items.find((item) => item.id === "xyy.skill.jn40301");
+const cookingHeroPlan = plan.items.find((item) => item.id === "xyy.hero.x3w03");
 assert(skillPlan?.state === "verified", "JN50402 must be verified in plan.");
 assert(heroPlan?.state === "partial", "XJ404 must remain partial.");
 assert(
@@ -142,6 +145,13 @@ assert(
     refusalHeroPlan?.boundary.includes("JN20201"),
   "XJ202 boundary must name completed and pending skills.",
 );
+assert(cookingPlan?.state === "verified", "JN40301 must be verified in plan.");
+assert(cookingHeroPlan?.state === "partial", "X3W03 must remain partial.");
+assert(
+  cookingHeroPlan?.boundary.includes("JN40301") &&
+    cookingHeroPlan?.boundary.includes("JN40302"),
+  "X3W03 boundary must name completed and pending skills.",
+);
 for (const [source, token] of [
   [setupSource, "handLimit: handLimitForHero(heroId)"],
   [setupUnit, "loads the complete hero-skill graph"],
@@ -158,6 +168,15 @@ for (const [source, token] of [
   [reactionUnit, "uses JN20202 to pay a special card"],
   [reactionReplay, "replays a JN20202 special-card conversion"],
   [reactionNetwork, 'skillId: "xyy.skill.jn20202"'],
+  [protocol, 'readonly type: "play-skill-converted-card"'],
+  [view, "requiredCardCount: 2 as const"],
+  [turn, "beginSkillConvertedCardEffect"],
+  [reaction, 'builder.append("effect.skill-card-converted"'],
+  [turnUnit, "uses JN40301 to pay two hand cards"],
+  [reactionReplay, "replays a JN40301 two-card TP02 conversion"],
+  [damage, 'builder.append("rescue.skill-card-converted"'],
+  [damageUnit, "lets JN40301 pay two hand cards as TP02 during rescue"],
+  [damageNetwork, '"network-rescue-jn40301"'],
 ]) {
   assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
@@ -166,14 +185,15 @@ for (const path of [
   "docs/verification/receipts/cs02-jn50402.md",
   "docs/verification/receipts/cs02-jn50501.md",
   "docs/verification/receipts/cs02-jn20202.md",
+  "docs/verification/receipts/cs02-jn40301.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 22,
-  "Expected 22 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 30,
+  "Expected 30 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50402/JN50501/JN20202 complete`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50402/JN50501/JN20202/JN40301 complete`,
 );

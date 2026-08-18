@@ -70,6 +70,12 @@ describe("protocol runtime schema", () => {
         targetEffectId: "effect-1",
       },
       {
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn40301",
+        targetPlayerIds: ["player-1"],
+      },
+      {
         type: "activate-damage-equipment",
         cardInstanceId: "xyy.card.fj05@56",
         targetEffectId: "effect-1",
@@ -108,6 +114,26 @@ describe("protocol runtime schema", () => {
     }
     expect(
       validateClientMessage({ type: "ping", nonce: "x".repeat(129) }).ok,
+    ).toBe(false);
+    expect(
+      validateClientMessage({
+        type: "command",
+        envelope: {
+          protocolVersion: PROTOCOL_VERSION,
+          commandId: "command-short-skill-payment",
+          matchId: "match-1",
+          playerId: "player-1",
+          clientSequence: 1,
+          expectedVersion: 0,
+          clientIssuedAt: 1,
+          command: {
+            type: "play-skill-converted-card",
+            cardInstanceIds: ["xyy.card.jp01@1"],
+            skillId: "xyy.skill.jn40301",
+            targetPlayerIds: ["player-1"],
+          },
+        },
+      }).ok,
     ).toBe(false);
   });
 

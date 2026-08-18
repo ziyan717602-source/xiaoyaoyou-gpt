@@ -46,6 +46,10 @@
     "xyy.skill.jn20202": {
       "boundary": "native XJ202 TP-category hand-card conversion into the canonical TP01 counter-chain is verified through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn20202.md"]
+    },
+    "xyy.skill.jn40301": {
+      "boundary": "native X3W03 two-hand-card conversion into TP02 action healing and dying rescue is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn40301.md"]
     }
   },
   "baselinePartial": {
@@ -73,6 +77,13 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn20202.md"
+        ]
+      },
+      "xyy.hero.x3w03": {
+        "boundary": "setup identity and base stats plus JN40301 two-card TP02 conversion are verified; JN40302 remains pending",
+        "evidence": [
+          "M02-SETUP-AND-TEAMS",
+          "receipt:docs/verification/receipts/cs02-jn40301.md"
         ]
       }
     },

@@ -152,6 +152,96 @@ function expectConserved(state: MatchState): void {
 }
 
 describe("M03 deterministic turn core", () => {
+  it("uses JN40301 to pay two hand cards into the normal TP02 chain", () => {
+    let state = playing("jn40301-action");
+    const actor = state.activePlayerId!;
+    const responder = state.turnOrder.find((id) => id !== actor)!;
+    state = arrange(state, {
+      [actor]: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+      [responder]: ["xyy.card.tp01@33"],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: {
+          ...state.players[actor]!,
+          heroId: "xyy.hero.x3w03",
+          hp: 2,
+          maxHp: 5,
+        },
+      },
+    };
+    expect(createPlayerView(state, actor).availableActions).toContainEqual({
+      type: "play-skill-converted-card",
+      cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+      requiredCardCount: 2,
+      skillId: "xyy.skill.jn40301",
+      targetPlayerIds: [actor],
+    });
+    expect(
+      createPlayerView(
+        state,
+        state.turnOrder.find((id) => id !== actor)!,
+      ).availableActions,
+    ).toEqual([]);
+
+    const forged = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn40301-forged", {
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.jp01@1"],
+        skillId: "xyy.skill.jn40301",
+        targetPlayerIds: [actor],
+      }),
+    });
+    expect(forged).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    state = dispatch(state, actor, "jn40301-convert", {
+      type: "play-skill-converted-card",
+      cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+      skillId: "xyy.skill.jn40301",
+      targetPlayerIds: [actor],
+    });
+    expect(state.players[actor]!.hand).toEqual([]);
+    expect(state.discardPile).toEqual(["xyy.card.jp01@1", "xyy.card.zp01@16"]);
+    expect(state.effectStack[0]).toMatchObject({
+      kind: "card:xyy.card.tp02",
+      payload: {
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn40301",
+      },
+    });
+    let cancelled = state;
+    let skipped = 0;
+    while (
+      cancelled.reactionWindow !== null &&
+      cancelled.reactionWindow.priorityOrder[
+        cancelled.reactionWindow.priorityIndex
+      ] !== responder
+    ) {
+      const window = cancelled.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      cancelled = dispatch(cancelled, priority, `jn40301-skip-${skipped}`, {
+        type: "pass-reaction",
+        windowId: window.windowId,
+      });
+      skipped += 1;
+    }
+    cancelled = dispatch(cancelled, responder, "jn40301-cancel", {
+      type: "play-reaction-card",
+      cardInstanceId: "xyy.card.tp01@33",
+      targetEffectId: cancelled.effectStack[0]!.effectId,
+    });
+    cancelled = passAllReactions(cancelled, "jn40301-cancel-pass");
+    expect(cancelled.players[actor]!.hp).toBe(2);
+
+    state = passAllReactions(state, "jn40301-pass");
+    expect(state.players[actor]!.hp).toBe(4);
+    expectConserved(state);
+  });
+
   it("uses 剑匣 limit five for authoritative discard decisions", () => {
     let state = playing("jn50402-7");
     const ownerId = state.activePlayerId!;

@@ -37,6 +37,14 @@
       "status": "verified",
       "verifiedBoundary": "TP-category filtering, ordinary-card rejection, physical payment, canonical cancel-effect child, nested counter, timeout pass, JSON replay, SQLite restart and six-socket privacy",
       "linkedPending": []
+    },
+    "xyy.skill.jn40301": {
+      "name": "烹饪",
+      "owner": "xyy.hero.x3w03",
+      "rule": "the owner may pay exactly two distinct own hand cards as TP02, using its normal cancellable self-heal mode during action or its direct current-target rescue mode during dying",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, exact two-card payment, action TP02 response chain, rescue priority, cure modifiers, timeout pass, JSON replay, SQLite restart and six-socket privacy",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -46,7 +54,9 @@
     "PSDGamepkg/XIR.cs:53 native hero skills loaded through G0IS",
     "PSDGamepkg/XIG.cs:2630-2658 G0IS skill attachment",
     "PSDGamepkg/XIG.cs:2547 discard only when Tux.Count exceeds TuxLimit",
-    "PSDGamepkg/JNS/XJ405.cs:443-462 JN20202 reuses TP01 validity and pays one TP-category hand card"
+    "PSDGamepkg/JNS/XJ405.cs:443-462 JN20202 reuses TP01 validity and pays one TP-category hand card",
+    "psd.db3:Skill:JN40301 OCCURS TP02 type 0/type 1 and description any two hand cards as TP02",
+    "PSDGamepkg/JNS/XJ405.cs:1037-1062 JN40301 requires/selects two hand cards and routes both modes through TP02"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -55,7 +65,10 @@
     "jn50402Visibility": "hand limit is public match state; hand identities remain owner-only",
     "futureHeroChanges": "any later hero transformation or dynamic skill ownership node must call the same skill-derived stat recomputation before it can be verified",
     "jn20202ConversionRepresentation": "the paid physical TP-category card and JN20202 source are recorded while the child uses the canonical cancel-effect node shared by normal TP01",
-    "jn20202Timeout": "conversion is optional and the existing 15-second reaction timeout is a pass without payment"
+    "jn20202Timeout": "conversion is optional and the existing 15-second reaction timeout is a pass without payment",
+    "jn40301ConversionRepresentation": "one command carries the exact two physical payment cards and skill source; action mode creates the canonical TP02 effect while rescue mode enters the existing dying cure path",
+    "jn40301ChoiceProjection": "the owner sees one authoritative action with all own eligible hand cards and requiredCardCount two, avoiding quadratic pair enumeration",
+    "jn40301Timeout": "both uses are optional; action timeout ends action and rescue timeout passes without paying cards"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -79,6 +92,14 @@
     "CS02-19": "JN20202-reuses-the-canonical-nested-cancel-effect-chain",
     "CS02-20": "JN20202-optional-timeout-is-pass-without-payment",
     "CS02-21": "JN20202-replays-identically-after-JSON-checkpoint",
-    "CS02-22": "JN20202-persists-a-child-window-through-SQLite-restart-with-six-socket-privacy"
+    "CS02-22": "JN20202-persists-a-child-window-through-SQLite-restart-with-six-socket-privacy",
+    "CS02-23": "JN40301-is-offered-only-to-its-native-owner-with-at-least-two-hand-cards",
+    "CS02-24": "JN40301-requires-exactly-two-distinct-owned-hand-card-instances",
+    "CS02-25": "JN40301-action-use-enters-the-canonical-cancellable-TP02-chain",
+    "CS02-26": "JN40301-rescue-use-heals-the-current-dying-target-through-normal-cure-planning",
+    "CS02-27": "JN40301-pays-both-physical-cards-and-records-the-skill-source",
+    "CS02-28": "JN40301-optional-timeouts-do-not-pay-cards",
+    "CS02-29": "JN40301-replays-identically-after-a-JSON-checkpoint",
+    "CS02-30": "JN40301-rescue-priority-persists-through-SQLite-restart-with-six-socket-privacy"
   }
 }

@@ -468,6 +468,71 @@ export function reduceDyingEvent(
       pendingChoice: null,
     };
     next = advanceBatch(intermediate, intermediate.dyingBatch!, rescuedAt);
+  } else if (event.type === "rescue.skill-card-converted") {
+    const playerId = stringPayload(event, "playerId");
+    const targetPlayerId = stringPayload(event, "targetPlayerId");
+    const cardInstanceIds = stringsPayload(
+      event,
+      "cardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const skillId = stringPayload(event, "skillId");
+    const rescuedAt = numberPayload(event, "rescuedAt");
+    const player = state.players[playerId];
+    const target = state.players[targetPlayerId];
+    if (
+      batch.status !== "awaiting-rescue" ||
+      state.pendingChoice?.status !== "open" ||
+      batch.priorityOrder[batch.priorityIndex] !== playerId ||
+      targetPlayerId !== batch.currentTargetPlayerId ||
+      player === undefined ||
+      player.heroId === null ||
+      target === undefined ||
+      !target.alive ||
+      target.hp !== 0 ||
+      skillId !== "xyy.skill.jn40301" ||
+      !heroHasSkill(player.heroId, "xyy.skill.jn40301") ||
+      cardInstanceIds.length !== 2 ||
+      new Set(cardInstanceIds).size !== 2 ||
+      cardInstanceIds.some((card) => !player.hand.includes(card))
+    ) {
+      throw new Error("Skill-converted rescue is not applicable.");
+    }
+    const expectedCures = planCureBatch(state, [
+      {
+        itemId: `${event.eventId}:cure:0`,
+        sourcePlayerId: playerId,
+        targetPlayerId,
+        amount: 2,
+        element: "neutral",
+      },
+    ]);
+    if (
+      JSON.stringify(event.payload.healingItems) !==
+      JSON.stringify(expectedCures)
+    ) {
+      throw new Error(
+        "Skill-converted rescue healing disagrees with deterministic plan.",
+      );
+    }
+    const paidCards = new Set(cardInstanceIds);
+    const curedPlayers = playersAfterCures(state, expectedCures);
+    const intermediate: MatchState = {
+      ...state,
+      players: {
+        ...curedPlayers,
+        [playerId]: {
+          ...curedPlayers[playerId]!,
+          hand: player.hand.filter((card) => !paidCards.has(card)),
+        },
+      },
+      discardPile: [...state.discardPile, ...cardInstanceIds],
+      dyingBatch: {
+        ...batch,
+        rescuedPlayerIds: [...batch.rescuedPlayerIds, targetPlayerId],
+      },
+      pendingChoice: null,
+    };
+    next = advanceBatch(intermediate, intermediate.dyingBatch!, rescuedAt);
   } else if (event.type === "rescue.equipment-activated") {
     const playerId = stringPayload(event, "playerId");
     const targetPlayerId = stringPayload(event, "targetPlayerId");
@@ -743,6 +808,42 @@ export function applyDyingCommand(
           itemId: `${nextEventId}:cure:0`,
           sourcePlayerId: envelope.playerId,
           targetPlayerId: command.targetPlayerId,
+          amount: 2,
+          element: "neutral",
+        },
+      ]),
+    });
+  } else if (command.type === "play-skill-converted-card") {
+    const player = input.players[envelope.playerId]!;
+    const cardInstanceIds = command.cardInstanceIds as CardInstanceId[];
+    if (
+      command.targetPlayerIds.length !== 1 ||
+      command.targetPlayerIds[0] !== batch.currentTargetPlayerId ||
+      command.skillId !== "xyy.skill.jn40301" ||
+      player.heroId === null ||
+      !heroHasSkill(player.heroId, "xyy.skill.jn40301") ||
+      cardInstanceIds.length !== 2 ||
+      new Set(cardInstanceIds).size !== 2 ||
+      cardInstanceIds.some((card) => !player.hand.includes(card))
+    ) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    const nextEventId = `${input.matchId}:event:${input.eventSequence + 1}`;
+    builder.append("rescue.skill-card-converted", {
+      playerId: envelope.playerId,
+      targetPlayerId: batch.currentTargetPlayerId,
+      cardInstanceIds,
+      skillId: "xyy.skill.jn40301",
+      rescuedAt: serverReceivedAt,
+      healingItems: planCureBatch(input, [
+        {
+          itemId: `${nextEventId}:cure:0`,
+          sourcePlayerId: envelope.playerId,
+          targetPlayerId: batch.currentTargetPlayerId,
           amount: 2,
           element: "neutral",
         },

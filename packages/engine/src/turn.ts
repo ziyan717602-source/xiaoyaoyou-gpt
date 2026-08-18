@@ -13,9 +13,16 @@ import type {
 } from "./architecture.js";
 import { planDraw } from "./card-zones.js";
 import type { MatchState, TeamId, TurnPhase } from "./index.js";
-import { beginCancellableCardEffect } from "./reaction.js";
+import {
+  beginCancellableCardEffect,
+  beginSkillConvertedCardEffect,
+} from "./reaction.js";
 import { nextInt } from "./random.js";
-import { cardDefinition, type CardInstanceId } from "./setup-content.js";
+import {
+  cardDefinition,
+  heroHasSkill,
+  type CardInstanceId,
+} from "./setup-content.js";
 import { ACTION_DEADLINE_MS } from "./time-recovery.js";
 
 function numberPayload(event: Readonly<DomainEvent>, key: string): number {
@@ -678,6 +685,33 @@ export function applyTurnCommand(
       cardInstanceId,
       targetPlayerIds: command.targetPlayerIds,
     });
+  } else if (command.type === "play-skill-converted-card") {
+    const player = input.players[envelope.playerId]!;
+    const cardInstanceIds = command.cardInstanceIds as CardInstanceId[];
+    if (
+      input.turn.phase !== "action" ||
+      command.skillId !== "xyy.skill.jn40301" ||
+      player.heroId === null ||
+      !heroHasSkill(player.heroId, "xyy.skill.jn40301") ||
+      cardInstanceIds.length !== 2 ||
+      new Set(cardInstanceIds).size !== 2 ||
+      cardInstanceIds.some((card) => !player.hand.includes(card)) ||
+      command.targetPlayerIds.length !== 1 ||
+      command.targetPlayerIds[0] !== envelope.playerId
+    ) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    return beginSkillConvertedCardEffect(
+      input,
+      envelope,
+      serverReceivedAt,
+      cardInstanceIds,
+      envelope.playerId,
+    );
   } else if (command.type === "end-action") {
     if (input.turn.phase !== "action") {
       return {

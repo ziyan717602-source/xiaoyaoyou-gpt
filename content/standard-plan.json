@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 41,
-    "verified": 6,
+    "verified": 7,
     "deferred": 0,
-    "unstarted": 158
+    "unstarted": 157
   },
   "executionQueue": [
     {
@@ -1272,8 +1272,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN40301 two-card TP02 conversion are verified; JN40302 remains pending",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn40301.md"
+      ],
       "dependencies": {
         "contentIds": [
           "xyy.hero.x3w04",
@@ -4205,9 +4208,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native X3W03 two-hand-card conversion into TP02 action healing and dying rescue is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn40301.md"],
       "dependencies": {
         "contentIds": ["xyy.card.tp02"],
         "primitives": [

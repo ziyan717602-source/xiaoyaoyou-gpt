@@ -504,6 +504,71 @@ export function reduceReactionEvent(
         openedAt,
       }),
     };
+  } else if (event.type === "effect.skill-card-converted") {
+    const playerId = stringPayload(event, "playerId");
+    const cardInstanceIds = stringsPayload(
+      event,
+      "cardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const skillId = stringPayload(event, "skillId");
+    const targetPlayerIds = stringsPayload(
+      event,
+      "targetPlayerIds",
+    ) as readonly PlayerId[];
+    const effectId = stringPayload(event, "effectId");
+    const windowId = stringPayload(event, "windowId");
+    const openedAt = numberPayload(event, "openedAt");
+    const player = state.players[playerId];
+    if (
+      state.reactionWindow !== null ||
+      state.activePlayerId !== playerId ||
+      player === undefined ||
+      player.heroId === null ||
+      skillId !== "xyy.skill.jn40301" ||
+      !heroHasSkill(player.heroId, "xyy.skill.jn40301") ||
+      cardInstanceIds.length !== 2 ||
+      new Set(cardInstanceIds).size !== 2 ||
+      cardInstanceIds.some((card) => !player.hand.includes(card)) ||
+      targetPlayerIds.length !== 1 ||
+      targetPlayerIds[0] !== playerId ||
+      effectById(state, effectId) !== undefined
+    ) {
+      throw new Error("Skill-converted card effect is not applicable.");
+    }
+    const paidCards = new Set(cardInstanceIds);
+    const effect: EffectFrame = {
+      effectId,
+      parentEffectId: null,
+      kind: "card:xyy.card.tp02",
+      sourcePlayerId: playerId,
+      targetIds: targetPlayerIds,
+      step: "awaiting-reactions",
+      status: "waiting",
+      payload: { cardInstanceIds, skillId },
+    };
+    const intermediate: MatchState = {
+      ...state,
+      players: {
+        ...state.players,
+        [playerId]: {
+          ...player,
+          hand: player.hand.filter((card) => !paidCards.has(card)),
+        },
+      },
+      discardPile: [...state.discardPile, ...cardInstanceIds],
+      effectStack: [...state.effectStack, effect],
+    };
+    next = {
+      ...intermediate,
+      reactionWindow: makeWindow({
+        state: intermediate,
+        effect,
+        windowId,
+        parentWindow: null,
+        afterPlayerId: playerId,
+        openedAt,
+      }),
+    };
   } else if (event.type === "reaction.card-played") {
     const playerId = stringPayload(event, "playerId");
     const cardInstanceId = stringPayload(
@@ -1446,6 +1511,39 @@ export function beginCancellableCardEffect(
     targetPlayerIds: Array.isArray(targetPlayerIds)
       ? targetPlayerIds
       : [targetPlayerIds],
+    effectId: `${input.matchId}:effect:${envelope.commandId}`,
+    windowId: `${input.matchId}:window:${envelope.commandId}`,
+    openedAt: serverReceivedAt,
+  });
+  builder.resolveClosedWindows();
+  return { accepted: true, state: builder.state, events: builder.events };
+}
+
+export function beginSkillConvertedCardEffect(
+  input: Readonly<MatchState>,
+  envelope: Readonly<CommandEnvelope>,
+  serverReceivedAt: number,
+  cardInstanceIds: readonly CardInstanceId[],
+  targetPlayerId: PlayerId,
+): ApplyCommandResult {
+  if (!validServerTime(serverReceivedAt)) {
+    return {
+      accepted: false,
+      reason: "invalid",
+      currentVersion: input.version,
+    };
+  }
+  const builder = new EventBuilder(
+    input,
+    envelope.commandId,
+    input.version + 1,
+    serverReceivedAt,
+  );
+  builder.append("effect.skill-card-converted", {
+    playerId: envelope.playerId,
+    cardInstanceIds,
+    skillId: "xyy.skill.jn40301",
+    targetPlayerIds: [targetPlayerId],
     effectId: `${input.matchId}:effect:${envelope.commandId}`,
     windowId: `${input.matchId}:window:${envelope.commandId}`,
     openedAt: serverReceivedAt,

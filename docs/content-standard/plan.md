@@ -6,9 +6,9 @@
 - 共享核心前置：28
 - 总跟踪：205
 - 当前 partial：41
-- 当前 verified：6
+- 当前 verified：7
 - 当前 deferred：0
-- 当前 unstarted：158
+- 当前 unstarted：157
 
 ## 执行切片
 
@@ -34,6 +34,7 @@
 | `xyy.card.fj03`     | 龙魂战铠 | equip/replacement and masked per-item damage minus-one are fully verified                                                             | receipt:docs/verification/receipts/cs01d-fj03-fj04.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md |
 | `xyy.card.jp03`     | 五气朝元 | primary living-team heal-one and alternate pawn draw-one modes are fully verified                                                     | receipt:docs/verification/receipts/cs01b-jp03.md                                                                    |
 | `xyy.skill.jn20202` | 拒绝     | native XJ202 TP-category hand-card conversion into the canonical TP01 counter-chain is verified through replay and six-socket restart | receipt:docs/verification/receipts/cs02-jn20202.md                                                                  |
+| `xyy.skill.jn40301` | 烹饪     | native X3W03 two-hand-card conversion into TP02 action healing and dying rescue is verified through replay and six-socket restart     | receipt:docs/verification/receipts/cs02-jn40301.md                                                                  |
 | `xyy.skill.jn50402` | 剑匣     | native XJ404 ownership and hand-limit-plus-two are verified through authoritative discard, replay and six-socket restart              | receipt:docs/verification/receipts/cs02-jn50402.md                                                                  |
 | `xyy.skill.jn50501` | 凝冰焚炎 | native XJ405 water/fire damage immunity with IMMUNE_INVAO bypass is verified per item through replay and six-socket restart           | receipt:docs/verification/receipts/cs02-jn50501.md                                                                  |
 
@@ -58,7 +59,7 @@
 | `xyy.card.wq05`  | 彩环        | weapon slot equip and replacement only; unique modifier pending                                                                                                                | M03-TURN-CORE                                                           |
 | `xyy.hero.x3w01` | 南宫煌      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.x3w02` | 温慧        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
-| `xyy.hero.x3w03` | 星璇        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
+| `xyy.hero.x3w03` | 星璇        | setup identity and base stats plus JN40301 two-card TP02 conversion are verified; JN40302 remains pending                                                                      | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn40301.md |
 | `xyy.hero.x3w04` | 王蓬絮      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj101` | 李逍遥      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj102` | 赵灵儿      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |

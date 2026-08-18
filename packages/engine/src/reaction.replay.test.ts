@@ -634,4 +634,93 @@ describe("M04 reaction event replay", () => {
     expect(uninterrupted.players[fixture.first]!.hand).toEqual([]);
     expect(uninterrupted.players[fixture.actor]!.hand).toEqual([]);
   });
+
+  it("replays a JN40301 two-card TP02 conversion across a JSON restart", () => {
+    const base = started();
+    const actor = base.activePlayerId!;
+    const payment = [
+      "xyy.card.jp01@1",
+      "xyy.card.zp01@16",
+    ] as const satisfies readonly CardInstanceId[];
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          player.id === actor
+            ? {
+                ...player,
+                heroId: "xyy.hero.x3w03",
+                hp: 2,
+                maxHp: 5,
+                hand: payment,
+              }
+            : { ...player, hand: [] },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => !payment.includes(card as (typeof payment)[number]),
+      ),
+      discardPile: [],
+    };
+    const command = {
+      type: "play-skill-converted-card" as const,
+      cardInstanceIds: payment,
+      skillId: "xyy.skill.jn40301",
+      targetPlayerIds: [actor],
+    };
+    const startedConversion = apply(
+      initial,
+      actor,
+      "jn40301-replay",
+      command,
+      1_000,
+    );
+    const events: DomainEvent[] = [...startedConversion.events];
+    let uninterrupted = startedConversion.state;
+    let restarted = JSON.parse(
+      JSON.stringify(startedConversion.state),
+    ) as MatchState;
+    let sequence = 0;
+    while (uninterrupted.reactionWindow !== null) {
+      const window = uninterrupted.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const pass = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `jn40301-replay-pass-${sequence}`;
+      const primary = apply(
+        uninterrupted,
+        priority,
+        commandId,
+        pass,
+        2_000 + sequence,
+      );
+      const recovered = apply(
+        restarted,
+        priority,
+        commandId,
+        pass,
+        2_000 + sequence,
+      );
+      expect(recovered).toEqual(primary);
+      uninterrupted = primary.state;
+      restarted = recovered.state;
+      events.push(...primary.events);
+      sequence += 1;
+      if (sequence > 6) throw new Error("JN40301 replay did not converge.");
+    }
+    let replayed = initial;
+    for (const domainEvent of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(domainEvent)) as DomainEvent,
+      );
+    }
+    expect(restarted).toEqual(uninterrupted);
+    expect(replayed).toEqual(uninterrupted);
+    expect(uninterrupted.players[actor]).toMatchObject({ hp: 4, hand: [] });
+    expect(uninterrupted.discardPile).toEqual(payment);
+  });
 });

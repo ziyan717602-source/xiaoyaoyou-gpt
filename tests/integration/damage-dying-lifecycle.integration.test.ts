@@ -309,7 +309,9 @@ function injectCards(
       input.winnerFixture || input.robeFixture ? ["xyy.card.jp01@1"] : [],
     ...(input.rescuer === undefined
       ? {}
-      : { [input.rescuer]: ["xyy.card.tp02@36"] }),
+      : {
+          [input.rescuer]: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+        }),
   };
   const equipment = input.winnerFixture
     ? { weapon: "xyy.card.wq01@47", armor: "xyy.card.fj01@52" }
@@ -356,6 +358,8 @@ function injectCards(
           player.id,
           {
             ...player,
+            heroId:
+              player.id === input.rescuer ? "xyy.hero.x3w03" : player.heroId,
             alive: staysAlive,
             hp: player.id === input.target ? 2 : staysAlive ? player.maxHp : 0,
             hand: hands[player.id] ?? [],
@@ -554,21 +558,29 @@ describe("M05 damage/dying over six real WebSockets", () => {
     });
     expect(clients[indexOf(rescuer)]!.latestView.availableActions).toEqual([
       {
-        type: "play-rescue-card",
-        cardInstanceId: "xyy.card.tp02@36",
-        targetPlayerId: target,
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+        requiredCardCount: 2,
+        skillId: "xyy.skill.jn40301",
+        targetPlayerIds: [target],
       },
       { type: "pass-rescue", choiceId: persistedChoice.choiceId },
     ]);
+    expect(
+      clients
+        .filter((_, index) => index !== indexOf(rescuer))
+        .every((client) => client.latestView.availableActions.length === 0),
+    ).toBe(true);
     response = await send(
       clients[indexOf(rescuer)]!,
       sessions[indexOf(rescuer)]!,
-      "network-rescue-tp02",
+      "network-rescue-jn40301",
       version,
       {
-        type: "play-rescue-card",
-        cardInstanceId: "xyy.card.tp02@36",
-        targetPlayerId: target,
+        type: "play-skill-converted-card",
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn40301",
+        targetPlayerIds: [target],
       },
     );
     expect(response.type).toBe("command-accepted");
