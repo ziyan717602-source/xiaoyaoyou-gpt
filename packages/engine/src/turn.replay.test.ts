@@ -91,6 +91,11 @@ describe("M03 turn event replay", () => {
       );
     }
     expect(replayed).toEqual(uninterrupted);
-    expect(replayed.turn).toEqual({ number: 201, phase: "action" });
+    expect(replayed.turn).toEqual({
+      number: 201,
+      phase: "action",
+      openedAt: 0,
+      deadlineAt: 15_000,
+    });
   });
 });

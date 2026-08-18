@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-time-recovery-v1",
+  "scope": "M06-TIME-RECOVERY",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "deadlines": {
+    "actionMs": 15000,
+    "disconnectMs": 60000,
+    "clock": "authoritative-server-absolute-milliseconds",
+    "playerAtDeadline": "accepted",
+    "playerAfterDeadline": "expired-window",
+    "restart": "restore-original-absolute-deadline-never-reset"
+  },
+  "fallbacks": {
+    "optional": "pass-or-end-action",
+    "mandatory": "deterministic-random-legal-option",
+    "setup": "random-hero-from-stably-sorted-current-candidates",
+    "discard": "random-legal-card-set",
+    "reaction": "pass-reaction",
+    "rescue": "pass-rescue",
+    "rng": "sha256-counter-v1-with-option-set-and-cursor-evidence"
+  },
+  "presence": {
+    "states": ["connected", "grace", "auto"],
+    "disconnectDoesNotPauseActionDeadline": true,
+    "autoAt": "disconnectedAt-plus-60000",
+    "autoEffect": "future-player-windows-resolve-without-15-second-wait",
+    "reconnectEffect": "authenticated-seat-leaves-auto-before-private-view",
+    "multipleSockets": "replacement-close-does-not-mark-new-socket-disconnected"
+  },
+  "systemPipeline": {
+    "origins": ["system-timeout", "system-presence", "system-auto"],
+    "singleWriter": "same-match-actor-lane-as-player-commands",
+    "idempotency": "stable-system-command-id-and-persisted-receipt",
+    "race": "first-command-in-actor-lane-wins-and-loser-cannot-double-apply",
+    "recovery": "snapshot-plus-events-reschedules-current-deadlines"
+  },
+  "persistence": {
+    "matchSchema": 5,
+    "stores": [
+      "turn-opened-at-and-deadline-at",
+      "setup-opened-at-and-deadline-at",
+      "per-player-presence-and-disconnected-at",
+      "window-absolute-deadlines",
+      "system-command-receipts"
+    ]
+  },
+  "legacyEvidence": [
+    "PSDGamepkg/VW/Aywi.cs:440-456 legacy-room-wide-reconnect-wait",
+    "PSDGamepkg/VW/Aywi.cs:482-490 disconnect-and-reconnect-hold",
+    "PSDGamepkg/XIS.cs:260-295 reconnect-resume-input",
+    "PSDClientZero/VW/Bywi.cs:151-190 reconnect-handshake",
+    "legacy-has-no-authoritative-per-decision-15-second-fallback"
+  ],
+  "authority": {
+    "confirmedByUser": [
+      "operation-timeout-15-seconds",
+      "continuous-disconnect-60-seconds-enters-auto",
+      "optional-timeout-passes",
+      "mandatory-timeout-random-legal-option"
+    ],
+    "provisionalAutonomous": [
+      "SEM-001-disconnect-does-not-pause-current-deadline",
+      "SEM-002-deterministic-random-for-mandatory-timeout",
+      "legacy-room-wide-reconnect-pause-is-not-carried-to-browser-service"
+    ]
+  },
+  "acceptanceMap": {
+    "M06-01": "all-production-player-waits-have-authoritative-15000ms-absolute-deadlines",
+    "M06-02": "setup-timeout-selects-one-deterministic-current-hero-and-records-rng-evidence",
+    "M06-03": "action-timeout-ends-action-and-discard-timeout-selects-a-legal-deterministic-set",
+    "M06-04": "reaction-and-rescue-timeouts-pass-only-the-current-priority",
+    "M06-05": "player-command-at-deadline-is-accepted-and-after-deadline-is-rejected-without-events",
+    "M06-06": "disconnect-does-not-change-an-already-open-action-deadline",
+    "M06-07": "continuous-disconnect-enters-auto-exactly-once-at-60000ms",
+    "M06-08": "future-windows-for-auto-player-resolve-immediately-with-the-same-fallback-policy",
+    "M06-09": "authenticated-reconnect-clears-grace-or-auto-before-returning-current-private-view",
+    "M06-10": "presence-and-timeout-system-commands-share-the-single-writer-event-and-receipt-pipeline",
+    "M06-11": "player-timeout-reconnect-and-auto-races-can-change-one-decision-at-most-once",
+    "M06-12": "restart-before-deadline-preserves-remaining-time-and-restart-after-deadline-times-out-once",
+    "M06-13": "snapshot-plus-events-replay-preserves-deadlines-presence-rng-and-system-results",
+    "M06-14": "six-player-views-show-presence-and-deadline-without-private-action-or-hand-leakage",
+    "M06-15": "six-real-websockets-cover-disconnect-auto-reconnect-timeout-restart-and-idempotency"
+  }
+}

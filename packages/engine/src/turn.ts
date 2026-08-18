@@ -1,13 +1,22 @@
-import type {
-  CommandEnvelope,
-  CommandId,
-  PlayerId,
+import { createHash } from "node:crypto";
+import {
+  PROTOCOL_VERSION,
+  type ClientCommand,
+  type CommandEnvelope,
+  type CommandId,
+  type PlayerId,
 } from "@xiaoyaoyou/protocol";
-import type { ApplyCommandResult, DomainEvent } from "./architecture.js";
+import type {
+  ApplyCommandResult,
+  DomainEvent,
+  EngineCommand,
+} from "./architecture.js";
 import { planDraw } from "./card-zones.js";
 import type { MatchState, TeamId, TurnPhase } from "./index.js";
 import { beginCancellableCardEffect } from "./reaction.js";
+import { nextInt } from "./random.js";
 import { cardDefinition, type CardInstanceId } from "./setup-content.js";
+import { ACTION_DEADLINE_MS } from "./time-recovery.js";
 
 function numberPayload(event: Readonly<DomainEvent>, key: string): number {
   const value = event.payload[key];
@@ -110,7 +119,16 @@ export function reduceTurnEvent(
     ) {
       throw new Error(`Invalid turn phase transition ${from} -> ${to}.`);
     }
-    next = { ...state, turn: { ...state.turn, phase: to } };
+    const changedAt = numberPayload(event, "changedAt");
+    next = {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: to,
+        openedAt: changedAt,
+        deadlineAt: changedAt + ACTION_DEADLINE_MS,
+      },
+    };
   } else if (event.type === "turn.card-played") {
     const playerId = stringPayload(event, "playerId");
     const cardInstanceId = stringPayload(
@@ -219,8 +237,22 @@ export function reduceTurnEvent(
       throw new Error("Discard event is not applicable.");
     }
     const discarded = new Set(cards);
+    let rng = state.rng;
+    if (event.payload.timeout === true) {
+      const planned = planRandomDiscard(state, playerId, excess);
+      if (
+        !sameValues(cards, planned.cards) ||
+        event.payload.optionSetHash !== planned.optionSetHash ||
+        event.payload.rngCursorStart !== state.rng.cursor ||
+        event.payload.rngCursorEnd !== planned.rng.cursor
+      ) {
+        throw new Error("Timed-out discard disagrees with deterministic RNG.");
+      }
+      rng = planned.rng;
+    }
     next = {
       ...state,
+      rng,
       players: {
         ...state.players,
         [playerId]: {
@@ -233,6 +265,7 @@ export function reduceTurnEvent(
   } else if (event.type === "turn.advanced") {
     const playerId = stringPayload(event, "playerId");
     const turnNumber = numberPayload(event, "turnNumber");
+    const advancedAt = numberPayload(event, "advancedAt");
     if (
       state.turn.phase !== "turn-end" ||
       aliveTeams(state).length !== 2 ||
@@ -244,7 +277,12 @@ export function reduceTurnEvent(
     next = {
       ...state,
       activePlayerId: playerId,
-      turn: { number: turnNumber, phase: "turn-start" },
+      turn: {
+        number: turnNumber,
+        phase: "turn-start",
+        openedAt: advancedAt,
+        deadlineAt: advancedAt + ACTION_DEADLINE_MS,
+      },
     };
   } else if (event.type === "match.finished") {
     const winnerValue = event.payload.winner;
@@ -285,6 +323,7 @@ class EventBuilder {
     state: Readonly<MatchState>,
     private readonly commandId: CommandId,
     private readonly matchVersion: number,
+    readonly resolvedAt: number,
   ) {
     this.state = state as MatchState;
   }
@@ -310,7 +349,11 @@ class EventBuilder {
 function changePhase(builder: EventBuilder, to: TurnPhase): void {
   const from = builder.state.turn?.phase;
   if (from === undefined) throw new Error("Turn phase is missing.");
-  builder.append("turn.phase-changed", { from, to });
+  builder.append("turn.phase-changed", {
+    from,
+    to,
+    changedAt: builder.resolvedAt,
+  });
 }
 
 function appendDraw(
@@ -345,6 +388,7 @@ function finishOrAdvance(builder: EventBuilder): void {
   builder.append("turn.advanced", {
     playerId: nextPlayerId,
     turnNumber: builder.state.turn.number + 1,
+    advancedAt: builder.resolvedAt,
   });
   changePhase(builder, "event");
   changePhase(builder, "action");
@@ -386,7 +430,22 @@ export function applyTurnCommand(
     input,
     envelope.commandId,
     input.version + 1,
+    serverReceivedAt,
   );
+
+  if (
+    !Number.isSafeInteger(serverReceivedAt) ||
+    serverReceivedAt < 0 ||
+    ((input.turn.phase === "action" || input.turn.phase === "discard") &&
+      serverReceivedAt > input.turn.deadlineAt)
+  ) {
+    return {
+      accepted: false,
+      reason:
+        serverReceivedAt > input.turn.deadlineAt ? "expired-window" : "invalid",
+      currentVersion: input.version,
+    };
+  }
 
   if (command.type === "play-card") {
     if (input.turn.phase !== "action") {
@@ -509,5 +568,115 @@ export function applyTurnCommand(
     };
   }
 
+  return { accepted: true, state: builder.state, events: builder.events };
+}
+
+interface PlannedRandomDiscard {
+  readonly cards: readonly CardInstanceId[];
+  readonly optionSetHash: string;
+  readonly rng: MatchState["rng"];
+}
+
+function planRandomDiscard(
+  state: Readonly<MatchState>,
+  playerId: PlayerId,
+  count: number,
+): PlannedRandomDiscard {
+  const player = state.players[playerId];
+  if (player === undefined || count <= 0 || count > player.hand.length) {
+    throw new Error("Random discard requires a valid positive excess.");
+  }
+  const originalOptions = [...player.hand].sort();
+  const pool = [...originalOptions];
+  const cards: CardInstanceId[] = [];
+  let rng = state.rng;
+  while (cards.length < count) {
+    const drawn = nextInt(rng, pool.length);
+    rng = drawn.rng;
+    cards.push(pool.splice(drawn.value, 1)[0]!);
+  }
+  return {
+    cards,
+    optionSetHash: createHash("sha256")
+      .update(JSON.stringify(originalOptions))
+      .digest("hex"),
+    rng,
+  };
+}
+
+function timeoutEnvelope(
+  state: Readonly<MatchState>,
+  commandId: CommandId,
+  playerId: PlayerId,
+  command: ClientCommand,
+  deadlineAt: number,
+): CommandEnvelope {
+  return {
+    protocolVersion: PROTOCOL_VERSION,
+    commandId,
+    matchId: state.matchId,
+    playerId,
+    clientSequence: 0,
+    expectedVersion: state.version,
+    clientIssuedAt: deadlineAt,
+    command,
+  };
+}
+
+export function applyTurnTimeout(
+  state: Readonly<MatchState>,
+  command: Readonly<Extract<EngineCommand, { origin: "system-timeout" }>>,
+  playerId: PlayerId,
+): ApplyCommandResult {
+  if (
+    state.phase !== "playing" ||
+    state.turn === null ||
+    state.activePlayerId !== playerId
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: state.version,
+    };
+  }
+  if (state.turn.phase === "action") {
+    return applyTurnCommand(
+      state,
+      timeoutEnvelope(
+        state,
+        command.commandId,
+        playerId,
+        { type: "end-action" },
+        command.deadlineAt,
+      ),
+      command.deadlineAt,
+    );
+  }
+  if (state.turn.phase !== "discard") {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: state.version,
+    };
+  }
+  const player = state.players[playerId]!;
+  const excess = player.hand.length - player.handLimit;
+  const planned = planRandomDiscard(state, playerId, excess);
+  const builder = new EventBuilder(
+    state,
+    command.commandId,
+    state.version + 1,
+    command.deadlineAt,
+  );
+  builder.append("turn.cards-discarded", {
+    playerId,
+    cardInstanceIds: planned.cards,
+    timeout: true,
+    optionSetHash: planned.optionSetHash,
+    rngCursorStart: state.rng.cursor,
+    rngCursorEnd: planned.rng.cursor,
+  });
+  changePhase(builder, "turn-end");
+  finishOrAdvance(builder);
   return { accepted: true, state: builder.state, events: builder.events };
 }

@@ -10,7 +10,7 @@ import { PROTOCOL_VERSION } from "@xiaoyaoyou/protocol";
 import { cardDefinition } from "./setup-content.js";
 import type { CardInstanceId, HeroId } from "./setup-content.js";
 
-export const MATCH_SCHEMA_VERSION = 4 as const;
+export const MATCH_SCHEMA_VERSION = 5 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -28,6 +28,8 @@ export type TurnPhase =
 export interface TurnState {
   readonly number: number;
   readonly phase: TurnPhase;
+  readonly openedAt: number;
+  readonly deadlineAt: number;
 }
 
 export interface HeroOffer {
@@ -41,7 +43,15 @@ export interface HeroOffer {
 export interface SetupState {
   readonly status: "selecting-heroes" | "completed";
   readonly seedCommitment: string;
+  readonly openedAt: number;
+  readonly deadlineAt: number;
   readonly offers: Readonly<Record<PlayerId, HeroOffer>>;
+}
+
+export interface PlayerConnectionState {
+  readonly status: "connected" | "grace" | "auto";
+  readonly disconnectedAt: number | null;
+  readonly autoAt: number | null;
 }
 
 export interface PlayerState {
@@ -149,6 +159,7 @@ export interface MatchState {
   readonly winner: TeamId | "draw" | null;
   readonly turnOrder: readonly PlayerId[];
   readonly players: Readonly<Record<PlayerId, PlayerState>>;
+  readonly connections: Readonly<Record<PlayerId, PlayerConnectionState>>;
   readonly drawPile: readonly CardInstanceId[];
   readonly discardPile: readonly CardInstanceId[];
   readonly setup: SetupState | null;
@@ -163,6 +174,7 @@ export interface CreateMatchInput {
   readonly matchId: MatchId;
   readonly rulesetVersion: string;
   readonly seed: string;
+  readonly openedAt?: number;
   readonly players: readonly {
     readonly id: PlayerId;
     readonly nickname: string;
@@ -186,6 +198,7 @@ export interface PublicPlayerView {
     readonly weapon: CardInstanceId | null;
     readonly armor: CardInstanceId | null;
   };
+  readonly connection: PlayerConnectionState;
 }
 
 export interface SetupView {
@@ -294,6 +307,16 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     winner: null,
     turnOrder: [],
     players,
+    connections: Object.fromEntries(
+      input.players.map((player) => [
+        player.id,
+        {
+          status: "connected",
+          disconnectedAt: null,
+          autoAt: null,
+        } satisfies PlayerConnectionState,
+      ]),
+    ),
     drawPile: [],
     discardPile: [],
     setup: null,
@@ -317,15 +340,50 @@ export function migrateMatchState(value: unknown): MatchState {
       !("turn" in raw) ||
       !("winner" in raw) ||
       !("dyingBatch" in raw) ||
+      !("connections" in raw) ||
+      (current.turn !== null &&
+        (typeof current.turn.openedAt !== "number" ||
+          typeof current.turn.deadlineAt !== "number")) ||
+      (current.setup !== null &&
+        (typeof current.setup.openedAt !== "number" ||
+          typeof current.setup.deadlineAt !== "number")) ||
       Object.values(current.players).some(
         (player) =>
           typeof player.handLimit !== "number" ||
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v3 snapshot is missing required fields.");
+      throw new Error("Match schema v5 snapshot is missing required fields.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 4) {
+    const legacy = value as Omit<
+      MatchState,
+      "schemaVersion" | "connections" | "turn" | "setup"
+    > & {
+      readonly schemaVersion: 4;
+      readonly turn: Omit<TurnState, "openedAt" | "deadlineAt"> | null;
+      readonly setup: Omit<SetupState, "openedAt" | "deadlineAt"> | null;
+    };
+    return {
+      ...legacy,
+      schemaVersion: MATCH_SCHEMA_VERSION,
+      turn:
+        legacy.turn === null
+          ? null
+          : { ...legacy.turn, openedAt: 0, deadlineAt: 0 },
+      setup:
+        legacy.setup === null
+          ? null
+          : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
+      connections: Object.fromEntries(
+        Object.keys(legacy.players).map((playerId) => [
+          playerId,
+          { status: "connected", disconnectedAt: null, autoAt: null },
+        ]),
+      ),
+    };
   }
   if (raw.schemaVersion === 3) {
     const legacy = value as Omit<MatchState, "schemaVersion" | "dyingBatch"> & {
@@ -335,6 +393,20 @@ export function migrateMatchState(value: unknown): MatchState {
       ...legacy,
       schemaVersion: MATCH_SCHEMA_VERSION,
       dyingBatch: null,
+      turn:
+        legacy.turn === null
+          ? null
+          : { ...legacy.turn, openedAt: 0, deadlineAt: 0 },
+      setup:
+        legacy.setup === null
+          ? null
+          : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
+      connections: Object.fromEntries(
+        Object.keys(legacy.players).map((playerId) => [
+          playerId,
+          { status: "connected", disconnectedAt: null, autoAt: null },
+        ]),
+      ),
     };
   }
   if (raw.schemaVersion !== 2) {
@@ -360,10 +432,22 @@ export function migrateMatchState(value: unknown): MatchState {
     schemaVersion: MATCH_SCHEMA_VERSION,
     turn:
       legacy.turn ??
-      (legacy.phase === "playing" ? { number: 1, phase: "action" } : null),
+      (legacy.phase === "playing"
+        ? { number: 1, phase: "action", openedAt: 0, deadlineAt: 0 }
+        : null),
     winner: legacy.winner ?? null,
     players,
     dyingBatch: null,
+    setup:
+      legacy.setup === null
+        ? null
+        : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
+    connections: Object.fromEntries(
+      Object.keys(players).map((playerId) => [
+        playerId,
+        { status: "connected", disconnectedAt: null, autoAt: null },
+      ]),
+    ),
   };
 }
 
@@ -417,6 +501,11 @@ export function createPlayerView(
         handCount: player.hand.length,
         hand: player.id === viewerId ? player.hand : null,
         equipment: player.equipment,
+        connection: state.connections[player.id] ?? {
+          status: "connected",
+          disconnectedAt: null,
+          autoAt: null,
+        },
       })),
     setup:
       state.setup === null
@@ -633,6 +722,14 @@ export type {
   ResumeResult,
 } from "./architecture.js";
 export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
+export {
+  ACTION_DEADLINE_MS,
+  DISCONNECT_GRACE_MS,
+  applySystemCommand,
+  collectSystemDeadlines,
+  reduceTimeRecoveryEvent,
+  type SystemDeadline,
+} from "./time-recovery.js";
 export {
   SETUP_CARDS,
   SELECTABLE_HEROES,

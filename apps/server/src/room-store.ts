@@ -61,6 +61,18 @@ interface SeatRow {
   reconnect_token_hash: string;
   ready: number;
   connected: number;
+  disconnected_at: number | null;
+}
+
+export interface PlayerPresence {
+  readonly playerId: PlayerId;
+  readonly connected: boolean;
+  readonly disconnectedAt: number | null;
+}
+
+export interface MatchPresence {
+  readonly matchId: MatchId;
+  readonly players: readonly PlayerPresence[];
 }
 
 interface CommandRow {
@@ -146,7 +158,7 @@ export class SqliteRoomStore {
   #seat(roomId: RoomId, playerId: PlayerId): SeatRow {
     const row = this.#database
       .prepare(
-        `SELECT room_id, seat_index, player_id, nickname, reconnect_token_hash, ready, connected
+        `SELECT room_id, seat_index, player_id, nickname, reconnect_token_hash, ready, connected, disconnected_at
          FROM room_seats WHERE room_id = ? AND player_id = ?`,
       )
       .get(roomId, playerId) as SeatRow | undefined;
@@ -166,7 +178,7 @@ export class SqliteRoomStore {
     const room = this.#room(roomId);
     const seats = this.#database
       .prepare(
-        `SELECT room_id, seat_index, player_id, nickname, reconnect_token_hash, ready, connected
+        `SELECT room_id, seat_index, player_id, nickname, reconnect_token_hash, ready, connected, disconnected_at
          FROM room_seats WHERE room_id = ? ORDER BY seat_index`,
       )
       .all(roomId) as SeatRow[];
@@ -196,6 +208,37 @@ export class SqliteRoomStore {
       if (exists === undefined) return candidate;
     }
     throw new Error("Unable to allocate a unique invite code.");
+  }
+
+  matchPresence(roomId: RoomId): MatchPresence {
+    const room = this.#room(roomId);
+    if (room.status !== "started" || room.match_id === null) {
+      throw new RoomError("room-not-started", 409);
+    }
+    const players = this.#database
+      .prepare(
+        `SELECT room_id, seat_index, player_id, nickname, reconnect_token_hash, ready, connected, disconnected_at
+         FROM room_seats WHERE room_id = ? ORDER BY seat_index`,
+      )
+      .all(roomId) as SeatRow[];
+    return {
+      matchId: room.match_id,
+      players: players.map((seat) => ({
+        playerId: seat.player_id,
+        connected: seat.connected === 1,
+        disconnectedAt: seat.disconnected_at,
+      })),
+    };
+  }
+
+  activeMatchPresences(): readonly MatchPresence[] {
+    const roomIds = this.#database
+      .prepare(
+        "SELECT room_id FROM rooms WHERE status = 'started' ORDER BY room_id",
+      )
+      .pluck()
+      .all() as string[];
+    return roomIds.map((roomId) => this.matchPresence(roomId));
   }
 
   createRoom(rawNickname: string, now = Date.now()): RoomSession {
@@ -445,6 +488,7 @@ export class SqliteRoomStore {
         matchId,
         rulesetVersion: RULESET_VERSION,
         seed,
+        openedAt: now,
         players: (
           this.#database
             .prepare(

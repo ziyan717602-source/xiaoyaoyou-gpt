@@ -1,8 +1,8 @@
 # 当前目标检查点
 
 - 分支：`codex/goal-mvp`
-- 当前节点：`M06-TIME-RECOVERY`
-- 最近验证完成：`M05-DAMAGE-DYING`
+- 当前节点：`CONTENT-STANDARD`
+- 最近验证完成：`M06-TIME-RECOVERY`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -18,8 +18,9 @@
 - M03 回合证据：`contracts/turn-core.contract.json`、`docs/turn-core/m03-turn-core.md`、`docs/verification/receipts/m03-turn-core.md`
 - M04 响应证据：`contracts/reaction-core.contract.json`、`docs/reaction-core/m04-reaction-core.md`、`docs/verification/receipts/m04-reaction-core.md`
 - M05 伤害/濒死证据：`contracts/damage-dying.contract.json`、`docs/damage-dying/m05-damage-dying.md`、`docs/verification/receipts/m05-damage-dying.md`
-- 当前工作：按 M06 合同实现系统级 15 秒超时、断线 60 秒后的自动模式、重连恢复，以及超时/重连/服务重启竞态只结算一次。
-- 下一 ready 节点：`M06-TIME-RECOVERY`。
+- M06 时间/恢复证据：`contracts/time-recovery.contract.json`、`docs/time-recovery/m06-time-recovery.md`、`docs/verification/receipts/m06-time-recovery.md`
+- 当前工作：从权威目录生成 `CONTENT-STANDARD` 的逐项依赖图与首个可验证内容切片；不得把未实现卡牌或技能标成完成。
+- 下一 ready 节点：`CONTENT-STANDARD`。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-007`，见 `docs/rules-semantics/decisions.md`。
 

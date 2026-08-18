@@ -1,4 +1,11 @@
-import type { CommandId, PlayerId } from "@xiaoyaoyou/protocol";
+import { createHash } from "node:crypto";
+import {
+  PROTOCOL_VERSION,
+  type ClientCommand,
+  type CommandEnvelope,
+  type CommandId,
+  type PlayerId,
+} from "@xiaoyaoyou/protocol";
 import type {
   ApplyCommandResult,
   DomainEvent,
@@ -22,6 +29,13 @@ import {
   type HeroId,
 } from "./setup-content.js";
 import { applyTurnCommand, reduceTurnEvent } from "./turn.js";
+import { applyTurnTimeout } from "./turn.js";
+import {
+  ACTION_DEADLINE_MS,
+  applySystemCommand as applySystemEngineCommand,
+  reduceTimeRecoveryEvent,
+  type SystemDeadline,
+} from "./time-recovery.js";
 
 const PLAYER_COUNT = 6;
 const HERO_CHOICES = 3;
@@ -48,7 +62,7 @@ function event(
   };
 }
 
-function finalized(state: MatchState): MatchState {
+function finalized(state: MatchState, startedAt: number): MatchState {
   if (state.setup === null) throw new Error("Setup state is missing.");
   const selected = state.turnOrder.map(
     (playerId) => state.setup!.offers[playerId]?.selectedHeroId,
@@ -86,7 +100,12 @@ function finalized(state: MatchState): MatchState {
     ...state,
     phase: "playing",
     activePlayerId: state.turnOrder[0] ?? null,
-    turn: { number: 1, phase: "action" },
+    turn: {
+      number: 1,
+      phase: "action",
+      openedAt: startedAt,
+      deadlineAt: startedAt + ACTION_DEADLINE_MS,
+    },
     winner: null,
     players,
     drawPile: state.drawPile.slice(drawOffset),
@@ -158,6 +177,8 @@ export function createSetupMatch(input: CreateMatchInput): MatchState {
     setup: {
       status: "selecting-heroes",
       seedCommitment: seedCommitment(input.seed),
+      openedAt: input.openedAt ?? 0,
+      deadlineAt: (input.openedAt ?? 0) + ACTION_DEADLINE_MS,
       offers,
     },
     rng,
@@ -181,6 +202,12 @@ export function reduceEvent(
   state: Readonly<MatchState>,
   eventToReduce: Readonly<DomainEvent>,
 ): MatchState {
+  if (
+    eventToReduce.type.startsWith("connection.") ||
+    eventToReduce.type === "system.timeout-resolved"
+  ) {
+    return reduceTimeRecoveryEvent(state, eventToReduce);
+  }
   if (
     eventToReduce.type.startsWith("turn.") ||
     eventToReduce.type === "match.finished"
@@ -249,8 +276,28 @@ export function reduceEvent(
     ) {
       throw new Error("Hero selection event is not applicable.");
     }
+    let rng = state.rng;
+    if (eventToReduce.payload.timeout === true) {
+      const sortedOptions = [...offer.candidateHeroIds].sort();
+      const planned = nextInt(rng, sortedOptions.length);
+      const optionSetHash = createHash("sha256")
+        .update(JSON.stringify(sortedOptions))
+        .digest("hex");
+      if (
+        sortedOptions[planned.value] !== heroId ||
+        eventToReduce.payload.optionSetHash !== optionSetHash ||
+        eventToReduce.payload.rngCursorStart !== rng.cursor ||
+        eventToReduce.payload.rngCursorEnd !== planned.rng.cursor
+      ) {
+        throw new Error(
+          "Timed-out hero selection disagrees with deterministic RNG.",
+        );
+      }
+      rng = planned.rng;
+    }
     next = {
       ...state,
+      rng,
       players: { ...state.players, [playerId]: { ...player, heroId } },
       setup: {
         ...state.setup,
@@ -261,7 +308,10 @@ export function reduceEvent(
       },
     };
   } else if (eventToReduce.type === "setup.completed") {
-    next = finalized(state as MatchState);
+    next = finalized(
+      state as MatchState,
+      numberPayload(eventToReduce, "startedAt"),
+    );
   } else {
     throw new Error(`Unsupported setup event ${eventToReduce.type}.`);
   }
@@ -277,11 +327,7 @@ export function applyCommand(
   command: Readonly<EngineCommand>,
 ): ApplyCommandResult {
   if (command.origin !== "player") {
-    return {
-      accepted: false,
-      reason: "not-available",
-      currentVersion: input.version,
-    };
+    return applySystemEngineCommand(input, command, resolveTimeout);
   }
   const { envelope, serverReceivedAt } = command;
   if (
@@ -331,6 +377,20 @@ export function applyCommand(
       currentVersion: input.version,
     };
   }
+  if (
+    !Number.isSafeInteger(serverReceivedAt) ||
+    serverReceivedAt < 0 ||
+    serverReceivedAt > input.setup.deadlineAt
+  ) {
+    return {
+      accepted: false,
+      reason:
+        serverReceivedAt > input.setup.deadlineAt
+          ? "expired-window"
+          : "invalid",
+      currentVersion: input.version,
+    };
+  }
   const matchVersion = input.version + 1;
   let events: DomainEvent[];
   if (envelope.command.type === "reroll-hero") {
@@ -363,7 +423,12 @@ export function applyCommand(
       envelope.commandId,
       1,
       "setup.hero-selected",
-      { matchVersion, playerId: envelope.playerId, heroId },
+      {
+        matchVersion,
+        playerId: envelope.playerId,
+        heroId,
+        selectedAt: serverReceivedAt,
+      },
     );
     const selected = reduceEvent(input, selection);
     const allSelected = Object.values(selected.setup!.offers).every(
@@ -375,6 +440,7 @@ export function applyCommand(
           event(input, envelope.commandId, 2, "setup.completed", {
             matchVersion,
             firstPlayerId: input.turnOrder[0],
+            startedAt: serverReceivedAt,
           }),
         ]
       : [selection];
@@ -389,4 +455,142 @@ export function applyCommand(
   let state: MatchState = input as MatchState;
   for (const nextEvent of events) state = reduceEvent(state, nextEvent);
   return { accepted: true, state, events };
+}
+
+function timeoutEnvelope(
+  state: Readonly<MatchState>,
+  commandId: CommandId,
+  playerId: PlayerId,
+  command: ClientCommand,
+  deadlineAt: number,
+): CommandEnvelope {
+  return {
+    protocolVersion: PROTOCOL_VERSION,
+    commandId,
+    matchId: state.matchId,
+    playerId,
+    clientSequence: 0,
+    expectedVersion: state.version,
+    clientIssuedAt: deadlineAt,
+    command,
+  };
+}
+
+function resolveSetupTimeout(
+  state: Readonly<MatchState>,
+  command: Readonly<Extract<EngineCommand, { origin: "system-timeout" }>>,
+  deadline: Readonly<SystemDeadline>,
+): ApplyCommandResult {
+  const offer = state.setup?.offers[deadline.playerId];
+  if (
+    state.phase !== "setup" ||
+    state.setup?.status !== "selecting-heroes" ||
+    offer === undefined ||
+    offer.selectedHeroId !== null
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: state.version,
+    };
+  }
+  const sortedOptions = [...offer.candidateHeroIds].sort();
+  const planned = nextInt(state.rng, sortedOptions.length);
+  const heroId = sortedOptions[planned.value]!;
+  const matchVersion = state.version + 1;
+  const selection = event(
+    state as MatchState,
+    command.commandId,
+    1,
+    "setup.hero-selected",
+    {
+      matchVersion,
+      playerId: deadline.playerId,
+      heroId,
+      selectedAt: command.deadlineAt,
+      timeout: true,
+      optionSetHash: createHash("sha256")
+        .update(JSON.stringify(sortedOptions))
+        .digest("hex"),
+      rngCursorStart: state.rng.cursor,
+      rngCursorEnd: planned.rng.cursor,
+    },
+  );
+  const selected = reduceEvent(state, selection);
+  const allSelected = Object.values(selected.setup!.offers).every(
+    (candidate) => candidate.selectedHeroId !== null,
+  );
+  const events = allSelected
+    ? [
+        selection,
+        event(state as MatchState, command.commandId, 2, "setup.completed", {
+          matchVersion,
+          firstPlayerId: state.turnOrder[0],
+          startedAt: command.deadlineAt,
+        }),
+      ]
+    : [selection];
+  let next = state as MatchState;
+  for (const nextEvent of events) next = reduceEvent(next, nextEvent);
+  return { accepted: true, state: next, events };
+}
+
+function resolveTimeout(
+  state: Readonly<MatchState>,
+  command: Readonly<Extract<EngineCommand, { origin: "system-timeout" }>>,
+  deadline: Readonly<SystemDeadline>,
+): ApplyCommandResult {
+  if (deadline.targetId.startsWith("setup:")) {
+    return resolveSetupTimeout(state, command, deadline);
+  }
+  if (deadline.targetId.startsWith("reaction:")) {
+    const window = state.reactionWindow;
+    if (window === null) {
+      return {
+        accepted: false,
+        reason: "not-available",
+        currentVersion: state.version,
+      };
+    }
+    return applyReactionCommand(
+      state,
+      timeoutEnvelope(
+        state,
+        command.commandId,
+        deadline.playerId,
+        { type: "pass-reaction", windowId: window.windowId },
+        command.deadlineAt,
+      ),
+      command.deadlineAt,
+    );
+  }
+  if (deadline.targetId.startsWith("rescue:")) {
+    const choice = state.pendingChoice;
+    if (choice === null) {
+      return {
+        accepted: false,
+        reason: "not-available",
+        currentVersion: state.version,
+      };
+    }
+    return applyDyingCommand(
+      state,
+      timeoutEnvelope(
+        state,
+        command.commandId,
+        deadline.playerId,
+        { type: "pass-rescue", choiceId: choice.choiceId },
+        command.deadlineAt,
+      ),
+      command.deadlineAt,
+    );
+  }
+  if (deadline.targetId.startsWith("turn:")) {
+    return applyTurnTimeout(state, command, deadline.playerId);
+  }
+  return {
+    accepted: false,
+    reason: "not-available",
+    currentVersion: state.version,
+  };
 }

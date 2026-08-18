@@ -316,7 +316,15 @@ function injectCards(
     ...state,
     phase: "playing",
     activePlayerId: input.actor,
-    turn: { number: state.turn?.number ?? 1, phase: "action" },
+    turn: {
+      ...(state.turn ?? {
+        number: 1,
+        openedAt: 0,
+        deadlineAt: 15_000,
+      }),
+      number: state.turn?.number ?? 1,
+      phase: "action",
+    },
     winner: null,
     players: Object.fromEntries(
       Object.values(state.players).map((player) => {
@@ -402,6 +410,7 @@ describe("M05 damage/dying over six real WebSockets", () => {
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
+    version = clients[0]!.latestView.version;
     const indexOf = (playerId: PlayerId) =>
       sessions.findIndex((session) => session.playerId === playerId);
     let response = await send(
@@ -460,6 +469,7 @@ describe("M05 damage/dying over six real WebSockets", () => {
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
+    version = clients[0]!.latestView.version;
     expect(clients[0]!.latestView.dyingBatch).toEqual(persistedBatch);
     expect(clients[indexOf(rescuer)]!.latestView.pendingChoice).toEqual(
       persistedChoice,
@@ -522,6 +532,7 @@ describe("M05 damage/dying over six real WebSockets", () => {
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
+    version = clients[0]!.latestView.version;
     response = await send(
       clients[indexOf(winnerActor)]!,
       sessions[indexOf(winnerActor)]!,

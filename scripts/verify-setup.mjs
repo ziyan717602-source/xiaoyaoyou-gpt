@@ -102,7 +102,7 @@ assert(
 );
 for (const token of [
   "new MatchActor",
-  "commandHash(envelope)",
+  "commandHash(command)",
   "commitAccepted",
 ])
   assert(

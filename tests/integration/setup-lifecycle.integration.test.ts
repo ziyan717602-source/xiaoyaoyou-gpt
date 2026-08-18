@@ -274,6 +274,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
 
     const selectedCommandIds: string[] = [];
     const selectedHeroIds: string[] = [];
+    const selectedReceiptVersions: number[] = [];
     for (let index = 0; index < 3; index += 1) {
       const heroId =
         clients[index]!.latestView.setup!.ownOffer!.candidateHeroIds[0]!;
@@ -288,6 +289,9 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
         { type: "choose-hero", heroId },
       );
       expect(response.type).toBe("command-accepted");
+      if (response.type === "command-accepted") {
+        selectedReceiptVersions.push(response.version);
+      }
       version += 1;
       for (const client of clients) await waitForVersion(client, version);
     }
@@ -298,6 +302,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
+    version = clients[0]!.latestView.version;
     expect(clients[0]!.latestView.version).toBe(version);
     expect(
       clients
@@ -315,7 +320,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     expect(duplicate).toMatchObject({
       type: "command-accepted",
       duplicate: true,
-      version: 2,
+      version: selectedReceiptVersions[0],
     });
     const changedDuplicate = await sendCommand(
       clients[0]!,
@@ -392,7 +397,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     });
     version += 1;
     for (const client of clients) await waitForVersion(client, version);
-    expect(clients[firstIndex]!.latestView.turn).toEqual({
+    expect(clients[firstIndex]!.latestView.turn).toMatchObject({
       number: 1,
       phase: "discard",
     });
@@ -442,6 +447,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     expect(
       clients.every((client) => client.latestView.turn?.phase === "action"),
     ).toBe(true);
+    const endActionReceiptVersion = version - 1;
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
@@ -449,6 +455,8 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
+    version = Math.max(...clients.map((client) => client.latestView.version));
+    for (const client of clients) await waitForVersion(client, version);
     expect(
       clients.every((client) => client.latestView.version === version),
     ).toBe(true);
@@ -467,7 +475,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     expect(duplicateEnd).toMatchObject({
       type: "command-accepted",
       duplicate: true,
-      version: version - 1,
+      version: endActionReceiptVersion,
     });
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

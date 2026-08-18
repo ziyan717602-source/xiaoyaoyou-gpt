@@ -82,7 +82,8 @@ function playing(seed = "m03-turn-seed"): MatchState {
       heroId: state.setup!.offers[playerId]!.candidateHeroIds[0]!,
     });
   }
-  expect(state.turn).toEqual({ number: 1, phase: "action" });
+  expect(state.turn).toMatchObject({ number: 1, phase: "action" });
+  expect(state.turn?.deadlineAt).toBe(state.turn!.openedAt + 15_000);
   return state;
 }
 
@@ -216,7 +217,7 @@ describe("M03 deterministic turn core", () => {
       [actor]: ["xyy.card.jp01@1", "xyy.card.jp01@2", "xyy.card.jp02@3"],
     });
     state = dispatch(state, actor, "end-action", { type: "end-action" });
-    expect(state.turn).toEqual({ number: 1, phase: "discard" });
+    expect(state.turn).toMatchObject({ number: 1, phase: "discard" });
     expect(state.players[actor]!.hand).toHaveLength(4);
     expect(createPlayerView(state, actor).availableActions).toEqual([
       {
@@ -230,7 +231,7 @@ describe("M03 deterministic turn core", () => {
       cardInstanceIds: [state.players[actor]!.hand[0]!],
     });
     expect(state.activePlayerId).toBe(next);
-    expect(state.turn).toEqual({ number: 2, phase: "action" });
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
     expect(state.players[actor]!.hand).toHaveLength(3);
     expectConserved(state);
   });

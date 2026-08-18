@@ -37,6 +37,24 @@ export type EngineCommand =
       readonly expectedVersion: number;
       readonly deadlineAt: number;
       readonly targetId: string;
+    }
+  | {
+      readonly origin: "system-presence";
+      readonly commandId: CommandId;
+      readonly matchId: MatchId;
+      readonly expectedVersion: number;
+      readonly playerId: PlayerId;
+      readonly status: "connected" | "disconnected";
+      readonly occurredAt: number;
+    }
+  | {
+      readonly origin: "system-auto";
+      readonly commandId: CommandId;
+      readonly matchId: MatchId;
+      readonly expectedVersion: number;
+      readonly playerId: PlayerId;
+      readonly disconnectedAt: number;
+      readonly deadlineAt: number;
     };
 
 export type ApplyCommandResult =

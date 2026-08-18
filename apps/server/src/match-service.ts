@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 import {
   applyCommand,
+  collectSystemDeadlines,
   createPlayerView,
   migrateMatchState,
   reduceEvent,
   type MatchState,
+  type EngineCommand,
+  type SystemDeadline,
 } from "@xiaoyaoyou/engine";
 import type {
   CommandEnvelope,
@@ -14,8 +17,9 @@ import type {
   PlayerId,
   ServerMessage,
 } from "@xiaoyaoyou/protocol";
-import { MatchActor } from "./match-actor.js";
+import { DeadlineScheduler, MatchActor } from "./match-actor.js";
 import { SqliteEventStore } from "./persistence.js";
+import type { MatchPresence } from "./room-store.js";
 
 type ActorResult = ServerMessage;
 
@@ -32,16 +36,37 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function commandHash(envelope: CommandEnvelope): string {
-  return createHash("sha256")
-    .update(
-      canonicalJson({
-        matchId: envelope.matchId,
-        playerId: envelope.playerId,
-        command: envelope.command,
-      }),
-    )
-    .digest("hex");
+function commandHash(command: Readonly<EngineCommand>): string {
+  const value = (() => {
+    if (command.origin === "player") {
+      return {
+        matchId: command.envelope.matchId,
+        playerId: command.envelope.playerId,
+        command: command.envelope.command,
+      };
+    }
+    const { expectedVersion: _expectedVersion, ...stable } = command;
+    return stable;
+  })();
+  return createHash("sha256").update(canonicalJson(value)).digest("hex");
+}
+
+function commandIdentity(command: Readonly<EngineCommand>): {
+  readonly commandId: string;
+  readonly matchId: MatchId;
+  readonly playerId: PlayerId | "system";
+} {
+  return command.origin === "player"
+    ? {
+        commandId: command.envelope.commandId,
+        matchId: command.envelope.matchId,
+        playerId: command.envelope.playerId,
+      }
+    : {
+        commandId: command.commandId,
+        matchId: command.matchId,
+        playerId: "system",
+      };
 }
 
 function category(reason: CommandRejectionReason): ErrorCategory {
@@ -65,16 +90,24 @@ export class MatchService {
   readonly #store: SqliteEventStore;
   readonly #actors = new Map<
     MatchId,
-    MatchActor<MatchState, CommandEnvelope, ActorResult>
+    MatchActor<MatchState, EngineCommand, ActorResult>
   >();
   readonly #onChanged: (matchId: MatchId) => Promise<void> | void;
+  readonly #now: () => number;
+  readonly #scheduler: DeadlineScheduler<EngineCommand>;
+  readonly #scheduledByMatch = new Map<MatchId, Set<string>>();
 
   constructor(
     databasePath: string,
     onChanged: (matchId: MatchId) => Promise<void> | void,
+    now: () => number = Date.now,
   ) {
     this.#store = new SqliteEventStore(databasePath);
     this.#onChanged = onChanged;
+    this.#now = now;
+    this.#scheduler = new DeadlineScheduler(async (command) => {
+      await this.#dispatch(command);
+    }, now);
   }
 
   #recover(matchId: MatchId): MatchState {
@@ -101,22 +134,21 @@ export class MatchService {
     return state;
   }
 
-  #actor(
-    matchId: MatchId,
-  ): MatchActor<MatchState, CommandEnvelope, ActorResult> {
+  #actor(matchId: MatchId): MatchActor<MatchState, EngineCommand, ActorResult> {
     const existing = this.#actors.get(matchId);
     if (existing !== undefined) return existing;
-    const actor = new MatchActor<MatchState, CommandEnvelope, ActorResult>({
+    const actor = new MatchActor<MatchState, EngineCommand, ActorResult>({
       initialState: this.#recover(matchId),
-      process: async (state, envelope) => {
-        const duplicate = this.#store.getReceipt(matchId, envelope.commandId);
+      process: async (state, command) => {
+        const identity = commandIdentity(command);
+        const duplicate = this.#store.getReceipt(matchId, identity.commandId);
         if (duplicate !== null) {
-          if (duplicate.playerId !== envelope.playerId) {
+          if (duplicate.playerId !== identity.playerId) {
             return {
               state: state as MatchState,
               result: {
                 type: "command-rejected",
-                commandId: envelope.commandId,
+                commandId: identity.commandId,
                 category: "forbidden",
                 reason: "forbidden",
                 currentVersion: state.version,
@@ -124,12 +156,12 @@ export class MatchService {
               },
             };
           }
-          if (duplicate.result.commandHash !== commandHash(envelope)) {
+          if (duplicate.result.commandHash !== commandHash(command)) {
             return {
               state: state as MatchState,
               result: {
                 type: "command-rejected",
-                commandId: envelope.commandId,
+                commandId: identity.commandId,
                 category: "invalid",
                 reason: "invalid",
                 currentVersion: state.version,
@@ -142,7 +174,7 @@ export class MatchService {
             state: state as MatchState,
             result: {
               type: "command-accepted",
-              commandId: envelope.commandId,
+              commandId: identity.commandId,
               version:
                 typeof receiptVersion === "number"
                   ? receiptVersion
@@ -151,17 +183,13 @@ export class MatchService {
             },
           };
         }
-        const applied = applyCommand(state, {
-          origin: "player",
-          envelope,
-          serverReceivedAt: Date.now(),
-        });
+        const applied = applyCommand(state, command);
         if (!applied.accepted) {
           return {
             state: state as MatchState,
             result: {
               type: "command-rejected",
-              commandId: envelope.commandId,
+              commandId: identity.commandId,
               category: category(applied.reason),
               reason: applied.reason,
               currentVersion: applied.currentVersion,
@@ -173,8 +201,8 @@ export class MatchService {
         }
         const committed = this.#store.commitAccepted({
           matchId,
-          commandId: envelope.commandId,
-          playerId: envelope.playerId,
+          commandId: identity.commandId,
+          playerId: identity.playerId,
           expectedVersion: state.version,
           nextVersion: applied.state.version,
           rulesetVersion: applied.state.rulesetVersion,
@@ -190,10 +218,10 @@ export class MatchService {
           state: applied.state,
           result: {
             version: applied.state.version,
-            commandHash: commandHash(envelope),
+            commandHash: commandHash(command),
           },
           snapshotReason: "wait-point",
-          now: Date.now(),
+          now: this.#now(),
         });
         if (committed.status === "conflict") {
           throw new Error(
@@ -204,7 +232,7 @@ export class MatchService {
           state: applied.state,
           result: {
             type: "command-accepted",
-            commandId: envelope.commandId,
+            commandId: identity.commandId,
             version: applied.state.version,
             duplicate: committed.status === "duplicate",
           },
@@ -224,12 +252,79 @@ export class MatchService {
           state,
           stateHash: createHash("sha256").update(stateJson).digest("hex"),
           eventHash,
-          savedAt: Date.now(),
+          savedAt: this.#now(),
         });
       },
     });
     this.#actors.set(matchId, actor);
+    this.#scheduleState(actor.state);
     return actor;
+  }
+
+  #engineCommand(
+    state: Readonly<MatchState>,
+    deadline: Readonly<SystemDeadline>,
+  ): EngineCommand {
+    if (deadline.origin === "system-auto") {
+      if (deadline.disconnectedAt === undefined) {
+        throw new Error("Auto deadline is missing its disconnect generation.");
+      }
+      return {
+        origin: "system-auto",
+        commandId: deadline.id,
+        matchId: state.matchId,
+        expectedVersion: state.version,
+        playerId: deadline.playerId,
+        disconnectedAt: deadline.disconnectedAt,
+        deadlineAt: deadline.deadlineAt,
+      };
+    }
+    return {
+      origin: "system-timeout",
+      commandId: deadline.id,
+      matchId: state.matchId,
+      expectedVersion: state.version,
+      deadlineAt: deadline.deadlineAt,
+      targetId: deadline.targetId,
+    };
+  }
+
+  #scheduleState(state: Readonly<MatchState>): void {
+    const previous = this.#scheduledByMatch.get(state.matchId) ?? new Set();
+    const current = new Set<string>();
+    for (const deadline of collectSystemDeadlines(state)) {
+      const scheduleId = `${state.matchId}\0${deadline.id}`;
+      current.add(scheduleId);
+      this.#scheduler.schedule({
+        id: scheduleId,
+        deadlineAt: deadline.deadlineAt,
+        command: this.#engineCommand(state, deadline),
+      });
+    }
+    for (const scheduleId of previous) {
+      if (!current.has(scheduleId)) this.#scheduler.cancel(scheduleId);
+    }
+    this.#scheduledByMatch.set(state.matchId, current);
+  }
+
+  async #dispatch(command: EngineCommand): Promise<ServerMessage> {
+    const identity = commandIdentity(command);
+    const actor = this.#actor(identity.matchId);
+    let attempted = command;
+    let response = await actor.dispatch(attempted);
+    while (
+      attempted.origin !== "player" &&
+      response.type === "command-rejected" &&
+      response.reason === "stale-version"
+    ) {
+      attempted = { ...attempted, expectedVersion: actor.state.version };
+      response = await actor.dispatch(attempted);
+    }
+    this.#scheduleState(actor.state);
+    if (response.type === "command-accepted" && !response.duplicate) {
+      await this.#onChanged(identity.matchId);
+    }
+    return response;
   }
 
   view(
@@ -244,14 +339,60 @@ export class MatchService {
   }
 
   async handleCommand(envelope: CommandEnvelope): Promise<ServerMessage> {
-    const response = await this.#actor(envelope.matchId).dispatch(envelope);
-    if (response.type === "command-accepted" && !response.duplicate) {
-      await this.#onChanged(envelope.matchId);
+    return this.#dispatch({
+      origin: "player",
+      envelope,
+      serverReceivedAt: this.#now(),
+    });
+  }
+
+  async setPresence(
+    matchId: MatchId,
+    playerId: PlayerId,
+    status: "connected" | "disconnected",
+    occurredAt = this.#now(),
+  ): Promise<ServerMessage> {
+    const state = this.#actor(matchId).state;
+    return this.#dispatch({
+      origin: "system-presence",
+      commandId: `presence:${status}:${playerId}:${occurredAt}`,
+      matchId,
+      expectedVersion: state.version,
+      playerId,
+      status,
+      occurredAt,
+    });
+  }
+
+  async activate(presence: Readonly<MatchPresence>): Promise<void> {
+    this.#actor(presence.matchId);
+    for (const player of presence.players) {
+      const current = this.#actor(presence.matchId).state.connections[
+        player.playerId
+      ];
+      const desiredStatus = player.connected ? "connected" : "disconnected";
+      const occurredAt = player.connected
+        ? this.#now()
+        : (player.disconnectedAt ?? this.#now());
+      const alreadySynchronized = player.connected
+        ? current?.status === "connected"
+        : current?.status !== "connected" &&
+          current?.disconnectedAt === occurredAt;
+      if (!alreadySynchronized) {
+        await this.setPresence(
+          presence.matchId,
+          player.playerId,
+          desiredStatus,
+          occurredAt,
+        );
+      }
     }
-    return response;
+    this.#scheduleState(this.#actor(presence.matchId).state);
   }
 
   async close(): Promise<void> {
+    this.#scheduler.close();
+    this.#scheduledByMatch.clear();
     await Promise.all([...this.#actors.values()].map((actor) => actor.stop()));
     this.#actors.clear();
     this.#store.close();

@@ -334,6 +334,7 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
+    version = clients[0]!.latestView.version;
     const clientByPlayer = new Map(
       sessions.map((session, index) => [session.playerId, clients[index]!]),
     );
@@ -413,6 +414,7 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
+    version = clients[0]!.latestView.version;
     for (const client of clients) {
       expect(client.latestView.reactionWindow).toEqual(persistedWindow);
       expect(client.latestView.version).toBe(version);

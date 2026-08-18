@@ -62,7 +62,7 @@ for (const command of contract.commands) {
   );
 }
 assert(
-  matchService.includes("serverReceivedAt: Date.now()"),
+  matchService.includes("serverReceivedAt: this.#now()"),
   "MatchService must stamp authoritative server receive time.",
 );
 for (const file of [

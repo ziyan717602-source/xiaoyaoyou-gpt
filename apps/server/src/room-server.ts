@@ -121,17 +121,28 @@ export async function buildRoomServer(
         : { version: room.version, view: room };
     },
     handleCommand: (_seat, envelope) => matchService.handleCommand(envelope),
-    onAuthenticated: ({ matchId, playerId }, token) => {
-      roomStore.markConnected(matchId, playerId, token);
+    onAuthenticated: async ({ matchId, playerId }, token) => {
+      const now = Date.now();
+      const room = roomStore.markConnected(matchId, playerId, token, now);
+      if (room.status === "started") {
+        await matchService.setPresence(matchId, playerId, "connected", now);
+      }
       scheduleCurrentPublish(matchId);
     },
-    onDisconnected: ({ matchId, playerId }) => {
+    onDisconnected: async ({ matchId, playerId }) => {
       if (closing) return;
-      roomStore.markDisconnected(matchId, playerId);
+      const now = Date.now();
+      const room = roomStore.markDisconnected(matchId, playerId, now);
+      if (room.status === "started") {
+        await matchService.setPresence(matchId, playerId, "disconnected", now);
+      }
       scheduleCurrentPublish(matchId);
     },
   };
   server = await buildServer(buildOptions);
+  for (const presence of roomStore.activeMatchPresences()) {
+    await matchService.activate(presence);
+  }
   const app: FastifyInstance = server.app;
   const generalLimiter = new FixedWindowLimiter(40, 1_000);
   const roomCreationLimiter = new FixedWindowLimiter(12, 60_000);
@@ -309,6 +320,11 @@ export async function buildRoomServer(
           action === "start"
             ? roomStore.startRoom(input)
             : roomStore.endRoom(input);
+        if (action === "start" && !result.duplicate) {
+          await matchService.activate(
+            roomStore.matchPresence(request.params.roomId),
+          );
+        }
         await publishRoom(request.params.roomId);
         return result;
       },
@@ -321,6 +337,23 @@ export async function buildRoomServer(
     matchService,
     closeGracefully: async () => {
       closing = true;
+      const disconnectedAt = Date.now();
+      for (const presence of roomStore.activeMatchPresences()) {
+        for (const player of presence.players) {
+          if (!player.connected) continue;
+          roomStore.markDisconnected(
+            presence.matchId,
+            player.playerId,
+            disconnectedAt,
+          );
+          await matchService.setPresence(
+            presence.matchId,
+            player.playerId,
+            "disconnected",
+            disconnectedAt,
+          );
+        }
+      }
       await server.closeGracefully();
       await matchService.close();
       roomStore.close();

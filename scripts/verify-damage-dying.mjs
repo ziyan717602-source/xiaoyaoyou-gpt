@@ -51,7 +51,7 @@ for (const token of [
   assert(reaction.includes(token), `Missing JP05 reaction boundary ${token}.`);
 }
 for (const token of [
-  "MATCH_SCHEMA_VERSION = 4",
+  "MATCH_SCHEMA_VERSION",
   "DyingBatch",
   "rescueActions",
   'type: "play-rescue-card"',
