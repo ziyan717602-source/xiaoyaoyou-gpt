@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "commands": [
+    "check:fast",
+    "check:full",
+    "test:replay",
+    "test:bots",
+    "test:integration",
+    "test:e2e",
+    "goal:preflight"
+  ],
+  "propertySeed": 20260819,
+  "botLongGameTurns": 10000,
+  "browserContexts": 6,
+  "failureRoots": ["artifacts/failures", "artifacts/playwright"],
+  "layers": [
+    "static",
+    "unit-property",
+    "legacy-replay",
+    "technical-replay",
+    "bots",
+    "http-websocket-sqlite",
+    "playwright-headless",
+    "visible-browser"
+  ],
+  "ci": {
+    "push": "check:fast",
+    "full": "check:full",
+    "nightly": ["test:bots", "test:integration", "test:e2e"]
+  }
+}

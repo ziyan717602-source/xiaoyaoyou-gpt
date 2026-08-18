@@ -127,19 +127,19 @@
 
 ## P07：把测试、Bot、浏览器与故障证据变成一等产物
 
-- [ ] `P07-01` 提供快速检查命令：格式、严格类型、Schema、依赖边界和相关单测。
-- [ ] `P07-02` 提供完整检查命令：所有黄金场景、属性测试、集成、重放、E2E 和构建。
-- [ ] `P07-03` 建立引擎不变量和 fast-check 命令模型，失败可收缩为最小命令序列。
-- [ ] `P07-04` 实现 `FirstLegalBot`、`AlwaysPassBot`、`CounterHappyBot`、`RescueBot`、`SeededRandomBot` 和 `ProtocolChaosBot`。
-- [ ] `P07-05` 六玩家无头 Bot 长局保存种子、初始快照、命令日志和最小失败序列。
-- [ ] `P07-06` 在真实 HTTP/WebSocket 和临时数据库上验证六连接、幂等、断线、重启和六份私密视图。
-- [ ] `P07-07` Playwright 每局使用六个独立 BrowserContext，覆盖建房/入座/准备、冰心诀、多人濒死、超时、重连和手机操作。
-- [ ] `P07-08` 无头 E2E 失败时自动保存 trace、截图、控制台、网络和服务端日志。
-- [ ] `P07-09` 可见浏览器验收使用一名真实交互视角+五个策略 Bot，无需人工操作六窗口。
-- [ ] `P07-10` 建立 CI：每次提交快速检查，合并/里程碑执行完整测试，夜间运行长局 Bot/浏览器矩阵。
-- [ ] `P07-11` 所有工作节点都生成验证收据，不以行覆盖率或 AI 自述代替验收。
+- [x] `P07-01` 提供快速检查命令：格式、严格类型、Schema、依赖边界和相关单测。
+- [x] `P07-02` 提供完整检查命令：所有黄金场景、属性测试、集成、重放、E2E 和构建。
+- [x] `P07-03` 建立引擎不变量和 fast-check 命令模型，失败可收缩为最小命令序列。
+- [x] `P07-04` 实现 `FirstLegalBot`、`AlwaysPassBot`、`CounterHappyBot`、`RescueBot`、`SeededRandomBot` 和 `ProtocolChaosBot`。
+- [x] `P07-05` 六玩家无头 Bot 长局保存种子、初始快照、命令日志和最小失败序列。
+- [x] `P07-06` 在真实 HTTP/WebSocket 和临时数据库上验证六连接、幂等、断线、重启和六份私密视图。
+- [x] `P07-07` Playwright 每局使用六个独立 BrowserContext，覆盖建房/入座/准备、冰心诀、多人濒死、超时、重连和手机操作。
+- [x] `P07-08` 无头 E2E 失败时自动保存 trace、截图、控制台、网络和服务端日志。
+- [x] `P07-09` 可见浏览器验收使用一名真实交互视角+五个策略 Bot，无需人工操作六窗口。
+- [x] `P07-10` 建立 CI：每次提交快速检查，合并/里程碑执行完整测试，夜间运行长局 Bot/浏览器矩阵。
+- [x] `P07-11` 所有工作节点都生成验证收据，不以行覆盖率或 AI 自述代替验收。
 
-完成证据：稳定命令、CI 配置、Bot 报告、Playwright trace 和一份完整节点验证收据。
+完成证据：[`contracts/verification-system.contract.json`](contracts/verification-system.contract.json)、[`docs/verification/p07-system.md`](docs/verification/p07-system.md)、[`docs/verification/receipts/p07-verification-system.md`](docs/verification/receipts/p07-verification-system.md)、[`.github/workflows/`](.github/workflows/) 和 `npm run check:full`。
 
 ## P08：用探针证据冻结生产架构契约
 
@@ -165,7 +165,7 @@
 - [x] `P09-03` 建立 `PLAN.md`，使正式 MVP 成为一个有依赖、可验证的工作图，不是松散 backlog。
 - [x] `P09-04` 建立 `GOAL_ACCEPTANCE.md`，写明唯一最终停止条件与所有必跑命令。
 - [x] `P09-05` 建立 `PROGRESS.md`，只保留当前检查点、已验证证据、下一节点和阻塞。
-- [ ] `P09-06` 建立稳定命令：`check:fast`、`check:full`、`test:replay`、`test:bots`、`test:e2e`和 `goal:preflight`。
+- [x] `P09-06` 建立稳定命令：`check:fast`、`check:full`、`test:replay`、`test:bots`、`test:e2e`和 `goal:preflight`。
 - [x] `P09-07` 建立正式目标分支与提交策略：绿色节点才提交，失败产物保留，不通过检查不并入 `main`。
 - [x] `P09-08` 建立无人值守规则：同因失败三轮后切换方法；可疑规则用临时决定继续；可选依赖缺失时使用降级路径。
 - [ ] `P09-09` 试运行一个准备阶段小 `/goal`，验证自动续转、状态报告、暂停/恢复和完成判定。

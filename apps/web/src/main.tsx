@@ -1,5 +1,6 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { RoomJourney } from "./RoomJourney.js";
 import "./styles.css";
 
 type ScenarioId =
@@ -877,8 +878,8 @@ const globalWithRoot = globalThis as typeof globalThis & {
   __xiaoyaoyouRoot?: Root;
 };
 globalWithRoot.__xiaoyaoyouRoot ??= createRoot(root);
+const isRoomJourney =
+  new URLSearchParams(window.location.search).get("journey") === "room";
 globalWithRoot.__xiaoyaoyouRoot.render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <StrictMode>{isRoomJourney ? <RoomJourney /> : <App />}</StrictMode>,
 );
