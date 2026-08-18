@@ -3,6 +3,7 @@ node_modules/
 dist/
 dist-types/
 coverage/
+artifacts/
 *.tsbuildinfo
 
 # Local configuration and secrets
@@ -29,3 +30,6 @@ Output/
 
 # Local-only legacy behavior oracle (never publish or commit)
 reference/psd48-master/
+
+# Reproducible legacy oracle toolchain cache
+tools/legacy-oracle/.packages/

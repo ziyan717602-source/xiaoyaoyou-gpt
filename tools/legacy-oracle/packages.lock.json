@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net9.0": {
+      "Microsoft.NETFramework.ReferenceAssemblies.net40": {
+        "type": "Direct",
+        "requested": "[1.0.3, )",
+        "resolved": "1.0.3",
+        "contentHash": "3ctXnCpHdoYJNH9ATfXKwckkkdHvHc1Xls12QB9kf1tjh3b+VzxtiwpkZN4GxOawakfH6CJAkqhlDKSiz6Ujbg=="
+      }
+    }
+  }
+}

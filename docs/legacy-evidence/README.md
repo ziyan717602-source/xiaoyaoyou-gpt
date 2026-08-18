@@ -30,7 +30,16 @@ npm run oracle:inventory
 
 解决方案声明但本地缺失 `sharpuil/sharpuil.csproj` 与 `Wangpengfei/Wangpengfei.csproj`。项目使用 x86 目标并引用本地 `Mono.Data.Sqlite`、`NAudio`、`NAudio.Vorbis`、`NVorbis` 和原生 `sqlite3`；其逐文件 SHA-256 位于机器快照。
 
-当前主机只有 .NET SDK 9.0.201；`msbuild.exe` 不在 PATH，Visual Studio 安装查询没有返回实例，.NET Framework 4.0 引用目录只有中文 XML 资源而没有 `mscorlib.dll` 等引用程序集。因此完整旧解决方案目前不可重复构建，后续只尝试预言机所需的 `PSDBase → PSDClientZero/PSDGamepkg` 最小子集，并遵守 P02-09 止损。
+当前主机只有 .NET SDK 9.0.201；`msbuild.exe` 不在 PATH，Visual Studio 安装查询没有返回实例，系统 .NET Framework 4.0 引用目录也只有中文 XML 资源而没有 `mscorlib.dll` 等引用程序集。仓库因此固定使用 NuGet `Microsoft.NETFramework.ReferenceAssemblies.net40` 1.0.3；内容哈希锁定在 `tools/legacy-oracle/packages.lock.json`，缓存与输出均被 Git 忽略。
+
+运行 `npm run oracle:build` 会：
+
+1. 以 locked mode 还原引用程序集；
+2. 在构建前验证 1,558 文件参考快照；
+3. 用 .NET SDK 附带的 MSBuild 按 `PSDBase → PSDClientZero → PSDGamepkg` 构建最小子集，所有输出和中间文件写入 `artifacts/oracle/`；
+4. 构建后再次验证参考快照，证明旧目录没有漂移。
+
+完整 WPF 客户端、资源项目、中心大厅和两个缺失项目均不属于此预言机构建路径。
 
 ## SQLite 只读快照
 
