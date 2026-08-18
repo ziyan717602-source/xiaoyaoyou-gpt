@@ -15,6 +15,7 @@ const requiredScripts = [
   "test:replay",
   "test:bots",
   "test:e2e",
+  "preparation:audit",
   "goal:preflight",
 ];
 const failures = [];
@@ -54,14 +55,21 @@ if (!git("branch", "--show-current").startsWith("codex/")) {
   failures.push("goal must run on a codex/* branch");
 }
 
-let exactTag = "";
+let readinessTag = "";
 try {
-  exactTag = git("describe", "--tags", "--exact-match", "HEAD");
+  readinessTag = git(
+    "describe",
+    "--tags",
+    "--match",
+    "pre-goal-*",
+    "--abbrev=0",
+    "HEAD",
+  );
 } catch {
   // Report a stable failure below.
 }
-if (!exactTag.startsWith("pre-goal-")) {
-  failures.push("HEAD is missing a pre-goal-* readiness tag");
+if (!readinessTag.startsWith("pre-goal-")) {
+  failures.push("HEAD has no reachable pre-goal-* readiness tag");
 }
 
 if (failures.length > 0) {
@@ -72,12 +80,14 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-const result = spawnSync("npm", ["run", "check:full"], {
-  stdio: "inherit",
-  shell: process.platform === "win32",
-});
-if (result.status !== 0) process.exit(result.status ?? 1);
+for (const script of ["preparation:audit", "check:full"]) {
+  const result = spawnSync("npm", ["run", script], {
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
 
 console.log(
-  `Goal preflight passed at ${git("rev-parse", "HEAD")} (${exactTag}).`,
+  `Goal preflight passed at ${git("rev-parse", "HEAD")} (readiness ${readinessTag}).`,
 );

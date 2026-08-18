@@ -13,6 +13,7 @@
   "packageManager": "npm@10.9.2",
   "scripts": {
     "build": "tsc -b && npm run build -w @xiaoyaoyou/web",
+    "bootstrap:smoke": "node scripts/bootstrap-local.mjs --smoke",
     "check:fast": "npm run format:check && npm run typecheck && npm run check:public-history && npm run catalog:verify && npm run oracle:golden-traces && npm run semantics:verify && npm run ux:verify && npm run probes:verify && npm run verification:verify && npm run architecture:verify && npm run test:unit",
     "check:full": "npm run check:fast && npm run build && npm run test:replay && npm run test:bots && npm run test:integration && npm run test:e2e && npm run local:smoke -w @xiaoyaoyou/server",
     "check:public-history": "node scripts/check-public-history.mjs",
@@ -29,6 +30,7 @@
     "oracle:protocol-smoke": "npm run oracle:build && node scripts/legacy/protocol-smoke.mjs",
     "oracle:refresh-inventory": "node --disable-warning=ExperimentalWarning scripts/legacy/inventory.mjs --write",
     "probes:verify": "node scripts/verify-technical-probes.mjs && npm run test:replay",
+    "preparation:audit": "node scripts/verify-preparation.mjs",
     "architecture:smoke": "npm run build && npm run local:smoke -w @xiaoyaoyou/server",
     "architecture:verify": "node scripts/verify-architecture.mjs && npm run test:architecture",
     "test:architecture": "vitest run apps/server/src/architecture.test.ts packages/protocol/src/index.test.ts",
