@@ -841,6 +841,226 @@ describe("M03 deterministic turn core", () => {
     expect(ordinary.turn).toMatchObject({ number: 1, phase: "discard" });
   });
 
+  it("uses JN50401 to transfer equipment, draw two, and visit each target once", () => {
+    let state = playing("jn50401-present-sword");
+    const actor = state.activePlayerId!;
+    const targets = Object.values(state.players)
+      .filter((player) => player.id !== actor)
+      .sort((left, right) => left.seat - right.seat)
+      .map((player) => player.id);
+    const firstTarget = targets[0]!;
+    const secondTarget = targets[1]!;
+    state = arrange(
+      state,
+      {},
+      {
+        [actor]: {
+          weapon: "xyy.card.wq01@47",
+          armor: "xyy.card.fj01@52",
+        },
+        [firstTarget]: { weapon: "xyy.card.wq02@48" },
+      },
+    );
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: {
+          ...state.players[actor]!,
+          heroId: "xyy.hero.xj404",
+          handLimit: 5,
+        },
+      },
+    };
+    const firstDraw = state.drawPile.slice(0, 2);
+    expect(createPlayerView(state, actor).availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.wq01@47", "xyy.card.fj01@52"],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn50401",
+      targetPlayerIds: targets,
+      requiredTargetCount: 1,
+    });
+    const deadline = collectSystemDeadlines(state).find((candidate) =>
+      candidate.targetId.startsWith("turn:"),
+    )!;
+    const timedOut = applyCommand(state, {
+      origin: "system-timeout",
+      commandId: "jn50401-action-timeout",
+      matchId: state.matchId,
+      expectedVersion: state.version,
+      deadlineAt: deadline.deadlineAt,
+      targetId: deadline.targetId,
+    });
+    expect(timedOut.accepted).toBe(true);
+    if (!timedOut.accepted) throw new Error(timedOut.reason);
+    expect(timedOut.state.players[actor]!.equipment).toEqual(
+      state.players[actor]!.equipment,
+    );
+    expect(timedOut.state.turn?.usedSkillTargetIds).toBeUndefined();
+    expect(
+      timedOut.events.some(
+        (event) => event.type === "turn.hero-skill-activated",
+      ),
+    ).toBe(false);
+
+    const nonNativeState: MatchState = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj401" },
+      },
+    };
+    const nonNative = applyCommand(nonNativeState, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(nonNativeState, actor, "jn50401-forged-owner", {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.wq01@47"],
+        skillId: "xyy.skill.jn50401",
+        targetPlayerIds: [firstTarget],
+      }),
+    });
+    expect(nonNative).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    state = dispatch(state, actor, "jn50401-first-target", {
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.wq01@47"],
+      skillId: "xyy.skill.jn50401",
+      targetPlayerIds: [firstTarget],
+    });
+    expect(state.players[actor]).toMatchObject({
+      hand: firstDraw,
+      equipment: { weapon: null, armor: "xyy.card.fj01@52" },
+    });
+    expect(state.players[firstTarget]!.equipment.weapon).toBe(
+      "xyy.card.wq01@47",
+    );
+    expect(state.discardPile).toContain("xyy.card.wq02@48");
+    expect(state.turn?.usedSkillTargetIds).toEqual({
+      "xyy.skill.jn50401": [firstTarget],
+    });
+    expect(state.reactionWindow).toBeNull();
+    expect(createPlayerView(state, actor).availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.fj01@52"],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn50401",
+      targetPlayerIds: targets.filter((playerId) => playerId !== firstTarget),
+      requiredTargetCount: 1,
+    });
+
+    const repeated = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn50401-repeat-target", {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.fj01@52"],
+        skillId: "xyy.skill.jn50401",
+        targetPlayerIds: [firstTarget],
+      }),
+    });
+    expect(repeated).toMatchObject({ accepted: false, reason: "forbidden" });
+    const forgedHand = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn50401-forged-hand", {
+        type: "activate-hero-skill",
+        cardInstanceIds: [state.players[actor]!.hand[0]!],
+        skillId: "xyy.skill.jn50401",
+        targetPlayerIds: [secondTarget],
+      }),
+    });
+    expect(forgedHand).toMatchObject({
+      accepted: false,
+      reason: "forbidden",
+    });
+    const unknownCard = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn50401-unknown-card", {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.unknown@999"],
+        skillId: "xyy.skill.jn50401",
+        targetPlayerIds: [secondTarget],
+      }),
+    });
+    expect(unknownCard).toMatchObject({
+      accepted: false,
+      reason: "forbidden",
+    });
+
+    state = dispatch(state, actor, "jn50401-second-target", {
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.fj01@52"],
+      skillId: "xyy.skill.jn50401",
+      targetPlayerIds: [secondTarget],
+    });
+    expect(state.players[secondTarget]!.equipment.armor).toBe(
+      "xyy.card.fj01@52",
+    );
+    expect(state.players[actor]!.hand).toHaveLength(4);
+    expect(
+      createPlayerView(state, actor).availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn50401",
+      ),
+    ).toBe(false);
+    expectConserved(state);
+
+    state = dispatch(state, actor, "jn50401-end-action", {
+      type: "end-action",
+    });
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(state.turn?.usedSkillTargetIds).toBeUndefined();
+  });
+
+  it("lets JN50401 refill from the equipment it replaced before drawing its second card", () => {
+    let state = playing("jn50401-replacement-refill");
+    const actor = state.activePlayerId!;
+    const target = state.turnOrder.find((playerId) => playerId !== actor)!;
+    state = arrange(
+      state,
+      {},
+      {
+        [actor]: { weapon: "xyy.card.wq01@47" },
+        [target]: { weapon: "xyy.card.wq02@48" },
+      },
+    );
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: {
+          ...state.players[actor]!,
+          heroId: "xyy.hero.xj404",
+          hand: [],
+          equipment: { weapon: "xyy.card.wq01@47", armor: null },
+        },
+        [target]: {
+          ...state.players[target]!,
+          hand: [],
+          equipment: { weapon: "xyy.card.wq02@48", armor: null },
+        },
+      },
+      drawPile: ["xyy.card.jp01@1"],
+      discardPile: [],
+    };
+    state = dispatch(state, actor, "jn50401-replacement-refill", {
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.wq01@47"],
+      skillId: "xyy.skill.jn50401",
+      targetPlayerIds: [target],
+    });
+    expect(state.players[actor]!.hand).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.wq02@48",
+    ]);
+    expect(state.players[target]!.equipment.weapon).toBe("xyy.card.wq01@47");
+    expect(state.discardPile).toEqual([]);
+  });
+
   it("plays 鼠儿果 on one living target and draws exactly two privately", () => {
     let state = playing();
     const actor = state.activePlayerId!;

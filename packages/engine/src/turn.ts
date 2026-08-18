@@ -346,6 +346,66 @@ export function reduceTurnEvent(
             }
           : null,
       };
+    } else if (skillId === "xyy.skill.jn50401") {
+      const sourceZone = stringPayload(event, "sourceZone");
+      const usedTargets =
+        state.turn.usedSkillTargetIds?.["xyy.skill.jn50401"] ?? [];
+      const definition =
+        cardInstanceId === undefined
+          ? undefined
+          : cardDefinition(cardInstanceId);
+      const slot =
+        definition?.coreAction?.type === "equip"
+          ? definition.coreAction.slot
+          : null;
+      const replacedCardInstanceId =
+        target === undefined || slot === null ? null : target.equipment[slot];
+      const validSource =
+        cardInstanceIds.length === 1 &&
+        cardInstanceId !== undefined &&
+        ((sourceZone === "weapon" &&
+          slot === "weapon" &&
+          player.equipment.weapon === cardInstanceId) ||
+          (sourceZone === "armor" &&
+            slot === "armor" &&
+            player.equipment.armor === cardInstanceId));
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn50401") ||
+        !validSource ||
+        targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive ||
+        target.id === playerId ||
+        usedTargets.includes(target.id) ||
+        event.payload.replacedCardInstanceId !== replacedCardInstanceId
+      ) {
+        throw new Error("JN50401 event is not applicable.");
+      }
+      next = {
+        ...state,
+        players: {
+          ...state.players,
+          [playerId]: {
+            ...player,
+            equipment: { ...player.equipment, [sourceZone]: null },
+          },
+          [target.id]: {
+            ...target,
+            equipment: { ...target.equipment, [slot!]: cardInstanceId! },
+          },
+        },
+        discardPile:
+          replacedCardInstanceId === null
+            ? state.discardPile
+            : [...state.discardPile, replacedCardInstanceId],
+        turn: {
+          ...state.turn,
+          usedSkillTargetIds: {
+            ...state.turn.usedSkillTargetIds,
+            "xyy.skill.jn50401": [...usedTargets, target.id],
+          },
+        },
+      };
     } else {
       throw new Error("Unsupported active hero skill event.");
     }
@@ -1045,6 +1105,55 @@ export function applyTurnCommand(
         choiceId: `${input.matchId}:choice:${envelope.commandId}`,
         openedAt: serverReceivedAt,
       });
+    } else if (command.skillId === "xyy.skill.jn50401") {
+      const cardInstanceId = cardInstanceIds[0];
+      let definition;
+      try {
+        definition =
+          cardInstanceId === undefined
+            ? undefined
+            : cardDefinition(cardInstanceId);
+      } catch {
+        definition = undefined;
+      }
+      const slot =
+        definition?.coreAction?.type === "equip"
+          ? definition.coreAction.slot
+          : null;
+      const sourceZone =
+        cardInstanceIds.length !== 1 || cardInstanceId === undefined
+          ? null
+          : slot === "weapon" && player.equipment.weapon === cardInstanceId
+            ? "weapon"
+            : slot === "armor" && player.equipment.armor === cardInstanceId
+              ? "armor"
+              : null;
+      const usedTargets =
+        input.turn.usedSkillTargetIds?.["xyy.skill.jn50401"] ?? [];
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn50401") ||
+        sourceZone === null ||
+        command.targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive ||
+        target.id === envelope.playerId ||
+        usedTargets.includes(target.id)
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      builder.append("turn.hero-skill-activated", {
+        playerId: envelope.playerId,
+        cardInstanceIds,
+        skillId: "xyy.skill.jn50401",
+        sourceZone,
+        targetPlayerIds: [target.id],
+        replacedCardInstanceId: target.equipment[slot!],
+      });
+      appendDraw(builder, envelope.playerId, 2, "card-effect");
     } else {
       return {
         accepted: false,

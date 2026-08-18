@@ -7,10 +7,10 @@
     "standard": 177,
     "sharedCore": 28,
     "total": 205,
-    "partial": 40,
-    "verified": 13,
+    "partial": 39,
+    "verified": 15,
     "deferred": 0,
-    "unstarted": 152
+    "unstarted": 151
   },
   "executionQueue": [
     {
@@ -1685,10 +1685,11 @@
       "kind": "hero",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "partial",
-      "boundary": "setup identity and base stats plus JN50402 hand limit are verified; JN50401 remains pending",
+      "state": "verified",
+      "boundary": "setup identity, base stats and both native skills JN50401/JN50402 are fully verified",
       "evidence": [
         "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn50401.md",
         "receipt:docs/verification/receipts/cs02-jn50402.md"
       ],
       "dependencies": {
@@ -4528,9 +4529,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ404 repeatable equipment transfer with per-action target memory, target-slot replacement and deterministic draw-two is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50401.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

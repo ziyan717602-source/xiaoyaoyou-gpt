@@ -57,6 +57,127 @@ function started(seed = "m03-replay-restart-seed"): MatchState {
 }
 
 describe("M03 turn event replay", () => {
+  it("replays JN50401 equipment transfer, target memory and draw order across JSON restart", () => {
+    const base = started("jn50401-replay");
+    const owner = base.activePlayerId!;
+    const targets = Object.values(base.players)
+      .filter((player) => player.id !== owner)
+      .sort((left, right) => left.seat - right.seat)
+      .map((player) => player.id);
+    const firstTarget = targets[0]!;
+    const secondTarget = targets[1]!;
+    const claimed = new Set([
+      "xyy.card.wq01@47",
+      "xyy.card.fj01@52",
+      "xyy.card.wq02@48",
+    ]);
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === owner ? "xyy.hero.xj404" : player.heroId,
+            handLimit: player.id === owner ? 5 : player.handLimit,
+            hand: [],
+            equipment:
+              player.id === owner
+                ? {
+                    weapon: "xyy.card.wq01@47",
+                    armor: "xyy.card.fj01@52",
+                  }
+                : player.id === firstTarget
+                  ? { weapon: "xyy.card.wq02@48", armor: null }
+                  : { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+    const firstCommand = {
+      type: "activate-hero-skill" as const,
+      cardInstanceIds: ["xyy.card.wq01@47"],
+      skillId: "xyy.skill.jn50401",
+      targetPlayerIds: [firstTarget],
+    };
+    const first = apply(initial, owner, "jn50401-replay-first", firstCommand);
+    const firstAfterRestart = apply(
+      JSON.parse(JSON.stringify(initial)) as MatchState,
+      owner,
+      "jn50401-replay-first",
+      firstCommand,
+    );
+    expect(firstAfterRestart).toEqual(first);
+    expect(first.state.turn?.usedSkillTargetIds).toEqual({
+      "xyy.skill.jn50401": [firstTarget],
+    });
+
+    const repeated = applyCommand(
+      JSON.parse(JSON.stringify(first.state)) as MatchState,
+      {
+        origin: "player",
+        serverReceivedAt: 0,
+        envelope: {
+          protocolVersion: 1,
+          commandId: "jn50401-replay-duplicate-target",
+          matchId: first.state.matchId,
+          playerId: owner,
+          clientSequence: first.state.version,
+          expectedVersion: first.state.version,
+          clientIssuedAt: 0,
+          command: {
+            type: "activate-hero-skill",
+            cardInstanceIds: ["xyy.card.fj01@52"],
+            skillId: "xyy.skill.jn50401",
+            targetPlayerIds: [firstTarget],
+          },
+        },
+      },
+    );
+    expect(repeated).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    const secondCommand = {
+      type: "activate-hero-skill" as const,
+      cardInstanceIds: ["xyy.card.fj01@52"],
+      skillId: "xyy.skill.jn50401",
+      targetPlayerIds: [secondTarget],
+    };
+    const uninterrupted = apply(
+      first.state,
+      owner,
+      "jn50401-replay-second",
+      secondCommand,
+    );
+    const resumed = apply(
+      JSON.parse(JSON.stringify(first.state)) as MatchState,
+      owner,
+      "jn50401-replay-second",
+      secondCommand,
+    );
+    expect(resumed).toEqual(uninterrupted);
+
+    let replayed = initial;
+    for (const event of [...first.events, ...uninterrupted.events]) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.players[owner]!.hand).toHaveLength(4);
+    expect(uninterrupted.state.players[firstTarget]!.equipment.weapon).toBe(
+      "xyy.card.wq01@47",
+    );
+    expect(uninterrupted.state.players[secondTarget]!.equipment.armor).toBe(
+      "xyy.card.fj01@52",
+    );
+    expect(uninterrupted.state.turn?.usedSkillTargetIds).toEqual({
+      "xyy.skill.jn50401": [firstTarget, secondTarget],
+    });
+  });
+
   it("replays JN50202 draw and seeded mandatory discard across JSON restarts", () => {
     const base = started("jn50202-replay");
     const actor = base.activePlayerId!;

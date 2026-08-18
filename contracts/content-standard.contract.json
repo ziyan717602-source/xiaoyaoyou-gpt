@@ -39,6 +39,18 @@
       "boundary": "native XJ404 ownership and hand-limit-plus-two are verified through authoritative discard, replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn50402.md"]
     },
+    "xyy.skill.jn50401": {
+      "boundary": "native XJ404 repeatable equipment transfer with per-action target memory, target-slot replacement and deterministic draw-two is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50401.md"]
+    },
+    "xyy.hero.xj404": {
+      "boundary": "setup identity, base stats and both native skills JN50401/JN50402 are fully verified",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn50401.md",
+        "receipt:docs/verification/receipts/cs02-jn50402.md"
+      ]
+    },
     "xyy.skill.jn50501": {
       "boundary": "native XJ405 water/fire damage immunity with IMMUNE_INVAO bypass is verified per item through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn50501.md"]
@@ -87,13 +99,6 @@
       "evidence": ["M02-SETUP-AND-TEAMS"]
     },
     "heroes": {
-      "xyy.hero.xj404": {
-        "boundary": "setup identity and base stats plus JN50402 hand limit are verified; JN50401 remains pending",
-        "evidence": [
-          "M02-SETUP-AND-TEAMS",
-          "receipt:docs/verification/receipts/cs02-jn50402.md"
-        ]
-      },
       "xyy.hero.xj405": {
         "boundary": "setup identity and base stats plus JN50501 elemental immunity are verified; JN50502 remains pending",
         "evidence": [

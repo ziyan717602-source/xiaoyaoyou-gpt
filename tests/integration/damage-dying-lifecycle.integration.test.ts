@@ -531,6 +531,62 @@ function injectJn50203Dying(
   return beginDyingBatch(prepared, "network-jn50203-death", Date.now());
 }
 
+function injectJn50401(
+  state: MatchState,
+  owner: PlayerId,
+  firstTarget: PlayerId,
+): MatchState {
+  const claimed = new Set([
+    "xyy.card.wq01@47",
+    "xyy.card.fj01@52",
+    "xyy.card.wq02@48",
+  ]);
+  return {
+    ...state,
+    phase: "playing",
+    activePlayerId: owner,
+    turn: {
+      ...(state.turn ?? {
+        number: 1,
+        openedAt: 0,
+        deadlineAt: 15_000,
+      }),
+      number: state.turn?.number ?? 1,
+      phase: "action",
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          heroId: player.id === owner ? "xyy.hero.xj404" : player.heroId,
+          alive: true,
+          hp: player.id === owner ? 6 : player.maxHp,
+          maxHp: player.id === owner ? 6 : player.maxHp,
+          handLimit: player.id === owner ? 5 : player.handLimit,
+          hand: [],
+          equipment:
+            player.id === owner
+              ? {
+                  weapon: "xyy.card.wq01@47",
+                  armor: "xyy.card.fj01@52",
+                }
+              : player.id === firstTarget
+                ? { weapon: "xyy.card.wq02@48", armor: null }
+                : { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -1455,6 +1511,190 @@ describe("M05 damage/dying over six real WebSockets", () => {
       handCount: 0,
       equipment: { weapon: null, armor: null },
     });
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+  });
+
+  it("persists JN50401 target memory and private draws over six sockets", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn50401-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn50401.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const owner = ordered[0]!.id;
+    const targets = ordered
+      .map((player) => player.id)
+      .filter((playerId) => playerId !== owner);
+    const firstTarget = targets[0]!;
+    const secondTarget = targets[1]!;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+    const claimed = new Set([
+      "xyy.card.wq01@47",
+      "xyy.card.fj01@52",
+      "xyy.card.wq02@48",
+    ]);
+    const expectedDrawn = SETUP_CARD_INSTANCES.filter(
+      (card) => !claimed.has(card),
+    ).slice(0, 4);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn50401(state, owner, firstTarget),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    let version = clients[0]!.latestView.version;
+    const firstAction = clients[
+      indexOf(owner)
+    ]!.latestView.availableActions.find(
+      (action) =>
+        action.type === "activate-hero-skill" &&
+        action.skillId === "xyy.skill.jn50401",
+    );
+    expect(firstAction).toEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.wq01@47", "xyy.card.fj01@52"],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn50401",
+      targetPlayerIds: targets,
+      requiredTargetCount: 1,
+    });
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      expect(
+        clients[indexOf(player.id)]!.latestView.availableActions,
+      ).not.toContainEqual(
+        expect.objectContaining({
+          type: "activate-hero-skill",
+          skillId: "xyy.skill.jn50401",
+        }),
+      );
+    }
+
+    let response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn50401-first-transfer",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.wq01@47"],
+        skillId: "xyy.skill.jn50401",
+        targetPlayerIds: [firstTarget],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(expectedDrawn.slice(0, 2));
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === firstTarget)
+        ?.equipment.weapon,
+    ).toBe("xyy.card.wq01@47");
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      const serialized = JSON.stringify(
+        clients[indexOf(player.id)]!.latestView,
+      );
+      for (const card of expectedDrawn.slice(0, 2)) {
+        expect(serialized).not.toContain(card);
+      }
+    }
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    const resumedAction = clients[
+      indexOf(owner)
+    ]!.latestView.availableActions.find(
+      (action) =>
+        action.type === "activate-hero-skill" &&
+        action.skillId === "xyy.skill.jn50401",
+    );
+    expect(resumedAction).toMatchObject({
+      cardInstanceIds: ["xyy.card.fj01@52"],
+      targetPlayerIds: targets.filter((playerId) => playerId !== firstTarget),
+    });
+
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn50401-repeat-target",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.fj01@52"],
+        skillId: "xyy.skill.jn50401",
+        targetPlayerIds: [firstTarget],
+      },
+    );
+    expect(response).toMatchObject({
+      type: "command-rejected",
+      reason: "forbidden",
+      currentVersion: version,
+    });
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn50401-second-transfer",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.fj01@52"],
+        skillId: "xyy.skill.jn50401",
+        targetPlayerIds: [secondTarget],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[0]!.latestView.players.find(
+        (player) => player.id === secondTarget,
+      )?.equipment.armor,
+    ).toBe("xyy.card.fj01@52");
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(expectedDrawn);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    expect(clients[0]!.latestView.version).toBeGreaterThanOrEqual(version);
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(expectedDrawn);
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn50401",
+      ),
+    ).toBe(false);
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

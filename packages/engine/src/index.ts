@@ -32,6 +32,8 @@ export interface TurnState {
   readonly deadlineAt: number;
   /** Skill ids already consumed for this turn; absent only on legacy snapshots. */
   readonly usedSkillIds?: readonly string[];
+  /** Per-skill targets already visited this turn; omitted until a skill needs it. */
+  readonly usedSkillTargetIds?: Readonly<Record<string, readonly PlayerId[]>>;
 }
 
 export interface HeroOffer {
@@ -242,6 +244,14 @@ export type AvailableAction =
       readonly skillId: "xyy.skill.jn50201";
       readonly convertedCardId: "xyy.card.jp01" | "xyy.card.jp06";
       readonly targetPlayerIds: readonly PlayerId[];
+    }
+  | {
+      readonly type: "activate-hero-skill";
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly requiredCardCount: 1;
+      readonly skillId: "xyy.skill.jn50401";
+      readonly targetPlayerIds: readonly PlayerId[];
+      readonly requiredTargetCount: 1;
     }
   | {
       readonly type: "activate-hero-skill";
@@ -1215,6 +1225,37 @@ function turnActions(
           },
         ]
       : [];
+  const presentSwordTargets = Object.values(state.players)
+    .filter(
+      (candidate) =>
+        candidate.alive &&
+        candidate.id !== viewerId &&
+        !(state.turn?.usedSkillTargetIds?.["xyy.skill.jn50401"] ?? []).includes(
+          candidate.id,
+        ),
+    )
+    .sort((left, right) => left.seat - right.seat)
+    .map((candidate) => candidate.id);
+  const equippedCards = [
+    ...(player.equipment.weapon === null ? [] : [player.equipment.weapon]),
+    ...(player.equipment.armor === null ? [] : [player.equipment.armor]),
+  ];
+  const presentSwordActions =
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn50401") &&
+    equippedCards.length > 0 &&
+    presentSwordTargets.length > 0
+      ? [
+          {
+            type: "activate-hero-skill" as const,
+            cardInstanceIds: equippedCards,
+            requiredCardCount: 1 as const,
+            skillId: "xyy.skill.jn50401" as const,
+            targetPlayerIds: presentSwordTargets,
+            requiredTargetCount: 1 as const,
+          },
+        ]
+      : [];
   return [
     ...playable,
     ...equippedPawn,
@@ -1223,6 +1264,7 @@ function turnActions(
     ...heroSkillActions,
     ...selfHealingActions,
     ...drawDiscardActions,
+    ...presentSwordActions,
     { type: "end-action" },
   ];
 }

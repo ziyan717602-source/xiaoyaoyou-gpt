@@ -14,6 +14,14 @@
     "fengmingyushiSkills": 19
   },
   "items": {
+    "xyy.skill.jn50401": {
+      "name": "赠剑",
+      "owner": "xyy.hero.xj404",
+      "rule": "during his own action phase, the owner may transfer exactly one equipped item to another living player, replacing that target's same-slot equipment, then immediately draw two; each target may be chosen only once in that action phase",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, equipped weapon/armor candidates, other-living target validation, same-slot replacement before deterministic draw-two, per-action target memory, repeat use on different targets, optional timeout, JSON replay, SQLite final restart and six-socket draw privacy",
+      "linkedPending": []
+    },
     "xyy.skill.jn50402": {
       "name": "剑匣",
       "owner": "xyy.hero.xj404",
@@ -88,6 +96,10 @@
     }
   },
   "legacyEvidence": [
+    "psd.db3:Skill:JN50401 OCCURS R#GR ONCE 0 and description transfer one own equipped item, draw two, and do not repeat a target in one turn",
+    "PSDGamepkg/JNS/XJ405.cs:1574-1605 JN50401 validates own equipment and other targets absent from RAM Present, transfers the chosen equipment, draws two, then records the target",
+    "PSDGamepkg/XIR.cs:160-174 resets all player RAM on entry to the GR action period",
+    "PSDGamepkg/XIG.cs:1741-1900 G0ZB standard equipment transfer removes the source item and replaces target same-slot equipment through G0QZ",
     "psd.db3:Hero:XJ404 dependencies JN50401/JN50402",
     "psd.db3:Skill:JN50402 OCCURS !G0QR,!G0IS and description hand-limit-plus-two",
     "PSDGamepkg/JNS/XJ405.cs:1608-1622 JN50402Valid/Action",
@@ -117,6 +129,11 @@
     "jn50402Timing": "apply hand limit five atomically when setup finalizes XJ404, matching native G0IS skill loading",
     "jn50402Visibility": "hand limit is public match state; hand identities remain owner-only",
     "futureHeroChanges": "any later hero transformation or dynamic skill ownership node must call the same skill-derived stat recomputation before it can be verified",
+    "jn50401TargetMemory": "the legacy RAM Present collection is represented as serialized turn.usedSkillTargetIds for JN50401, preserved across action-phase restarts and omitted when the next turn is created",
+    "jn50401TransferOrdering": "the authoritative activation event removes the selected owner equipment, equips it to the target and discards any replaced same-slot item before a second event uses the canonical deterministic draw-two planner; a replacement can therefore enter an empty-pile refill",
+    "jn50401RepeatAndTimeout": "ONCE 0 permits repeated use while another equipped card and unused other living target exist; generic optional action timeout ends action without moving equipment or drawing",
+    "jn50401Visibility": "equipment movement and public hand counts are visible to all seats, while the two drawn instance ids remain only in the owner's hand projection",
+    "jn50401ScopedEquipment": "legacy ListOutAllEquips also understands extra and fake equipment, but the standard plus Fengmingyushi runtime has only physical weapon and armor slots and no scoped fake-equipment producer; broader special-card compatibility is not claimed",
     "jn20202ConversionRepresentation": "the paid physical TP-category card and JN20202 source are recorded while the child uses the canonical cancel-effect node shared by normal TP01",
     "jn20202Timeout": "conversion is optional and the existing 15-second reaction timeout is a pass without payment",
     "jn40301ConversionRepresentation": "one command carries the exact two physical payment cards and skill source; action mode creates the canonical TP02 effect while rescue mode enters the existing dying cure path",
@@ -212,6 +229,14 @@
     "CS02-67": "JN50203-self-damage-reuses-the-canonical-response-and-recursive-dying-pipeline",
     "CS02-68": "JN50203-optional-choice-timeout-and-disconnected-auto-decision-finish-without-further-transfer",
     "CS02-69": "JN50203-captured-card-identities-and-actions-are-visible-only-to-the-owner",
-    "CS02-70": "JN50203-replays-through-JSON-and-persists-loot-choice-self-damage-window-and-privacy-through-SQLite-restarts-with-six-WebSockets"
+    "CS02-70": "JN50203-replays-through-JSON-and-persists-loot-choice-self-damage-window-and-privacy-through-SQLite-restarts-with-six-WebSockets",
+    "CS02-71": "JN50401-is-offered-only-to-its-native-owner-during-own-action-with-equipment-and-an-unused-other-living-target",
+    "CS02-72": "JN50401-requires-exactly-one-currently-equipped-weapon-or-armor-and-rejects-hand-unknown-own-or-dead-target-inputs",
+    "CS02-73": "JN50401-removes-the-source-equipment-equips-the-target-and-discards-any-same-slot-replacement-before-drawing",
+    "CS02-74": "JN50401-draws-two-through-the-canonical-deterministic-plan-including-refill-from-the-new-replacement-discard",
+    "CS02-75": "JN50401-can-repeat-on-different-targets-but-never-the-same-target-in-one-action-phase-and-resets-next-turn",
+    "CS02-76": "JN50401-opens-no-reaction-window-and-optional-action-timeout-moves-no-card",
+    "CS02-77": "JN50401-projects-public-equipment-and-hand-count-changes-with-drawn-identities-visible-only-to-the-owner",
+    "CS02-78": "JN50401-replays-through-JSON-and-persists-target-memory-private-draws-and-final-zones-through-SQLite-restarts-with-six-WebSockets"
   }
 }
