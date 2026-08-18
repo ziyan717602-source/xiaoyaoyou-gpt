@@ -40,6 +40,8 @@ function baseline(item) {
     return { state: "verified", ...verified };
   }
   if (item.packages.includes("standard") && item.kind === "hero") {
+    const hero = contract.baselinePartial.heroes?.[item.canonicalId];
+    if (hero !== undefined) return { state: "partial", ...hero };
     return {
       state: "partial",
       boundary: contract.baselinePartial.allStandardHeroes.boundary,

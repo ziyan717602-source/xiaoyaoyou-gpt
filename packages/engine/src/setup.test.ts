@@ -5,8 +5,10 @@ import {
   applyCommand,
   createPlayerView,
   createSetupMatch,
+  HERO_SKILL_IDS,
   reduceEvent,
   SETUP_CARD_INSTANCES,
+  skillIdsForHero,
   type MatchState,
 } from "./index.js";
 
@@ -165,6 +167,53 @@ describe("M02 deterministic setup", () => {
         .every((player) => player.hand === null),
     ).toBe(true);
     expect(viewer.players.every((player) => player.heroId !== null)).toBe(true);
+  });
+
+  it("loads the complete hero-skill graph and applies 剑匣 hand limit", () => {
+    expect(Object.keys(HERO_SKILL_IDS)).toHaveLength(34);
+    expect(
+      Object.values(HERO_SKILL_IDS).reduce(
+        (count, skillIds) => count + skillIds.length,
+        0,
+      ),
+    ).toBe(77);
+    expect(skillIdsForHero("xyy.hero.xj404")).toEqual([
+      "xyy.skill.jn50401",
+      "xyy.skill.jn50402",
+    ]);
+
+    let state = setup("jn50402-7");
+    const ownerId = state.turnOrder[0]!;
+    expect(state.setup!.offers[ownerId]!.candidateHeroIds).toContain(
+      "xyy.hero.xj404",
+    );
+    for (const playerId of state.turnOrder) {
+      const heroId =
+        playerId === ownerId
+          ? "xyy.hero.xj404"
+          : state.setup!.offers[playerId]!.candidateHeroIds[0]!;
+      state = accepted(state, playerId, `jn50402-choose-${playerId}`, {
+        type: "choose-hero",
+        heroId,
+      });
+    }
+
+    expect(state.players[ownerId]).toMatchObject({
+      heroId: "xyy.hero.xj404",
+      handLimit: 5,
+    });
+    expect(
+      Object.values(state.players)
+        .filter((player) => player.id !== ownerId)
+        .every((player) => player.handLimit === 3),
+    ).toBe(true);
+    for (const viewer of players) {
+      expect(
+        createPlayerView(state, viewer.id).players.find(
+          (player) => player.id === ownerId,
+        )?.handLimit,
+      ).toBe(5);
+    }
   });
 
   it("rejects stale, foreign, and out-of-offer setup commands", () => {

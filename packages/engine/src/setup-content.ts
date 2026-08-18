@@ -1,4 +1,5 @@
 export type HeroId = `xyy.hero.${string}`;
+export type SkillId = `xyy.skill.${string}`;
 export type CardId = `xyy.card.${string}`;
 export type CardInstanceId = `${CardId}@${number}`;
 
@@ -346,6 +347,98 @@ export const SETUP_HEROES: readonly HeroDefinition[] = [
     selectable: true,
   },
 ] as const;
+
+// The legacy Hero -> Skill ownership graph is static content, not mutable match
+// state. Keep the complete scoped graph here so every runtime skill lookup has a
+// single deterministic source and can be checked against the generated catalog.
+export const HERO_SKILL_IDS = {
+  "xyy.hero.x3w01": ["xyy.skill.jn40101", "xyy.skill.jn40102"],
+  "xyy.hero.x3w02": ["xyy.skill.jn40201", "xyy.skill.jn40202"],
+  "xyy.hero.x3w03": ["xyy.skill.jn40301", "xyy.skill.jn40302"],
+  "xyy.hero.x3w04": [
+    "xyy.skill.jn40401",
+    "xyy.skill.jn40402",
+    "xyy.skill.jn40403",
+  ],
+  "xyy.hero.xj101": ["xyy.skill.jn10101", "xyy.skill.jn10102"],
+  "xyy.hero.xj102": ["xyy.skill.jn10201", "xyy.skill.jn10202"],
+  "xyy.hero.xj103": [
+    "xyy.skill.jn10201",
+    "xyy.skill.jn10302",
+    "xyy.skill.jn10303",
+  ],
+  "xyy.hero.xj104": ["xyy.skill.jn10401", "xyy.skill.jn10402"],
+  "xyy.hero.xj105": ["xyy.skill.jn10501", "xyy.skill.jn10502"],
+  "xyy.hero.xj106": ["xyy.skill.jn10601", "xyy.skill.jn10602"],
+  "xyy.hero.xj107": ["xyy.skill.jn10701", "xyy.skill.jn10702"],
+  "xyy.hero.xj201": ["xyy.skill.jn20101", "xyy.skill.jn20102"],
+  "xyy.hero.xj202": ["xyy.skill.jn20201", "xyy.skill.jn20202"],
+  "xyy.hero.xj203": ["xyy.skill.jn20301", "xyy.skill.jn20302"],
+  "xyy.hero.xj206": ["xyy.skill.jn20601", "xyy.skill.jn20602"],
+  "xyy.hero.xj207": ["xyy.skill.jn20701", "xyy.skill.jn20702"],
+  "xyy.hero.xj302": [
+    "xyy.skill.jn30201",
+    "xyy.skill.jn30202",
+    "xyy.skill.jn30203",
+  ],
+  "xyy.hero.xj303": [
+    "xyy.skill.jn30301",
+    "xyy.skill.jn30302",
+    "xyy.skill.jn30303",
+  ],
+  "xyy.hero.xj304": [
+    "xyy.skill.jn30401",
+    "xyy.skill.jn30402",
+    "xyy.skill.jn30403",
+  ],
+  "xyy.hero.xj305": ["xyy.skill.jn30501", "xyy.skill.jn30502"],
+  "xyy.hero.xj306": [
+    "xyy.skill.jn30601",
+    "xyy.skill.jn30602",
+    "xyy.skill.jn30603",
+  ],
+  "xyy.hero.xj401": ["xyy.skill.jn50101", "xyy.skill.jn50102"],
+  "xyy.hero.xj402": [
+    "xyy.skill.jn50201",
+    "xyy.skill.jn50202",
+    "xyy.skill.jn50203",
+  ],
+  "xyy.hero.xj403": ["xyy.skill.jn50301", "xyy.skill.jn50302"],
+  "xyy.hero.xj404": ["xyy.skill.jn50401", "xyy.skill.jn50402"],
+  "xyy.hero.xj405": ["xyy.skill.jn50501", "xyy.skill.jn50502"],
+  "xyy.hero.xj501": ["xyy.skill.jn60101", "xyy.skill.jn60102"],
+  "xyy.hero.xj502": ["xyy.skill.jn60201", "xyy.skill.jn60202"],
+  "xyy.hero.xj503": ["xyy.skill.jn60301", "xyy.skill.jn60302"],
+  "xyy.hero.xj504": [
+    "xyy.skill.jn60401",
+    "xyy.skill.jn60402",
+    "xyy.skill.jn60403",
+  ],
+  "xyy.hero.xj505": ["xyy.skill.jn60501", "xyy.skill.jn60502"],
+  "xyy.hero.xj506": ["xyy.skill.jn60601", "xyy.skill.jn60602"],
+  "xyy.hero.xj507": ["xyy.skill.jn60701", "xyy.skill.jn60702"],
+  "xyy.hero.xj508": [
+    "xyy.skill.jn60801",
+    "xyy.skill.jn60802",
+    "xyy.skill.jn60803",
+  ],
+} as const satisfies Readonly<Record<HeroId, readonly SkillId[]>>;
+
+export function skillIdsForHero(heroId: HeroId): readonly SkillId[] {
+  const skillIds = (
+    HERO_SKILL_IDS as Readonly<Record<string, readonly SkillId[]>>
+  )[heroId];
+  if (skillIds === undefined) throw new Error(`Unknown setup hero ${heroId}.`);
+  return skillIds;
+}
+
+export function heroHasSkill(heroId: HeroId, skillId: SkillId): boolean {
+  return skillIdsForHero(heroId).includes(skillId);
+}
+
+export function handLimitForHero(heroId: HeroId): number {
+  return heroHasSkill(heroId, "xyy.skill.jn50402") ? 5 : 3;
+}
 
 const CARD_SERIALS: Readonly<Record<CardId, readonly number[]>> = {
   "xyy.card.jp01": [1, 2],

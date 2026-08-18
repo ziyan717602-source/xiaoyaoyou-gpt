@@ -152,6 +152,63 @@ function expectConserved(state: MatchState): void {
 }
 
 describe("M03 deterministic turn core", () => {
+  it("uses 剑匣 limit five for authoritative discard decisions", () => {
+    let state = playing("jn50402-7");
+    const ownerId = state.activePlayerId!;
+    expect(state.players[ownerId]).toMatchObject({
+      heroId: "xyy.hero.xj404",
+      handLimit: 5,
+    });
+    state = arrange(state, {
+      [ownerId]: [
+        "xyy.card.jp01@1",
+        "xyy.card.jp02@3",
+        "xyy.card.jp03@5",
+        "xyy.card.jp04@7",
+      ],
+    });
+    state = dispatch(state, ownerId, "jn50402-within-limit", {
+      type: "end-action",
+    });
+    expect(state.players[ownerId]!.hand).toHaveLength(5);
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(state.activePlayerId).not.toBe(ownerId);
+
+    let overflow = playing("jn50402-7");
+    const overflowOwnerId = overflow.activePlayerId!;
+    overflow = arrange(overflow, {
+      [overflowOwnerId]: [
+        "xyy.card.jp01@1",
+        "xyy.card.jp02@3",
+        "xyy.card.jp03@5",
+        "xyy.card.jp04@7",
+        "xyy.card.jp05@10",
+      ],
+    });
+    overflow = dispatch(overflow, overflowOwnerId, "jn50402-over-limit", {
+      type: "end-action",
+    });
+    expect(overflow.players[overflowOwnerId]!.hand).toHaveLength(6);
+    expect(overflow.turn).toMatchObject({ number: 1, phase: "discard" });
+    expect(
+      createPlayerView(overflow, overflowOwnerId).availableActions,
+    ).toEqual([
+      {
+        type: "discard-cards",
+        count: 1,
+        cardInstanceIds: overflow.players[overflowOwnerId]!.hand,
+      },
+    ]);
+
+    let ordinary = playing("m03-turn-seed");
+    const ordinaryId = ordinary.activePlayerId!;
+    expect(ordinary.players[ordinaryId]!.handLimit).toBe(3);
+    ordinary = dispatch(ordinary, ordinaryId, "ordinary-over-limit", {
+      type: "end-action",
+    });
+    expect(ordinary.turn).toMatchObject({ number: 1, phase: "discard" });
+  });
+
   it("plays 鼠儿果 on one living target and draws exactly two privately", () => {
     let state = playing();
     const actor = state.activePlayerId!;

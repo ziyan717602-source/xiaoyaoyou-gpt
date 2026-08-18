@@ -30,6 +30,7 @@ import {
 import {
   SELECTABLE_HEROES,
   SETUP_CARD_INSTANCES,
+  handLimitForHero,
   heroDefinition,
   type HeroId,
 } from "./setup-content.js";
@@ -97,6 +98,7 @@ function finalized(state: MatchState, startedAt: number): MatchState {
         maxHp: hero.maxHp,
         strength: hero.strength,
         dexterity: hero.dexterity,
+        handLimit: handLimitForHero(heroId),
         hand,
       },
     };

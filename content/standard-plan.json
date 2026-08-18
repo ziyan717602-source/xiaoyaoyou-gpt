@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 41,
-    "verified": 3,
+    "verified": 4,
     "deferred": 0,
-    "unstarted": 161
+    "unstarted": 160
   },
   "executionQueue": [
     {
@@ -1669,8 +1669,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN50402 hand limit are verified; JN50401 remains pending",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn50402.md"
+      ],
       "dependencies": {
         "contentIds": ["xyy.skill.jn50401", "xyy.skill.jn50402"],
         "primitives": ["hero-state"],
@@ -4534,9 +4537,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ404 ownership and hand-limit-plus-two are verified through authoritative discard, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50402.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

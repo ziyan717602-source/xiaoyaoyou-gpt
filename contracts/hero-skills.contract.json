@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-hero-skills-v1",
+  "scope": "CONTENT-STANDARD/CS02-HERO-SKILLS",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "ownershipGraph": {
+    "source": "catalog hero dependencies.contentIds",
+    "setupHeroes": 34,
+    "standardHeroes": 26,
+    "fengmingyushiHeroes": 8,
+    "ownershipEdges": 77,
+    "distinctOwnedSkills": 76,
+    "standardSkills": 57,
+    "fengmingyushiSkills": 19
+  },
+  "items": {
+    "xyy.skill.jn50402": {
+      "name": "剑匣",
+      "owner": "xyy.hero.xj404",
+      "rule": "when the native skill is loaded, the owner's hand limit is five instead of three; discard is required only above five",
+      "status": "verified",
+      "verifiedBoundary": "native ownership graph, setup application, authoritative discard decisions at five and six cards, JSON replay, SQLite restart and six-socket public projection",
+      "linkedPending": []
+    }
+  },
+  "legacyEvidence": [
+    "psd.db3:Hero:XJ404 dependencies JN50401/JN50402",
+    "psd.db3:Skill:JN50402 OCCURS !G0QR,!G0IS and description hand-limit-plus-two",
+    "PSDGamepkg/JNS/XJ405.cs:1608-1622 JN50402Valid/Action",
+    "PSDGamepkg/XIR.cs:53 native hero skills loaded through G0IS",
+    "PSDGamepkg/XIG.cs:2630-2658 G0IS skill attachment",
+    "PSDGamepkg/XIG.cs:2547 discard only when Tux.Count exceeds TuxLimit"
+  ],
+  "decisions": {
+    "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
+    "activeSkillRepresentation": "native passive lookup is derived from authoritative heroId; dynamic gain/loss state is introduced only when a migrated rule requires it",
+    "jn50402Timing": "apply hand limit five atomically when setup finalizes XJ404, matching native G0IS skill loading",
+    "jn50402Visibility": "hand limit is public match state; hand identities remain owner-only",
+    "futureHeroChanges": "any later hero transformation or dynamic skill ownership node must call the same skill-derived stat recomputation before it can be verified"
+  },
+  "acceptanceMap": {
+    "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
+    "CS02-02": "all-76-owned-skill-edges-are-present-without-duplicates-or-extras",
+    "CS02-03": "XJ404-native-JN50402-starts-with-public-hand-limit-five",
+    "CS02-04": "five-cards-after-reward-do-not-open-discard",
+    "CS02-05": "six-cards-after-reward-open-owner-only-discard-one",
+    "CS02-06": "ordinary-heroes-retain-hand-limit-three",
+    "CS02-07": "JN50402-outcome-replays-identically-after-JSON-checkpoint",
+    "CS02-08": "JN50402-persists-through-SQLite-server-restart-and-six-WebSockets",
+    "CS02-09": "content-plan-verifies-only-JN50402-and-keeps-XJ404-partial-for-JN50401"
+  }
+}

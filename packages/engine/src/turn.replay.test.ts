@@ -39,11 +39,11 @@ function apply(
   return result;
 }
 
-function started(): MatchState {
+function started(seed = "m03-replay-restart-seed"): MatchState {
   let state = createSetupMatch({
     matchId: "m03-replay-match",
     rulesetVersion: "standard-fengmingyushi@1",
-    seed: "m03-replay-restart-seed",
+    seed,
     players: seats,
   });
   for (const playerId of state.turnOrder) {
@@ -56,6 +56,50 @@ function started(): MatchState {
 }
 
 describe("M03 turn event replay", () => {
+  it("replays 剑匣 discard bypass identically across a JSON restart", () => {
+    const setupState = started("jn50402-7");
+    const ownerId = setupState.activePlayerId!;
+    expect(setupState.players[ownerId]).toMatchObject({
+      heroId: "xyy.hero.xj404",
+      handLimit: 5,
+    });
+    const extraCard = setupState.drawPile[0]!;
+    const initial: MatchState = {
+      ...setupState,
+      players: {
+        ...setupState.players,
+        [ownerId]: {
+          ...setupState.players[ownerId]!,
+          hand: [...setupState.players[ownerId]!.hand, extraCard],
+        },
+      },
+      drawPile: setupState.drawPile.slice(1),
+    };
+    const command = { type: "end-action" as const };
+    const uninterrupted = apply(initial, ownerId, "jn50402-replay", command);
+    const restarted = apply(
+      JSON.parse(JSON.stringify(initial)) as MatchState,
+      ownerId,
+      "jn50402-replay",
+      command,
+    );
+    expect(restarted).toEqual(uninterrupted);
+    expect(uninterrupted.state.players[ownerId]!.hand).toHaveLength(5);
+    expect(uninterrupted.state.turn).toMatchObject({
+      number: 2,
+      phase: "action",
+    });
+
+    let replayed = initial;
+    for (const domainEvent of uninterrupted.events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(domainEvent)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+  });
+
   it("replays WQ04 pawn from an equipped weapon across a JSON restart", () => {
     const startedState = started();
     const actor = startedState.activePlayerId!;

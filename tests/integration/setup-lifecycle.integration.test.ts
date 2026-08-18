@@ -23,7 +23,10 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
 });
 
-async function start(path: string): Promise<{
+async function start(
+  path: string,
+  matchSeed?: string,
+): Promise<{
   server: RoomAppServer;
   httpUrl: string;
   wsUrl: string;
@@ -32,6 +35,7 @@ async function start(path: string): Promise<{
     databasePath: path,
     logger: false,
     allowedOrigins: ["https://game.local"],
+    ...(matchSeed === undefined ? {} : { matchSeed }),
   });
   await server.listen(0, "127.0.0.1");
   const address = server.app.server.address() as AddressInfo;
@@ -191,7 +195,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-setup-integration-"));
     roots.push(root);
     const databasePath = join(root, "setup.sqlite");
-    let running = await start(databasePath);
+    let running = await start(databasePath, "jn50402-net-19");
     const created = await request<RoomSession>(
       `${running.httpUrl}/api/rooms`,
       "POST",
@@ -298,7 +302,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
-    running = await start(databasePath);
+    running = await start(databasePath, "jn50402-net-19");
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
@@ -436,6 +440,11 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     const secondPlayer = clients[0]!.latestView.players.find(
       (player) => player.turnIndex === 1,
     )!;
+    expect(secondPlayer).toMatchObject({
+      heroId: "xyy.hero.xj404",
+      handLimit: 5,
+      handCount: 3,
+    });
     expect(
       clients.every(
         (client) => client.latestView.activePlayerId === secondPlayer.id,
@@ -451,7 +460,7 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
-    running = await start(databasePath);
+    running = await start(databasePath, "jn50402-net-19");
     clients = await Promise.all(
       sessions.map((session) => connect(running.wsUrl, session)),
     );
@@ -477,6 +486,43 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
       duplicate: true,
       version: endActionReceiptVersion,
     });
+    expect(
+      clients.every(
+        (client) =>
+          client.latestView.players.find(
+            (player) => player.id === secondPlayer.id,
+          )?.handLimit === 5,
+      ),
+    ).toBe(true);
+
+    const secondIndex = sessions.findIndex(
+      (session) => session.playerId === secondPlayer.id,
+    );
+    const secondEnd = await sendCommand(
+      clients[secondIndex]!,
+      sessions[secondIndex]!,
+      "network-jn50402-end-action",
+      version,
+      { type: "end-action" },
+    );
+    expect(secondEnd).toMatchObject({
+      type: "command-accepted",
+      duplicate: false,
+      version: version + 1,
+    });
+    version += 1;
+    for (const client of clients) await waitForVersion(client, version);
+    expect(
+      clients.every(
+        (client) => client.latestView.activePlayerId !== secondPlayer.id,
+      ),
+    ).toBe(true);
+    expect(
+      clients.every((client) => client.latestView.turn?.number === 3),
+    ).toBe(true);
+    expect(
+      clients.every((client) => client.latestView.turn?.phase === "action"),
+    ).toBe(true);
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });

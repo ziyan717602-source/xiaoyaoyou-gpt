@@ -16,6 +16,7 @@ interface RoomServerOptions {
   readonly databasePath: string;
   readonly logger?: boolean;
   readonly allowedOrigins?: readonly string[];
+  readonly matchSeed?: string;
 }
 
 export interface RoomAppServer extends AppServer {
@@ -318,7 +319,12 @@ export async function buildRoomServer(
         };
         const result =
           action === "start"
-            ? roomStore.startRoom(input)
+            ? roomStore.startRoom({
+                ...input,
+                ...(options.matchSeed === undefined
+                  ? {}
+                  : { seed: options.matchSeed }),
+              })
             : roomStore.endRoom(input);
         if (action === "start" && !result.duplicate) {
           await matchService.activate(
