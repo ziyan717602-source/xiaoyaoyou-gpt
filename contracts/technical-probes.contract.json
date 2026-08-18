@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "seed": "p06-fixed-seed-20260819",
+  "probes": [
+    {
+      "id": "P06-PROBE-1",
+      "fixtures": ["cancel-success", "countered-cancel-resume", "dying-rescue"],
+      "waitPointPolicy": "json-round-trip-before-every-player-command",
+      "failureArtifact": "artifacts/failures/p06-probe-1.json"
+    },
+    {
+      "id": "P06-PROBE-2",
+      "fixtures": [
+        "six-private-views",
+        "idempotent-command",
+        "forbidden-command"
+      ],
+      "viewCount": 6,
+      "failureArtifact": "artifacts/failures/p06-probe-2.json"
+    },
+    {
+      "id": "P06-PROBE-3",
+      "fixtures": [
+        "restart-before-deadline",
+        "restart-after-deadline",
+        "mandatory-timeout",
+        "disconnect-auto-mode"
+      ],
+      "actionMs": 15000,
+      "disconnectMs": 60000,
+      "failureArtifact": "artifacts/failures/p06-probe-3.json"
+    }
+  ],
+  "goCriteria": [
+    "all-wait-points-byte-stable-after-json-round-trip",
+    "six-views-contain-no-other-hand-or-private-action",
+    "duplicate-forbidden-stale-commands-do-not-double-apply",
+    "restart-preserves-absolute-deadline-and-timeout-idempotency",
+    "forced-timeout-choice-is-seed-replayable"
+  ],
+  "scopeExclusion": "no-real-standard-or-fengming-content-is-migrated-by-probes"
+}

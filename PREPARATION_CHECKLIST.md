@@ -116,14 +116,14 @@
 
 ## P06：三个可失败技术探针
 
-- [ ] `P06-01` 探针 1：效果→冰心诀窗口→取消/全放弃→恢复→濒死→救援，每个等待点 JSON 往返后一致。
-- [ ] `P06-02` 探针 2：六个独立客户端、六份投影视图、命令版本/幂等和“有人能响应”侧信道检查。
-- [ ] `P06-03` 探针 3：响应窗口中重启服务，恢复 15 秒/60 秒语义，超时和强制随机可重放。
-- [ ] `P06-04` 每个探针有独立工作节点契约、失败产物、种子和验证收据。
-- [ ] `P06-05` 探针不迁移批量真实卡牌，失败时可删除/重做，不背负已迁移内容。
-- [ ] `P06-06` 根据结果确认或否决 TypeScript 自研引擎路线，并记录最终 ADR。
+- [x] `P06-01` 探针 1：效果→冰心诀窗口→取消/全放弃→恢复→濒死→救援，每个等待点 JSON 往返后一致。
+- [x] `P06-02` 探针 2：六个独立客户端、六份投影视图、命令版本/幂等和“有人能响应”侧信道检查。
+- [x] `P06-03` 探针 3：响应窗口中重启服务，恢复 15 秒/60 秒语义，超时和强制随机可重放。
+- [x] `P06-04` 每个探针有独立工作节点契约、失败产物、种子和验证收据。
+- [x] `P06-05` 探针不迁移批量真实卡牌，失败时可删除/重做，不背负已迁移内容。
+- [x] `P06-06` 根据结果确认或否决 TypeScript 自研引擎路线，并记录最终 ADR。
 
-完成证据：三份验证收据、可一键重放的失败/成功轨迹和技术路线 ADR。
+完成证据：[`contracts/technical-probes.contract.json`](contracts/technical-probes.contract.json)、[`packages/engine/src/technical-probes.replay.test.ts`](packages/engine/src/technical-probes.replay.test.ts)、[`docs/adr/0001-custom-deterministic-engine.md`](docs/adr/0001-custom-deterministic-engine.md)、[`docs/verification/receipts/p06-technical-probes.md`](docs/verification/receipts/p06-technical-probes.md) 和 `npm run probes:verify`。
 
 ## P07：把测试、Bot、浏览器与故障证据变成一等产物
 
