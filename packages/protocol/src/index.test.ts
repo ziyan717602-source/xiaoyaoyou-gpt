@@ -1,0 +1,60 @@
+import { describe, expect, it } from "vitest";
+import {
+  PROTOCOL_VERSION,
+  validateClientMessage,
+  validateServerMessage,
+} from "./index.js";
+
+describe("protocol runtime schema", () => {
+  it("accepts an authentication envelope and rejects unknown fields", () => {
+    const valid = {
+      type: "authenticate",
+      protocolVersion: PROTOCOL_VERSION,
+      matchId: "match-1",
+      playerId: "player-1",
+      reconnectToken: "t".repeat(32),
+      clientInstanceId: "browser-1",
+    };
+    expect(validateClientMessage(valid).ok).toBe(true);
+    expect(validateClientMessage({ ...valid, leaked: true }).ok).toBe(false);
+  });
+
+  it("bounds messages and validates command discriminators", () => {
+    expect(
+      validateClientMessage({
+        type: "command",
+        envelope: {
+          protocolVersion: PROTOCOL_VERSION,
+          commandId: "command-1",
+          matchId: "match-1",
+          playerId: "player-1",
+          clientSequence: 1,
+          expectedVersion: 0,
+          clientIssuedAt: 1,
+          command: {
+            type: "submit-choice",
+            choiceId: "choice-1",
+            selections: ["option-1"],
+          },
+        },
+      }).ok,
+    ).toBe(true);
+    expect(
+      validateClientMessage({ type: "ping", nonce: "x".repeat(129) }).ok,
+    ).toBe(false);
+  });
+
+  it("validates server envelopes with closed object shapes", () => {
+    const hello = {
+      type: "hello",
+      protocolVersion: PROTOCOL_VERSION,
+      connectionId: "connection-1",
+      heartbeatMs: 25_000,
+      authenticationDeadlineMs: 5_000,
+    };
+    expect(validateServerMessage(hello).ok).toBe(true);
+    expect(validateServerMessage({ ...hello, reconnectToken: "leak" }).ok).toBe(
+      false,
+    );
+  });
+});

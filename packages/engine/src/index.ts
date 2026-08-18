@@ -192,3 +192,46 @@ export function createPlayerView(
         : null,
   };
 }
+
+export const projectPlayerView = createPlayerView;
+
+export function resume(state: MatchState):
+  | { readonly status: "resolved"; readonly state: MatchState }
+  | {
+      readonly status: "pending-choice";
+      readonly state: MatchState;
+      readonly pendingChoice: PendingChoice;
+    }
+  | {
+      readonly status: "reaction-window";
+      readonly state: MatchState;
+      readonly reactionWindow: ReactionWindow;
+    }
+  | { readonly status: "game-over"; readonly state: MatchState } {
+  if (state.phase === "finished") {
+    return { status: "game-over", state };
+  }
+  if (state.pendingChoice !== null) {
+    return {
+      status: "pending-choice",
+      state,
+      pendingChoice: state.pendingChoice,
+    };
+  }
+  if (state.reactionWindow !== null) {
+    return {
+      status: "reaction-window",
+      state,
+      reactionWindow: state.reactionWindow,
+    };
+  }
+  return { status: "resolved", state };
+}
+
+export type {
+  ApplyCommandResult,
+  DomainEvent,
+  EngineApi,
+  EngineCommand,
+  ResumeResult,
+} from "./architecture.js";

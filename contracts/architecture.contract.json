@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-production-architecture-v1",
+  "runtime": {
+    "node": ">=22",
+    "processModel": "single-node-process-first",
+    "http": "fastify@5",
+    "websocket": "@fastify/websocket@11",
+    "schema": "json-schema-draft-07-plus-ajv@8",
+    "database": "sqlite-wal-full",
+    "driver": "better-sqlite3@13",
+    "orm": null,
+    "metrics": "prom-client@15",
+    "logging": "fastify-pino"
+  },
+  "engineBoundary": {
+    "operations": [
+      "applyCommand",
+      "resume",
+      "projectPlayerView",
+      "reduceEvent"
+    ],
+    "forbiddenDependencies": [
+      "network",
+      "database",
+      "filesystem",
+      "wall-clock",
+      "unrecorded-rng"
+    ],
+    "result": "accepted-state-and-events-or-stable-rejection"
+  },
+  "actor": {
+    "ownership": "exactly-one-in-process-actor-per-active-match",
+    "queue": "single-promise-lane-fifo",
+    "timer": "absolute-deadline-enqueues-idempotent-system-command",
+    "stop": [
+      "reject-new",
+      "drain-queue",
+      "persist-snapshot",
+      "cancel-timers",
+      "close-connections"
+    ]
+  },
+  "websocket": {
+    "path": "/ws",
+    "authentication": "first-frame-bearer-token-within-5000ms",
+    "tokenInUrl": false,
+    "maxMessageBytes": 65536,
+    "heartbeatMs": 25000,
+    "closeCodes": {
+      "unauthenticated": 4401,
+      "unsupportedProtocol": 4406,
+      "authenticationTimeout": 4408,
+      "serviceRestart": 1012
+    },
+    "idempotency": "matchId-plus-commandId-stable-receipt",
+    "negotiation": "exact-version-until-explicit-compatible-range-is-added"
+  },
+  "persistence": {
+    "eventSequence": "strictly-monotonic-per-match",
+    "eventIntegrity": "sha256-prior-hash-chain",
+    "atomicUnit": [
+      "events",
+      "command-receipt",
+      "match-version",
+      "optional-snapshot"
+    ],
+    "snapshotEveryAcceptedCommands": 25,
+    "snapshotAlsoAt": ["player-wait-point", "finished", "graceful-stop"],
+    "recovery": "latest-snapshot-plus-subsequent-events",
+    "migration": "ordered-forward-only-user-version-refuse-newer",
+    "unknownVersion": "refuse-start-preserve-file"
+  },
+  "security": {
+    "reconnectToken": "server-random-256-bit-bearer-store-sha256-only",
+    "productionOrigin": "explicit-allowlist",
+    "rateLimit": "20-messages-per-second-burst-40-per-connection",
+    "seatConnections": "new-authenticated-connection-supersedes-old",
+    "logSecrets": false,
+    "spectator": false
+  },
+  "observability": {
+    "correlation": [
+      "requestId",
+      "connectionId",
+      "matchId",
+      "commandId",
+      "eventId",
+      "effectId"
+    ],
+    "forbiddenLogFields": [
+      "reconnectToken",
+      "authorization",
+      "rngSeed",
+      "deckOrder",
+      "hand",
+      "privateOptions",
+      "playerView"
+    ],
+    "metricLabelRule": "no-match-player-command-effect-or-card-identifiers"
+  },
+  "localEnvironment": {
+    "command": "npm run dev:local",
+    "smoke": "npm run architecture:smoke",
+    "players": 6,
+    "cloudResources": false,
+    "manualSecrets": false,
+    "scope": "architecture-fixture-not-M01-room"
+  },
+  "reevaluateWhen": [
+    "before-more-than-one-application-instance",
+    "before-storage-without-durable-local-volume",
+    "measured-event-loop-or-sqlite-contention-breaches-slo",
+    "before-protocol-supports-more-than-one-live-version",
+    "typescript-upgrade-makes-schema-generator-worth-retesting"
+  ],
+  "acceptanceMap": {
+    "P08-04": ["runtime"],
+    "P08-05": ["engineBoundary"],
+    "P08-06": ["actor"],
+    "P08-07": ["websocket"],
+    "P08-08": ["persistence"],
+    "P08-09": ["security"],
+    "P08-10": ["observability"],
+    "P08-11": ["localEnvironment"],
+    "P08-12": ["reevaluateWhen"]
+  }
+}

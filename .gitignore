@@ -4,6 +4,7 @@ dist/
 dist-types/
 coverage/
 artifacts/
+.local/
 *.tsbuildinfo
 
 # Local configuration and secrets
