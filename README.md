@@ -23,7 +23,7 @@ reference/
 
 ## 验证仓库骨架
 
-要求 Node.js 22 及 Git LFS。
+要求 Node.js 22 与 npm 10。公开历史当前不包含 Git LFS 对象。
 
 ```bash
 npm install
