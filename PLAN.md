@@ -1,0 +1,49 @@
+# xiaoyaoyou-gpt 持续目标工作图
+
+状态：执行中。节点只有在前置收据均为 `pass` 时才是 ready；表中顺序用于同级 ready 节点的优先级。
+
+## 准备图
+
+| 节点                   | 依赖                                   | 可验证结果                                                                     | 主要闸门                                 |
+| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------- |
+| `P01-PUBLIC-HISTORY`   | P00 决策                               | 干净公开历史、远程和新鲜克隆均不含旧参考                                       | 历史扫描、克隆收据                       |
+| `P09-EXECUTION-SYSTEM` | `P01`                                  | 仓库级规则、工作图、停止条件、进度页和稳定命令存在                             | `npm run check:fast`；预检能准确保持红色 |
+| `P02-LEGACY-INVENTORY` | `P01`                                  | 旧解决方案、项目、程序集、数据库与资源具有只读校验和及来源清单                 | `npm run oracle:inventory`               |
+| `P02-ORACLE-TOOLCHAIN` | `P02-LEGACY-INVENTORY`                 | 最小 .NET 4.0 预言机可运行，或形成有日志的正式降级结论                         | 构建/降级收据                            |
+| `P02-GOLDEN-TRACES`    | `P02-ORACLE-TOOLCHAIN`                 | 基本回合、冰心诀、濒死救援三条带等级轨迹可一键查询                             | `npm run oracle:verify`                  |
+| `P03-CATALOG-SCHEMA`   | `P02-LEGACY-INVENTORY`                 | canonicalId、来源、依赖、证据与迁移状态 Schema 固定                            | Schema 与唯一性测试                      |
+| `P03-CATALOG-100`      | `P03-CATALOG-SCHEMA`                   | 标准包+凤鸣玉誓全部内容与数据库/C#/旧协议 100% 对账                            | `npm run catalog:verify`                 |
+| `P04-SEMANTICS`        | `P02-GOLDEN-TRACES`, `P03-CATALOG-100` | 生命周期、命令、效果栈、响应、伤害、濒死、随机、时间、隐私和恢复语义无隐式猜测 | 黄金场景与不变量检查                     |
+| `P05-UX-PROTOTYPE`     | `P03-CATALOG-100`, `P04-SEMANTICS`     | 模拟复杂状态在桌面/手机可理解、可操作且无明显误触                              | 可见浏览器轨迹、截图与布局断言           |
+| `P06-PROBE-1`          | `P04-SEMANTICS`, `P09`                 | 冰心诀→恢复→濒死→救援在每个 JSON 等待点一致                                    | `test:replay` 对应收据                   |
+| `P06-PROBE-2`          | `P04-SEMANTICS`, `P09`                 | 六连接、六投影、幂等与侧信道隔离通过                                           | 集成/隐私收据                            |
+| `P06-PROBE-3`          | `P06-PROBE-1`, `P06-PROBE-2`           | 响应窗口重启、15 秒/60 秒和种子随机恢复一致                                    | 重启重放收据                             |
+| `P07-VERIFICATION`     | `P06-PROBE-1..3`                       | 单元、属性、Bot、真实网络和 Playwright 分层可稳定执行并留存失败证据            | 六个稳定命令                             |
+| `P08-ARCHITECTURE`     | `P06-PROBE-1..3`, `P07`                | 框架、Actor、协议、持久化、威胁模型和可观测性契约冻结                          | ADR 与本地六人启动收据                   |
+| `P10-GO-NO-GO`         | `P01..P09`                             | 全部准备硬项有证据，创建 `pre-goal-*` 标签                                     | `npm run goal:preflight`                 |
+
+## 正式 MVP 图
+
+P10 全绿后立即继续，不等待人工确认。`CONTENT-*` 的具体子节点由 P03 目录生成，每项必须有稳定 ID、来源、依赖与测试，不能用“批量已迁移”代替逐项状态。
+
+| 节点                    | 依赖                        | 完成结果                                                         |
+| ----------------------- | --------------------------- | ---------------------------------------------------------------- |
+| `M01-ROOM-LIFECYCLE`    | `P10`                       | 匿名房间、邀请码、六座位、准备、开始、重连令牌和结束状态可持久化 |
+| `M02-SETUP-AND-TEAMS`   | `M01`                       | 六人选角、队伍、初始牌堆/手牌和先手由种子确定                    |
+| `M03-TURN-CORE`         | `M02`                       | 回合/阶段、摸牌、出牌、目标、装备、弃牌和基本胜负完整推进        |
+| `M04-REACTION-CORE`     | `M03`, `P06-PROBE-1`        | 冰心诀、类冰心诀、反制、逐人放弃、嵌套与原效果续算完整           |
+| `M05-DAMAGE-DYING`      | `M03`, `P06-PROBE-1`        | 伤害修正、多人濒死、救援、死亡后效果和胜负重算完整               |
+| `M06-TIME-RECOVERY`     | `M04`, `M05`, `P06-PROBE-3` | 15 秒、60 秒、断线重连、服务重启、快照+事件恢复完整              |
+| `CONTENT-STANDARD`      | `M03..M06`, P03 生成图      | 标准包所有目录项实现或有可追踪暂缓理由，相关场景通过             |
+| `CONTENT-FMYSH`         | `CONTENT-STANDARD`          | 凤鸣玉誓所有目录项实现或有可追踪暂缓理由，相关场景通过           |
+| `M07-WEB-UX`            | `M01..M06`, `P05`           | PC/手机由 `availableActions` 驱动完成整局关键流程                |
+| `M08-SIX-PLAYER-SYSTEM` | `CONTENT-*`, `M07`          | 六策略 Bot、真实六连接、六 BrowserContext 均能完成整局           |
+| `M09-FAILURE-MATRIX`    | `M08`                       | 重复/过期/越权/乱序、断网、超时、重启和失败重放矩阵通过          |
+| `M10-FINAL-AUDIT`       | `M01..M09`                  | 按 `GOAL_ACCEPTANCE.md` 逐项取证，干净克隆一条命令验证通过       |
+
+## Ready 选择规则
+
+- 优先级：不可逆边界与证据链 → 复杂规则原语 → 隐私/恢复 → 内容 → UI 整局 → 最终审计。
+- 同级节点优先处理能解锁最多后继节点者。
+- 节点验证收据保存在 `docs/verification/receipts/`；失败轨迹保存在被 Git 忽略的 `artifacts/failures/`，最小可公开复现可提交到 `tests/fixtures/failures/`。
+- `PROGRESS.md` 是当前游标，不是历史日记；历史由提交和收据承担。
