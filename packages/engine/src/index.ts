@@ -10,7 +10,7 @@ import { PROTOCOL_VERSION } from "@xiaoyaoyou/protocol";
 import { cardDefinition } from "./setup-content.js";
 import type { CardInstanceId, HeroId } from "./setup-content.js";
 
-export const MATCH_SCHEMA_VERSION = 3 as const;
+export const MATCH_SCHEMA_VERSION = 4 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -113,6 +113,22 @@ export interface PendingChoice {
   readonly continuation: Continuation;
 }
 
+export interface DyingBatch {
+  readonly batchId: string;
+  readonly sourceEffectId: EffectId;
+  readonly targetPlayerIds: readonly PlayerId[];
+  readonly currentIndex: number;
+  readonly currentTargetPlayerId: PlayerId;
+  readonly priorityOrder: readonly PlayerId[];
+  readonly priorityIndex: number;
+  readonly passedPlayerIds: readonly PlayerId[];
+  readonly rescuedPlayerIds: readonly PlayerId[];
+  readonly deadPlayerIds: readonly PlayerId[];
+  readonly status: "awaiting-rescue" | "awaiting-death" | "after-death";
+  readonly openedAt: number;
+  readonly deadlineAt: number;
+}
+
 export interface RngState {
   readonly algorithm: "sha256-counter-v1";
   readonly seed: string;
@@ -139,6 +155,7 @@ export interface MatchState {
   readonly effectStack: readonly EffectFrame[];
   readonly reactionWindow: ReactionWindow | null;
   readonly pendingChoice: PendingChoice | null;
+  readonly dyingBatch: DyingBatch | null;
   readonly rng: RngState;
 }
 
@@ -198,6 +215,12 @@ export type AvailableAction =
     }
   | { readonly type: "pass-reaction"; readonly windowId: WindowId }
   | {
+      readonly type: "play-rescue-card";
+      readonly cardInstanceId: CardInstanceId;
+      readonly targetPlayerId: PlayerId;
+    }
+  | { readonly type: "pass-rescue"; readonly choiceId: ChoiceId }
+  | {
       readonly type: "discard-cards";
       readonly count: number;
       readonly cardInstanceIds: readonly CardInstanceId[];
@@ -216,6 +239,7 @@ export interface PlayerView {
   readonly effectStack: readonly EffectFrame[];
   readonly reactionWindow: ReactionWindowView | null;
   readonly pendingChoice: PendingChoice | null;
+  readonly dyingBatch: DyingBatch | null;
 }
 
 export interface ReactionWindowView {
@@ -276,6 +300,7 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     effectStack: [],
     reactionWindow: null,
     pendingChoice: null,
+    dyingBatch: null,
     rng: { algorithm: "sha256-counter-v1", seed: input.seed, cursor: 0 },
   };
 }
@@ -291,6 +316,7 @@ export function migrateMatchState(value: unknown): MatchState {
     if (
       !("turn" in raw) ||
       !("winner" in raw) ||
+      !("dyingBatch" in raw) ||
       Object.values(current.players).some(
         (player) =>
           typeof player.handLimit !== "number" ||
@@ -300,6 +326,16 @@ export function migrateMatchState(value: unknown): MatchState {
       throw new Error("Match schema v3 snapshot is missing required fields.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 3) {
+    const legacy = value as Omit<MatchState, "schemaVersion" | "dyingBatch"> & {
+      readonly schemaVersion: 3;
+    };
+    return {
+      ...legacy,
+      schemaVersion: MATCH_SCHEMA_VERSION,
+      dyingBatch: null,
+    };
   }
   if (raw.schemaVersion !== 2) {
     throw new Error(
@@ -327,6 +363,7 @@ export function migrateMatchState(value: unknown): MatchState {
       (legacy.phase === "playing" ? { number: 1, phase: "action" } : null),
     winner: legacy.winner ?? null,
     players,
+    dyingBatch: null,
   };
 }
 
@@ -349,9 +386,11 @@ export function createPlayerView(
         },
         ...(ownOffer.rerolled ? [] : [{ type: "reroll-hero" as const }]),
       ]
-    : state.reactionWindow === null
-      ? turnActions(state, viewerId)
-      : reactionActions(state, viewerId);
+    : state.dyingBatch !== null
+      ? rescueActions(state, viewerId)
+      : state.reactionWindow === null
+        ? turnActions(state, viewerId)
+        : reactionActions(state, viewerId);
   return {
     matchId: state.matchId,
     version: state.version,
@@ -419,6 +458,7 @@ export function createPlayerView(
       state.pendingChoice?.playerIds.includes(viewerId) === true
         ? state.pendingChoice
         : null,
+    dyingBatch: state.dyingBatch,
   };
 }
 
@@ -449,6 +489,39 @@ function reactionActions(
       : [],
   );
   return [...reactions, { type: "pass-reaction", windowId: window.windowId }];
+}
+
+function rescueActions(
+  state: Readonly<MatchState>,
+  viewerId: PlayerId,
+): AvailableAction[] {
+  const batch = state.dyingBatch;
+  const choice = state.pendingChoice;
+  if (
+    state.phase !== "playing" ||
+    batch === null ||
+    choice === null ||
+    batch.status !== "awaiting-rescue" ||
+    choice.status !== "open" ||
+    batch.priorityOrder[batch.priorityIndex] !== viewerId ||
+    !choice.playerIds.includes(viewerId)
+  ) {
+    return [];
+  }
+  const player = state.players[viewerId];
+  if (player === undefined || !player.alive) return [];
+  const rescueCards = player.hand.flatMap((cardInstanceId) =>
+    cardDefinition(cardInstanceId).coreAction?.type === "rescue-two"
+      ? [
+          {
+            type: "play-rescue-card" as const,
+            cardInstanceId,
+            targetPlayerId: batch.currentTargetPlayerId,
+          },
+        ]
+      : [],
+  );
+  return [...rescueCards, { type: "pass-rescue", choiceId: choice.choiceId }];
 }
 
 function turnActions(
@@ -489,6 +562,18 @@ function turnActions(
       ];
     }
     if (definition.coreAction?.type === "draw-two") {
+      return [
+        {
+          type: "play-card" as const,
+          cardInstanceId: instanceId,
+          targetPlayerIds: Object.values(state.players)
+            .filter((candidate) => candidate.alive)
+            .sort((left, right) => left.seat - right.seat)
+            .map((candidate) => candidate.id),
+        },
+      ];
+    }
+    if (definition.coreAction?.type === "damage-two") {
       return [
         {
           type: "play-card" as const,

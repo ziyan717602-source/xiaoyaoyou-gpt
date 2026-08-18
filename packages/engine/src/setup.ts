@@ -13,6 +13,7 @@ import {
   type TeamId,
 } from "./index.js";
 import { seedCommitment, nextInt, shuffle } from "./random.js";
+import { applyDyingCommand, reduceDyingEvent } from "./damage-dying.js";
 import { applyReactionCommand, reduceReactionEvent } from "./reaction.js";
 import {
   SELECTABLE_HEROES,
@@ -193,6 +194,12 @@ export function reduceEvent(
     return reduceReactionEvent(state, eventToReduce);
   }
   if (
+    eventToReduce.type.startsWith("rescue.") ||
+    eventToReduce.type.startsWith("death.")
+  ) {
+    return reduceDyingEvent(state, eventToReduce);
+  }
+  if (
     eventToReduce.matchId !== state.matchId ||
     eventToReduce.sequence !== state.eventSequence + 1 ||
     eventToReduce.rulesetVersion !== state.rulesetVersion
@@ -302,6 +309,9 @@ export function applyCommand(
     };
   }
   if (input.phase === "playing") {
+    if (input.dyingBatch !== null) {
+      return applyDyingCommand(input, envelope, serverReceivedAt);
+    }
     return input.reactionWindow === null
       ? applyTurnCommand(input, envelope, serverReceivedAt)
       : applyReactionCommand(input, envelope, serverReceivedAt);

@@ -52,6 +52,12 @@ describe("protocol runtime schema", () => {
         targetEffectId: "effect-1",
       },
       {
+        type: "play-rescue-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        targetPlayerId: "player-2",
+      },
+      { type: "pass-rescue", choiceId: "choice-1" },
+      {
         type: "discard-cards",
         cardInstanceIds: ["xyy.card.jp01@1"],
       },

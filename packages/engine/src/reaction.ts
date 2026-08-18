@@ -7,6 +7,11 @@ import type {
 } from "@xiaoyaoyou/protocol";
 import type { ApplyCommandResult, DomainEvent } from "./architecture.js";
 import { planDraw } from "./card-zones.js";
+import {
+  applyPlannedDamage,
+  planDamageBatch,
+  type DamageIntent,
+} from "./damage-dying.js";
 import type {
   Continuation,
   EffectFrame,
@@ -195,7 +200,9 @@ export function reduceReactionEvent(
       target === undefined ||
       !target.alive ||
       !player.hand.includes(cardInstanceId) ||
-      cardDefinition(cardInstanceId).coreAction?.type !== "draw-two" ||
+      !["draw-two", "damage-two"].includes(
+        cardDefinition(cardInstanceId).coreAction?.type ?? "",
+      ) ||
       effectById(state, effectId) !== undefined
     ) {
       throw new Error("Original effect event is not applicable.");
@@ -424,6 +431,36 @@ export function reduceReactionEvent(
         ),
         reactionWindow: null,
       };
+    } else if (effect.kind === "card:xyy.card.jp05") {
+      const targetPlayerId = effect.targetIds[0];
+      const target =
+        targetPlayerId === undefined
+          ? undefined
+          : state.players[targetPlayerId];
+      if (target === undefined || !target.alive) {
+        throw new Error("Resolved damage target is no longer legal.");
+      }
+      const intent: DamageIntent = {
+        itemId: `${effectId}:damage:0`,
+        sourcePlayerId: effect.sourcePlayerId,
+        targetPlayerId: target.id,
+        amount: 2,
+        element: "thunder",
+      };
+      const expected = planDamageBatch(state, [intent]);
+      if (
+        JSON.stringify(event.payload.damageItems) !== JSON.stringify(expected)
+      ) {
+        throw new Error("Resolved damage disagrees with deterministic plan.");
+      }
+      const resolved: MatchState = {
+        ...state,
+        effectStack: pruneTerminalTail(
+          updateEffects(state, { [effectId]: "resolved" }),
+        ),
+        reactionWindow: null,
+      };
+      next = applyPlannedDamage(resolved, effectId, expected, resolvedAt);
     } else {
       throw new Error(`Unsupported resolvable effect ${effect.kind}.`);
     }
@@ -485,6 +522,22 @@ class EventBuilder {
           resolvedAt: this.serverReceivedAt,
           cardInstanceIds: planned.cards,
           rngCursor: planned.rng.cursor,
+        });
+      } else if (effect.kind === "card:xyy.card.jp05") {
+        const targetPlayerId = effect.targetIds[0]!;
+        const planned = planDamageBatch(this.state, [
+          {
+            itemId: `${effectId}:damage:0`,
+            sourcePlayerId: effect.sourcePlayerId,
+            targetPlayerId,
+            amount: 2,
+            element: "thunder",
+          },
+        ]);
+        this.append("effect.resolved", {
+          effectId,
+          resolvedAt: this.serverReceivedAt,
+          damageItems: planned,
         });
       } else {
         this.append("effect.resolved", {

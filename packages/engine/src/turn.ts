@@ -248,11 +248,13 @@ export function reduceTurnEvent(
     };
   } else if (event.type === "match.finished") {
     const winnerValue = event.payload.winner;
+    const deathCycle = event.payload.reason === "death-cycle";
     const teams = aliveTeams(state);
     const expectedWinner: TeamId | "draw" =
       teams.length === 1 ? teams[0]! : "draw";
     if (
-      state.turn.phase !== "turn-end" ||
+      (!deathCycle && state.turn.phase !== "turn-end") ||
+      (deathCycle && state.dyingBatch !== null) ||
       teams.length > 1 ||
       (winnerValue !== expectedWinner &&
         !(winnerValue === "draw" && expectedWinner === "draw"))
@@ -420,7 +422,10 @@ export function applyTurnCommand(
         currentVersion: input.version,
       };
     }
-    if (definition.coreAction.type === "cancel-effect") {
+    if (
+      definition.coreAction.type === "cancel-effect" ||
+      definition.coreAction.type === "rescue-two"
+    ) {
       return {
         accepted: false,
         reason: "not-available",

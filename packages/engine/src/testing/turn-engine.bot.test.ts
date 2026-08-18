@@ -124,7 +124,8 @@ describe("M03 six-player engine bots", () => {
         const view = createPlayerView(state, actor);
         const playable = view.availableActions.find(
           (action): action is Extract<AvailableAction, { type: "play-card" }> =>
-            action.type === "play-card",
+            action.type === "play-card" &&
+            !action.cardInstanceId.startsWith("xyy.card.jp05@"),
         );
         state = command(
           state,

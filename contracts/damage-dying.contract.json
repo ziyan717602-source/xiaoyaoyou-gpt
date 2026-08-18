@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-damage-dying-v1",
+  "scope": "M05-DAMAGE-DYING",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "damage": {
+    "card": "xyy.card.jp05",
+    "amount": 2,
+    "element": "thunder",
+    "cancellable": true,
+    "pipeline": [
+      "normalize-whole-batch",
+      "replacement-once-per-effect-and-item",
+      "additions",
+      "reductions",
+      "clamp-at-zero",
+      "write-whole-batch",
+      "append-applied-events",
+      "after-damage-effects",
+      "detect-dying-after-whole-batch"
+    ],
+    "modifierOrder": "priority-then-source-seat-then-effect-id",
+    "hpFloor": 0
+  },
+  "dying": {
+    "detection": "alive-and-hp-zero-after-complete-damage-batch",
+    "queue": "seat-sorted-snapshot",
+    "oneCurrentTarget": true,
+    "recheck": "after-each-rescue-or-death-before-next-snapshot-target",
+    "winnerTiming": "after-entire-dying-batch-and-after-death-stage",
+    "simultaneousTeamWipe": "draw"
+  },
+  "rescue": {
+    "card": "xyy.card.tp02",
+    "heal": 2,
+    "eligible": "all-living-players",
+    "initialPriority": "current-dying-player",
+    "pass": "current-priority-only-then-next-living-seat",
+    "closeOnRescue": "target-hp-positive",
+    "closeOnPass": "all-eligible-players-pass-consecutively",
+    "deadlineMs": 15000,
+    "deadlineSource": "authoritative-server-received-time",
+    "systemTimeoutExecution": "M06"
+  },
+  "death": {
+    "mark": "alive-false-hp-zero",
+    "cleanup": "discard-hand-weapon-and-armor-preserving-card-identity",
+    "afterDeathStage": "explicit-event-even-when-no-migrated-after-death-effects",
+    "deadEligibility": "none-unless-future-rule-explicitly-declares-after-death"
+  },
+  "commands": ["play-rescue-card", "pass-rescue"],
+  "privacy": {
+    "public": [
+      "damage-batch-id",
+      "dying-target-order",
+      "current-dying-target",
+      "rescue-priority-player",
+      "passes",
+      "deadline"
+    ],
+    "private": ["own-rescue-card-actions", "own-hand"],
+    "actions": "only-current-rescue-priority-receives-pass-and-own-legal-tp02-actions"
+  },
+  "persistence": {
+    "matchSchema": 4,
+    "waitPoint": "dying-batch-pending-choice-priority-passes-and-deadline-in-snapshot",
+    "restart": "mid-rescue-state-and-deadline-restore-exactly",
+    "events": "strict-sequence-single-command-version-and-json-replay",
+    "idempotency": "same-command-id-content-returns-first-result-without-new-events"
+  },
+  "authority": {
+    "confirmed": [
+      "jp05-deals-two-thunder-damage-to-one-player",
+      "tp02-consumes-card-and-heals-current-zero-hp-target-by-two",
+      "dying-detection-keeps-zero-hp-player-alive-until-rescue-closes",
+      "failed-rescue-marks-death-and-runs-card-zone-cleanup"
+    ],
+    "provisionalAutonomous": [
+      "P04-stable-rescue-priority-starts-at-current-dying-player-because-legacy-concurrent-order-is-unstable",
+      "SEM-003-same-death-cycle-both-teams-eliminated-is-draw",
+      "winner-check-deferred-until-entire-seat-snapshot-dying-batch-finishes"
+    ]
+  },
+  "legacyEvidence": [
+    "oracle/golden-traces/dying-rescue.trace.json",
+    "PSDGamepkg/Artiad/Procedure.cs:177-186",
+    "PSDGamepkg/XIG.cs:166-383",
+    "PSDGamepkg/JNS/JP06.cs:346-363",
+    "PSDGamepkg/JNS/JP06.cs:453-519",
+    "psd.db3:Tux/JP05/TP02"
+  ],
+  "acceptanceMap": {
+    "M05-01": "jp05-payment-opens-cancellable-two-thunder-damage-effect",
+    "M05-02": "cancelled-jp05-does-not-change-hp-or-open-dying",
+    "M05-03": "whole-damage-batch-writes-hp-before-any-dying-detection",
+    "M05-04": "damage-modifier-order-and-replacement-once-set-are-deterministic",
+    "M05-05": "single-dying-target-remains-alive-at-zero-until-rescue-finishes",
+    "M05-06": "multi-dying-targets-are-snapshotted-and-processed-one-at-a-time-by-seat",
+    "M05-07": "rescue-priority-starts-at-target-and-only-current-player-may-act",
+    "M05-08": "tp02-payment-heals-two-and-advances-to-next-dying-target",
+    "M05-09": "all-pass-marks-death-cleans-card-zones-and-advances",
+    "M05-10": "winner-or-draw-is-computed-after-entire-death-cycle",
+    "M05-11": "wrong-priority-target-card-choice-or-version-rejects-without-mutation",
+    "M05-12": "six-player-views-expose-no-other-rescue-card-identity-or-capability",
+    "M05-13": "json-event-replay-and-mid-rescue-restart-match-uninterrupted-state",
+    "M05-14": "six-real-connections-rescue-death-winner-restart-and-idempotency"
+  }
+}

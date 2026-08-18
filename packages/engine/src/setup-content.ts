@@ -16,7 +16,9 @@ export type EquipmentSlot = "weapon" | "armor";
 export type CoreCardAction =
   | { readonly type: "equip"; readonly slot: EquipmentSlot }
   | { readonly type: "draw-two" }
+  | { readonly type: "damage-two"; readonly element: "thunder" }
   | { readonly type: "cancel-effect" }
+  | { readonly type: "rescue-two" }
   | null;
 
 export interface CardDefinition {
@@ -367,7 +369,11 @@ export const SETUP_CARDS: readonly CardDefinition[] = [
   { id: "xyy.card.jp02", name: "窥测天机", coreAction: null },
   { id: "xyy.card.jp03", name: "五气朝元", coreAction: null },
   { id: "xyy.card.jp04", name: "鼠儿果", coreAction: { type: "draw-two" } },
-  { id: "xyy.card.jp05", name: "天雷破", coreAction: null },
+  {
+    id: "xyy.card.jp05",
+    name: "天雷破",
+    coreAction: { type: "damage-two", element: "thunder" },
+  },
   { id: "xyy.card.jp06", name: "铜钱镖", coreAction: null },
   { id: "xyy.card.zp01", name: "金蝉脱壳", coreAction: null },
   { id: "xyy.card.zp02", name: "天罡战气", coreAction: null },
@@ -378,7 +384,11 @@ export const SETUP_CARDS: readonly CardDefinition[] = [
     name: "冰心诀",
     coreAction: { type: "cancel-effect" },
   },
-  { id: "xyy.card.tp02", name: "灵葫仙丹", coreAction: null },
+  {
+    id: "xyy.card.tp02",
+    name: "灵葫仙丹",
+    coreAction: { type: "rescue-two" },
+  },
   { id: "xyy.card.tp03", name: "隐蛊", coreAction: null },
   { id: "xyy.card.tp04", name: "洞冥宝镜", coreAction: null },
   {

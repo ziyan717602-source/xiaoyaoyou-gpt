@@ -77,7 +77,19 @@ describe("match state baseline", () => {
     }
 
     const migrated = migrateMatchState(legacy);
-    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.dyingBatch).toBeNull();
+
+    const schema3 = structuredClone(current) as unknown as Record<
+      string,
+      unknown
+    >;
+    schema3.schemaVersion = 3;
+    delete schema3.dyingBatch;
+    expect(migrateMatchState(schema3)).toMatchObject({
+      schemaVersion: 4,
+      dyingBatch: null,
+    });
     expect(migrated.turn).toBeNull();
     expect(migrated.winner).toBeNull();
     expect(

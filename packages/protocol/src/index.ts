@@ -59,6 +59,15 @@ export type ClientCommand =
       readonly targetEffectId: EffectId;
     }
   | {
+      readonly type: "play-rescue-card";
+      readonly cardInstanceId: string;
+      readonly targetPlayerId: PlayerId;
+    }
+  | {
+      readonly type: "pass-rescue";
+      readonly choiceId: ChoiceId;
+    }
+  | {
       readonly type: "discard-cards";
       readonly cardInstanceIds: readonly string[];
     }
@@ -259,6 +268,25 @@ export const clientMessageSchema = {
                     type: { const: "play-reaction-card" },
                     cardInstanceId: identifierSchema,
                     targetEffectId: identifierSchema,
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "cardInstanceId", "targetPlayerId"],
+                  properties: {
+                    type: { const: "play-rescue-card" },
+                    cardInstanceId: identifierSchema,
+                    targetPlayerId: identifierSchema,
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "choiceId"],
+                  properties: {
+                    type: { const: "pass-rescue" },
+                    choiceId: identifierSchema,
                   },
                 },
                 {
