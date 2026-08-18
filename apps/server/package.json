@@ -1,0 +1,19 @@
+{
+  "name": "@xiaoyaoyou/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@xiaoyaoyou/engine": "0.0.0",
+    "@xiaoyaoyou/protocol": "0.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

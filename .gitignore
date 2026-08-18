@@ -1,0 +1,31 @@
+# JavaScript / TypeScript
+node_modules/
+dist/
+dist-types/
+coverage/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Legacy .NET build/runtime output
+bin/
+obj/
+log/
+rec/
+Output/
+
+# Local-only legacy behavior oracle (never publish or commit)
+reference/psd48-master/
