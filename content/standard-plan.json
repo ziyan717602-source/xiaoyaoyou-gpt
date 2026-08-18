@@ -1,0 +1,4740 @@
+{
+  "schemaVersion": 1,
+  "planId": "xiaoyaoyou-content-standard-plan-v1",
+  "rulesetId": "standard+fengmingyushi",
+  "sourceSnapshotSha256": "c32a3e5e72e2b15da2891b8a04fe6856c030ac61e15345b4b196afc4e8a2df30",
+  "counts": {
+    "standard": 177,
+    "sharedCore": 28,
+    "total": 205,
+    "partial": 40,
+    "verified": 0,
+    "deferred": 0,
+    "unstarted": 165
+  },
+  "executionQueue": [
+    {
+      "id": "CS01A-CORE-CARD-AUDIT",
+      "items": [
+        "xyy.card.jp04",
+        "xyy.card.jp05",
+        "xyy.card.tp01",
+        "xyy.card.tp02"
+      ],
+      "completion": "legacy evidence frozen and all modes verified; first implementation closes TP02 normal self-heal"
+    },
+    {
+      "id": "CS01B-ACTION-TRICKS",
+      "items": [
+        "xyy.card.jp01",
+        "xyy.card.jp02",
+        "xyy.card.jp03",
+        "xyy.card.jp06"
+      ],
+      "completion": "targeting, hidden card choice, transfer, draw, discard and response behavior verified"
+    },
+    {
+      "id": "CS01C-DEFENSE-AND-BUFFS",
+      "items": [
+        "xyy.card.tp03",
+        "xyy.card.tp04",
+        "xyy.card.zp01",
+        "xyy.card.zp02",
+        "xyy.card.zp03",
+        "xyy.card.zp04"
+      ],
+      "completion": "all temporary, defensive and modifier lifetimes verified"
+    },
+    {
+      "id": "CS01D-EQUIPMENT-EFFECTS",
+      "items": [
+        "xyy.card.wq01",
+        "xyy.card.wq02",
+        "xyy.card.wq03",
+        "xyy.card.wq04",
+        "xyy.card.wq05",
+        "xyy.card.fj01",
+        "xyy.card.fj02",
+        "xyy.card.fj03",
+        "xyy.card.fj04",
+        "xyy.card.fj05"
+      ],
+      "completion": "equip, replacement, passive and triggered effects verified"
+    },
+    {
+      "id": "CS02-HERO-SKILLS",
+      "kinds": ["hero", "skill"],
+      "completion": "26 standard heroes and 57 standard skills verified hero by hero"
+    },
+    {
+      "id": "CS03-BATTLE-DECKS",
+      "kinds": ["monster", "npc-action", "npc"],
+      "completion": "battle draw, NPC actions and 46 standard battle cards verified"
+    },
+    {
+      "id": "CS04-EVENTS",
+      "kinds": ["event"],
+      "completion": "14 standard events verified"
+    },
+    {
+      "id": "CS05-SPECIAL",
+      "kinds": ["special-card"],
+      "completion": "standard special card verified"
+    }
+  ],
+  "items": [
+    {
+      "id": "xyy.card.fj01",
+      "name": "五彩霞衣",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "armor slot equip and replacement only; unique healing modifier pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "effect-stack",
+          "equipment",
+          "healing",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.fj02",
+      "name": "天帝祭服",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "armor slot equip and replacement only; unique card-zone effect pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": ["xyy.card.tp03"],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "effect-stack",
+          "equipment",
+          "response-window"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.fj03",
+      "name": "龙魂战铠",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "armor slot equip and replacement only; unique damage effect pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "damage",
+          "effect-stack",
+          "equipment",
+          "hp-change",
+          "response-window"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.fj04",
+      "name": "乾坤道袍",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "armor slot equip and replacement only; unique damage modifier pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "damage",
+          "effect-stack",
+          "equipment",
+          "hp-change",
+          "response-window",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.fj05",
+      "name": "踏云靴",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "armor slot equip and replacement only; unique healing and damage modifiers pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "damage",
+          "effect-stack",
+          "equipment",
+          "healing",
+          "hp-change",
+          "response-window",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.jp01",
+      "name": "偷盗",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01B-ACTION-TRICKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "target-selection",
+          "transfer"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.card.jp02",
+      "name": "窥测天机",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01B-ACTION-TRICKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "effect-stack",
+          "response-window"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.jp03",
+      "name": "五气朝元",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01B-ACTION-TRICKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "discard",
+          "draw",
+          "effect-stack",
+          "healing",
+          "hp-change",
+          "life-state",
+          "target-selection"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.jp04",
+      "name": "鼠儿果",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01A-CORE-CARD-AUDIT",
+      "state": "partial",
+      "boundary": "draw-two action and cancellable effect path; full legacy audit pending",
+      "evidence": ["M03-TURN-CORE", "M04-REACTION-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "effect-stack",
+          "target-selection",
+          "transfer"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.card.jp05",
+      "name": "天雷破",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01A-CORE-CARD-AUDIT",
+      "state": "partial",
+      "boundary": "targeted thunder damage-two, cancellation, dying and victory path; full catalog verification pending",
+      "evidence": ["M04-REACTION-CORE", "M05-DAMAGE-DYING"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "target-selection"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["choose-option", "choose-player", "respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.jp06",
+      "name": "铜钱镖",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01B-ACTION-TRICKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "equipment",
+          "response-window",
+          "target-selection"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.card.tp01",
+      "name": "冰心诀",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01A-CORE-CARD-AUDIT",
+      "state": "partial",
+      "boundary": "counter-chain for current cancellable card effects; all standard response targets pending",
+      "evidence": ["M04-REACTION-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "effect-cancellation",
+          "effect-stack",
+          "response-window",
+          "target-selection"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.tp02",
+      "name": "灵葫仙丹",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01A-CORE-CARD-AUDIT",
+      "state": "partial",
+      "boundary": "dying rescue-two mode only; normal self-heal mode pending",
+      "evidence": ["M05-DAMAGE-DYING"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "effect-stack",
+          "healing",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "target-selection"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.card.tp03",
+      "name": "隐蛊",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01C-DEFENSE-AND-BUFFS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "damage",
+          "effect-cancellation",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.tp04",
+      "name": "洞冥宝镜",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01C-DEFENSE-AND-BUFFS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "target-selection"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "confirm",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.card.wq01",
+      "name": "无尘剑",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "weapon slot equip and replacement only; unique modifier pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-resolution", "stat-modifier"],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.wq02",
+      "name": "天蛇杖",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "weapon slot equip and replacement only; unique response effect pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "effect-stack",
+          "equipment",
+          "healing",
+          "hp-change",
+          "response-window",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.wq03",
+      "name": "魔刀天叱",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "weapon slot equip and replacement only; unique modifier pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-resolution", "stat-modifier"],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.wq04",
+      "name": "魔剑",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "weapon slot equip and replacement only; unique draw effect pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "draw",
+          "equipment",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.wq05",
+      "name": "彩环",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01D-EQUIPMENT-EFFECTS",
+      "state": "partial",
+      "boundary": "weapon slot equip and replacement only; unique modifier pending",
+      "evidence": ["M03-TURN-CORE"],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-resolution", "stat-modifier"],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.zp01",
+      "name": "金蝉脱壳",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01C-DEFENSE-AND-BUFFS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "victory-check"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.zp02",
+      "name": "天罡战气",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01C-DEFENSE-AND-BUFFS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "effect-stack",
+          "equipment",
+          "response-window",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.zp03",
+      "name": "金蚕王",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01C-DEFENSE-AND-BUFFS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "effect-stack",
+          "response-window",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.card.zp04",
+      "name": "天玄五音",
+      "kind": "card",
+      "packages": ["standard"],
+      "slice": "CS01C-DEFENSE-AND-BUFFS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-resolution",
+          "effect-stack",
+          "stat-modifier",
+          "target-selection"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["choose-option", "choose-player", "respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.configuration.aas-1",
+      "name": "AllNonEqNonTermined",
+      "kind": "configuration",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.card.jp01",
+          "xyy.card.jp02",
+          "xyy.card.jp03",
+          "xyy.card.jp04",
+          "xyy.card.jp05",
+          "xyy.card.jp06",
+          "xyy.card.tp02",
+          "xyy.card.tp04",
+          "xyy.card.zp01",
+          "xyy.card.zp02",
+          "xyy.card.zp03",
+          "xyy.card.zp04"
+        ],
+        "primitives": ["runtime-configuration"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.configuration.aas-2",
+      "name": "SwitchableNonTermined",
+      "kind": "configuration",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.card.tp02",
+          "xyy.card.zp01",
+          "xyy.card.zp02",
+          "xyy.card.zp03",
+          "xyy.card.zp04"
+        ],
+        "primitives": ["runtime-configuration"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.configuration.aas-3",
+      "name": "AllNonTermined",
+      "kind": "configuration",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.card.fj01",
+          "xyy.card.fj02",
+          "xyy.card.fj03",
+          "xyy.card.fj04",
+          "xyy.card.fj05",
+          "xyy.card.jp01",
+          "xyy.card.jp02",
+          "xyy.card.jp03",
+          "xyy.card.jp04",
+          "xyy.card.jp05",
+          "xyy.card.jp06",
+          "xyy.card.tp02",
+          "xyy.card.tp04",
+          "xyy.card.wq01",
+          "xyy.card.wq02",
+          "xyy.card.wq03",
+          "xyy.card.wq04",
+          "xyy.card.wq05",
+          "xyy.card.zp01",
+          "xyy.card.zp02",
+          "xyy.card.zp03",
+          "xyy.card.zp04"
+        ],
+        "primitives": ["runtime-configuration"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.configuration.aas-4",
+      "name": "AllTermined",
+      "kind": "configuration",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": ["xyy.card.tp01", "xyy.card.tp02", "xyy.card.tp03"],
+        "primitives": ["runtime-configuration"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.configuration.aas-5",
+      "name": "JP**",
+      "kind": "configuration",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.card.jp01",
+          "xyy.card.jp02",
+          "xyy.card.jp03",
+          "xyy.card.jp04",
+          "xyy.card.jp05",
+          "xyy.card.jp06"
+        ],
+        "primitives": ["runtime-configuration"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.configuration.aas-6",
+      "name": "AllTPNonTermined",
+      "kind": "configuration",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": ["xyy.card.tp02", "xyy.card.tp04"],
+        "primitives": ["runtime-configuration"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.configuration.aas-7",
+      "name": "Aas 7",
+      "kind": "configuration",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": ["xyy.card.tp03"],
+        "primitives": ["runtime-configuration"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.configuration.aas-8",
+      "name": "ZP**",
+      "kind": "configuration",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.card.zp01",
+          "xyy.card.zp02",
+          "xyy.card.zp03",
+          "xyy.card.zp04"
+        ],
+        "primitives": ["runtime-configuration"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.s3w01",
+      "name": "大军围蜀山",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "event-resolution",
+          "life-state",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.s3w02",
+      "name": "绝世美味的诞生",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "event-resolution",
+          "healing",
+          "hp-change",
+          "target-selection"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-number", "choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.event.sj101",
+      "name": "仙灵岛的邂逅",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "discard",
+          "draw",
+          "equipment",
+          "event-resolution",
+          "life-state",
+          "target-selection"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-card", "choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.event.sj102",
+      "name": "深入将军冢",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-zone", "draw", "event-resolution", "life-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.sj103",
+      "name": "走出圣姑小屋",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "draw",
+          "event-resolution",
+          "target-selection",
+          "transfer"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["choose-card", "choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.event.sj104",
+      "name": "闯荡试炼窟",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-zone", "event-resolution", "transfer"],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player"
+        ]
+      }
+    },
+    {
+      "id": "xyy.event.sj201",
+      "name": "寻找天使绘卷",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "draw",
+          "event-resolution",
+          "hp-change",
+          "life-state"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.sj202",
+      "name": "破除禁咒空间",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "event-resolution",
+          "hp-change",
+          "life-state",
+          "target-selection"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player"
+        ]
+      }
+    },
+    {
+      "id": "xyy.event.sj301",
+      "name": "三世轮回",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-zone", "event-resolution", "life-state"],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.sj302",
+      "name": "神树与夕瑶",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "event-resolution",
+          "healing",
+          "hp-change",
+          "life-state"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.sj303",
+      "name": "封印锁妖塔",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-zone", "discard", "event-resolution"],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.sj401",
+      "name": "拜访石沉溪洞",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-zone", "draw", "event-resolution"],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.sj402",
+      "name": "束缚幻瞑界",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["damage", "event-resolution", "hp-change", "life-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.event.sj501",
+      "name": "误闯神魔之隙",
+      "kind": "event",
+      "packages": ["standard"],
+      "slice": "CS04-EVENTS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-zone", "event-resolution", "life-state"],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.five-element.wl01",
+      "name": "水",
+      "kind": "five-element",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["element-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.five-element.wl02",
+      "name": "火",
+      "kind": "five-element",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["element-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.five-element.wl03",
+      "name": "雷",
+      "kind": "five-element",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["element-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.five-element.wl04",
+      "name": "风",
+      "kind": "five-element",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["element-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.five-element.wl05",
+      "name": "土",
+      "kind": "five-element",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["element-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.five-element.wl06",
+      "name": "阴",
+      "kind": "five-element",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["element-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.five-element.wl07",
+      "name": "阳",
+      "kind": "five-element",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["element-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.x3w01",
+      "name": "南宫煌",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.x3w02",
+          "xyy.hero.x3w04",
+          "xyy.skill.jn40101",
+          "xyy.skill.jn40102"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.x3w02",
+      "name": "温慧",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.x3w01",
+          "xyy.skill.jn40201",
+          "xyy.skill.jn40202"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.x3w03",
+      "name": "星璇",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.x3w04",
+          "xyy.skill.jn40301",
+          "xyy.skill.jn40302"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.x3w04",
+      "name": "王蓬絮",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.x3w03",
+          "xyy.skill.jn40401",
+          "xyy.skill.jn40402",
+          "xyy.skill.jn40403"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj101",
+      "name": "李逍遥",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj102",
+          "xyy.hero.xj104",
+          "xyy.hero.xj105",
+          "xyy.skill.jn10101",
+          "xyy.skill.jn10102"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj102",
+      "name": "赵灵儿",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj101",
+          "xyy.hero.xj103",
+          "xyy.skill.jn10201",
+          "xyy.skill.jn10202"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj103",
+      "name": "赵灵儿·梦蛇",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj101",
+          "xyy.hero.xj102",
+          "xyy.skill.jn10201",
+          "xyy.skill.jn10302",
+          "xyy.skill.jn10303"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj104",
+      "name": "林月如",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj101",
+          "xyy.skill.jn10401",
+          "xyy.skill.jn10402"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj105",
+      "name": "阿奴",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": ["xyy.skill.jn10501", "xyy.skill.jn10502"],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj106",
+      "name": "酒剑仙",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": ["xyy.skill.jn10601", "xyy.skill.jn10602"],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj107",
+      "name": "拜月教主",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": ["xyy.skill.jn10701", "xyy.skill.jn10702"],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj201",
+      "name": "王小虎",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj202",
+          "xyy.hero.xj203",
+          "xyy.skill.jn20101",
+          "xyy.skill.jn20102"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj202",
+      "name": "苏媚",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj201",
+          "xyy.skill.jn20201",
+          "xyy.skill.jn20202"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj203",
+      "name": "沈欺霜",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj201",
+          "xyy.skill.jn20301",
+          "xyy.skill.jn20302"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj206",
+      "name": "孔璘",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj207",
+          "xyy.skill.jn20601",
+          "xyy.skill.jn20602"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj207",
+      "name": "魔尊",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj206",
+          "xyy.skill.jn20701",
+          "xyy.skill.jn20702"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj302",
+      "name": "唐雪见",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.skill.jn30201",
+          "xyy.skill.jn30202",
+          "xyy.skill.jn30203"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj305",
+      "name": "紫萱",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj306",
+          "xyy.skill.jn30501",
+          "xyy.skill.jn30502"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj306",
+      "name": "重楼",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.skill.jn30601",
+          "xyy.skill.jn30602",
+          "xyy.skill.jn30603"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj401",
+      "name": "云天河",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj402",
+          "xyy.hero.xj403",
+          "xyy.skill.jn50101",
+          "xyy.skill.jn50102"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj402",
+      "name": "韩菱纱",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj401",
+          "xyy.skill.jn50201",
+          "xyy.skill.jn50202",
+          "xyy.skill.jn50203"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj403",
+      "name": "柳梦璃",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj401",
+          "xyy.skill.jn50301",
+          "xyy.skill.jn50302"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj404",
+      "name": "慕容紫英",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": ["xyy.skill.jn50401", "xyy.skill.jn50402"],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj405",
+      "name": "玄霄",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": ["xyy.skill.jn50501", "xyy.skill.jn50502"],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj503",
+      "name": "龙幽",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj504",
+          "xyy.skill.jn60301",
+          "xyy.skill.jn60302"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.hero.xj504",
+      "name": "小蛮",
+      "kind": "hero",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "partial",
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj503",
+          "xyy.skill.jn60401",
+          "xyy.skill.jn60402",
+          "xyy.skill.jn60403"
+        ],
+        "primitives": ["hero-state"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gf01",
+      "name": "叶灵",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "card-zone",
+          "damage",
+          "draw",
+          "hp-change",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gf02",
+      "name": "暗香",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "healing",
+          "hp-change",
+          "life-state",
+          "stat-modifier",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gf03",
+      "name": "句芒",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "card-zone",
+          "damage",
+          "effect-stack",
+          "healing",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "victory-check"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gf04",
+      "name": "彩依",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "effect-stack",
+          "healing",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-number", "choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.monster.gh01",
+      "name": "赝月",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "hp-change",
+          "stat-modifier",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gh02",
+      "name": "肥肥",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "stat-modifier",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gh03",
+      "name": "狐妖女",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "hp-change",
+          "life-state",
+          "stat-modifier",
+          "target-selection",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-number", "choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.monster.gh04",
+      "name": "熔岩兽王",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "hp-change",
+          "life-state",
+          "stat-modifier",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gl01",
+      "name": "积粮隐者",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "healing",
+          "hp-change",
+          "life-state",
+          "target-selection",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.monster.gl02",
+      "name": "赤鬼王",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "card-zone",
+          "damage",
+          "draw",
+          "effect-stack",
+          "equipment",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "stat-modifier",
+          "target-selection",
+          "transfer",
+          "victory-check"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player"
+        ]
+      }
+    },
+    {
+      "id": "xyy.monster.gl03",
+      "name": "毒娘子",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "card-zone",
+          "discard",
+          "equipment",
+          "healing",
+          "hp-change",
+          "stat-modifier",
+          "victory-check"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player"
+        ]
+      }
+    },
+    {
+      "id": "xyy.monster.gl04",
+      "name": "邪剑仙",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "card-zone",
+          "damage",
+          "effect-stack",
+          "equipment",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "victory-check"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gs01",
+      "name": "千杯不醉",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "card-zone",
+          "life-state",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gs02",
+      "name": "勇气",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "discard",
+          "effect-stack",
+          "equipment",
+          "hp-change",
+          "life-state",
+          "stat-modifier",
+          "target-selection",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player"
+        ]
+      }
+    },
+    {
+      "id": "xyy.monster.gs03",
+      "name": "蛇妖男",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "hp-change",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gs04",
+      "name": "水魔兽",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "card-zone",
+          "damage",
+          "equipment",
+          "hp-change",
+          "life-state",
+          "stat-modifier",
+          "victory-check"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["choose-card", "choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.monster.gt01",
+      "name": "璇龟",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "hp-change",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gt02",
+      "name": "刑天",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "card-zone",
+          "damage",
+          "hp-change",
+          "life-state",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gt03",
+      "name": "金蟾鬼母",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "stat-modifier",
+          "target-selection",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.monster.gt04",
+      "name": "天鬼皇",
+      "kind": "monster",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "battle-resolution",
+          "stat-modifier",
+          "target-selection"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj01",
+      "name": "加入",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "equipment",
+          "hp-change",
+          "life-state",
+          "npc-resolution",
+          "response-window",
+          "target-selection",
+          "transformation"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player"
+        ]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj02",
+      "name": "治疗",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "healing",
+          "hp-change",
+          "life-state",
+          "npc-resolution",
+          "target-selection"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj03",
+      "name": "修炼",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "draw",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "npc-resolution",
+          "target-selection"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-card", "choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj04",
+      "name": "传功",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-zone", "effect-stack", "npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj05",
+      "name": "袭击",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "npc-resolution",
+          "target-selection"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj06",
+      "name": "交易",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "life-state",
+          "npc-resolution",
+          "response-window",
+          "target-selection",
+          "transfer"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player"
+        ]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj07",
+      "name": "驯化",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "life-state",
+          "npc-resolution",
+          "response-window",
+          "target-selection",
+          "transfer"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj08",
+      "name": "盗窃",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "life-state",
+          "npc-resolution",
+          "response-window"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player"
+        ]
+      }
+    },
+    {
+      "id": "xyy.npc-action.nj09",
+      "name": "助战",
+      "kind": "npc-action",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "npc-resolution",
+          "rescue",
+          "stat-modifier",
+          "target-selection"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["choose-card", "choose-option", "choose-player"]
+      }
+    },
+    {
+      "id": "xyy.npc.n3w01",
+      "name": "南宫煌",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.x3w01",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj07"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.n3w02",
+      "name": "温慧",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.x3w02",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj09"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.n3w03",
+      "name": "星璇",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.x3w03",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj02"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.n3w04",
+      "name": "王蓬絮",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.x3w04",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj02"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc101",
+      "name": "李逍遥",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj101",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj09"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc102",
+      "name": "赵灵儿",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj102",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj09"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc103",
+      "name": "赵灵儿·梦蛇",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj103",
+          "xyy.npc-action.nj07",
+          "xyy.npc-action.nj09"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc104",
+      "name": "林月如",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj104",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj06"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc105",
+      "name": "阿奴",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj105",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj09"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc106",
+      "name": "酒剑仙",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj106",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj04"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc107",
+      "name": "拜月教主",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj107",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj07"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc201",
+      "name": "王小虎",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj201",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj03"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc202",
+      "name": "苏媚",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj202",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj05"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc203",
+      "name": "沈欺霜",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj203",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj02"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc206",
+      "name": "孔璘",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj206",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj05"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc207",
+      "name": "魔尊",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj207",
+          "xyy.npc-action.nj04",
+          "xyy.npc-action.nj05"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc302",
+      "name": "唐雪见",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj302",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj06"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc305",
+      "name": "紫萱",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj305",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj02"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc306",
+      "name": "重楼",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj306",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj09"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc401",
+      "name": "云天河",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj401",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj09"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc402",
+      "name": "韩菱纱",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj402",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj08"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc403",
+      "name": "柳梦璃",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj403",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj07"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc404",
+      "name": "慕容紫英",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj404",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj03"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc405",
+      "name": "玄霄",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj405",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj04"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc503",
+      "name": "龙幽",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj503",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj09"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.npc.nc504",
+      "name": "小蛮",
+      "kind": "npc",
+      "packages": ["standard"],
+      "slice": "CS03-BATTLE-DECKS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [
+          "xyy.hero.xj504",
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj08"
+        ],
+        "primitives": ["npc-resolution"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    },
+    {
+      "id": "xyy.operation.cz01",
+      "name": "典当",
+      "kind": "operation",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "equipment",
+          "operation-resolution",
+          "response-window"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.operation.cz02",
+      "name": "混战",
+      "kind": "operation",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "operation-resolution",
+          "response-window"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": [
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "confirm",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.operation.cz03",
+      "name": "助战",
+      "kind": "operation",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "discard",
+          "effect-stack",
+          "operation-resolution",
+          "rescue",
+          "response-window"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.operation.cz04",
+      "name": "幻化",
+      "kind": "operation",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "equipment",
+          "operation-resolution",
+          "response-window"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.operation.cz05",
+      "name": "佩戴物",
+      "kind": "operation",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "operation-resolution",
+          "response-window",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.rune.sf01",
+      "name": "强袭",
+      "kind": "rune",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "rune-resolution",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.rune.sf02",
+      "name": "神行",
+      "kind": "rune",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "rune-resolution",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.rune.sf03",
+      "name": "法障",
+      "kind": "rune",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "damage",
+          "effect-cancellation",
+          "effect-stack",
+          "response-window",
+          "rune-resolution"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.rune.sf04",
+      "name": "坚盾",
+      "kind": "rune",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "draw",
+          "effect-cancellation",
+          "effect-stack",
+          "healing",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "rune-resolution"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "confirm",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.rune.sf05",
+      "name": "脱力",
+      "kind": "rune",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "rune-resolution",
+          "stat-modifier"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.rune.sf06",
+      "name": "虚弱",
+      "kind": "rune",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "damage",
+          "effect-stack",
+          "life-state",
+          "response-window",
+          "rune-resolution"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.rune.sf07",
+      "name": "神算",
+      "kind": "rune",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["effect-stack", "rune-resolution", "target-selection"],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.rune.sf08",
+      "name": "狂暴",
+      "kind": "rune",
+      "packages": ["shared-core"],
+      "slice": "CS00-SHARED-CORE",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "healing",
+          "hp-change",
+          "rune-resolution",
+          "stat-modifier",
+          "token-counter"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10101",
+      "name": "侠骨柔肠",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "target-selection",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10102",
+      "name": "飞龙探云手",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "target-selection",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10201",
+      "name": "双剑",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "equipment",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10202",
+      "name": "梦蛇",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "transformation",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10302",
+      "name": "梦蛇·变身",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "transformation",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10303",
+      "name": "女娲",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10401",
+      "name": "气剑指",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "equipment",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10402",
+      "name": "嫉恶如仇",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "triggered-effect",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10501",
+      "name": "鬼灵精",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "transfer",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10502",
+      "name": "万蛊蚀天",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10601",
+      "name": "御剑术",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "equipment",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10602",
+      "name": "醉仙望月步",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "draw",
+          "effect-stack",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "confirm",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10701",
+      "name": "水魔兽合体",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn10702",
+      "name": "召唤水魔兽",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20101",
+      "name": "虎煞之力",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20102",
+      "name": "不屈不挠",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20201",
+      "name": "狡猾",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "confirm",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20202",
+      "name": "拒绝",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": ["xyy.card.tp01"],
+        "primitives": [
+          "card-zone",
+          "effect-cancellation",
+          "effect-stack",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20301",
+      "name": "仙霞五奇",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "target-selection",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20302",
+      "name": "元灵归心术",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "healing",
+          "hp-change",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20601",
+      "name": "辣手摧花",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": [
+          "choose-card",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20602",
+      "name": "生命献祭",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "equipment",
+          "life-state",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20701",
+      "name": "蓄势待发",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": ["card-zone", "effect-stack", "triggered-effect"],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn20702",
+      "name": "崩坏",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn30201",
+      "name": "追打",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "discard",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn30202",
+      "name": "连击",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn30203",
+      "name": "好胜",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "draw",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn30501",
+      "name": "关爱",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "target-selection",
+          "transfer",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn30502",
+      "name": "神圣",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn30601",
+      "name": "决斗",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "target-selection",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn30602",
+      "name": "手下留情",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn30603",
+      "name": "降临",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40101",
+      "name": "占卜",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40102",
+      "name": "摄灵法阵",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "discard",
+          "effect-stack",
+          "life-state",
+          "response-window",
+          "target-selection",
+          "transfer",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-option", "choose-player", "respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40201",
+      "name": "阵法",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40202",
+      "name": "蛮横",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "response-window",
+          "target-selection",
+          "triggered-effect",
+          "victory-check"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["choose-option", "choose-player", "respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40301",
+      "name": "烹饪",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": ["xyy.card.tp02"],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "hp-change",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40302",
+      "name": "兄弟",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "life-state",
+          "response-window",
+          "transfer",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40401",
+      "name": "饕餮",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "effect-stack",
+          "equipment",
+          "healing",
+          "hp-change",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40402",
+      "name": "敏感",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "effect-stack",
+          "equipment",
+          "response-window",
+          "triggered-effect",
+          "victory-check"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn40403",
+      "name": "合成饰品",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "equipment",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50101",
+      "name": "天河剑",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50102",
+      "name": "后羿射日弓",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50201",
+      "name": "搜囊探宝",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "target-selection",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50202",
+      "name": "劫富济贫",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "discard",
+          "draw",
+          "effect-stack",
+          "target-selection",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50203",
+      "name": "盗墓",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "effect-stack",
+          "equipment",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "transfer",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50301",
+      "name": "妖王",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "life-state",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50302",
+      "name": "梦傀儡",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "life-state",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50401",
+      "name": "赠剑",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "draw",
+          "effect-stack",
+          "equipment",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50402",
+      "name": "剑匣",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50501",
+      "name": "凝冰焚炎",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "damage",
+          "effect-stack",
+          "hp-change",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn50502",
+      "name": "结拜",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "target-selection",
+          "token-counter",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": [
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn60301",
+      "name": "表现欲",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "life-state",
+          "response-window",
+          "stat-modifier",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn60302",
+      "name": "越行之术",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "effect-stack",
+          "response-window",
+          "stat-modifier",
+          "target-selection",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn60401",
+      "name": "无法无天",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "effect-stack",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.skill.jn60402",
+      "name": "活力",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "draw",
+          "effect-stack",
+          "response-window",
+          "triggered-effect"
+        ],
+        "hiddenInformation": "none",
+        "uiChoices": ["respond-or-pass"]
+      }
+    },
+    {
+      "id": "xyy.skill.jn60403",
+      "name": "炼药",
+      "kind": "skill",
+      "packages": ["standard"],
+      "slice": "CS02-HERO-SKILLS",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": [],
+        "primitives": [
+          "card-zone",
+          "damage",
+          "discard",
+          "draw",
+          "effect-stack",
+          "hp-change",
+          "life-state",
+          "response-window",
+          "target-selection",
+          "triggered-effect",
+          "victory-check"
+        ],
+        "hiddenInformation": "mixed",
+        "uiChoices": [
+          "choose-card",
+          "choose-number",
+          "choose-option",
+          "choose-player",
+          "respond-or-pass"
+        ]
+      }
+    },
+    {
+      "id": "xyy.special-card.trxj405",
+      "name": "结拜",
+      "kind": "special-card",
+      "packages": ["standard"],
+      "slice": "CS05-SPECIAL",
+      "state": "unstarted",
+      "boundary": null,
+      "evidence": [],
+      "dependencies": {
+        "contentIds": ["xyy.hero.xj405"],
+        "primitives": ["special-card-resolution", "stat-modifier"],
+        "hiddenInformation": "none",
+        "uiChoices": ["automatic"]
+      }
+    }
+  ]
+}

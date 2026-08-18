@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-content-standard-plan-v1",
+  "scope": "CONTENT-STANDARD",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "catalogCoverage": {
+    "standardItems": 177,
+    "sharedCorePrerequisites": 28,
+    "totalTrackedItems": 205,
+    "excludedUntilContentFmysh": 28
+  },
+  "states": ["unstarted", "partial", "verified", "deferred"],
+  "verificationPolicy": {
+    "verifiedRequiresReceipt": true,
+    "deferredRequiresReason": true,
+    "partialMustNameImplementedBoundary": true,
+    "catalogRemainsGeneratedSourceEvidence": true
+  },
+  "baselinePartial": {
+    "allStandardHeroes": {
+      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
+      "evidence": ["M02-SETUP-AND-TEAMS"]
+    },
+    "cards": {
+      "xyy.card.jp04": {
+        "boundary": "draw-two action and cancellable effect path; full legacy audit pending",
+        "evidence": ["M03-TURN-CORE", "M04-REACTION-CORE"]
+      },
+      "xyy.card.jp05": {
+        "boundary": "targeted thunder damage-two, cancellation, dying and victory path; full catalog verification pending",
+        "evidence": ["M04-REACTION-CORE", "M05-DAMAGE-DYING"]
+      },
+      "xyy.card.tp01": {
+        "boundary": "counter-chain for current cancellable card effects; all standard response targets pending",
+        "evidence": ["M04-REACTION-CORE"]
+      },
+      "xyy.card.tp02": {
+        "boundary": "dying rescue-two mode only; normal self-heal mode pending",
+        "evidence": ["M05-DAMAGE-DYING"]
+      },
+      "xyy.card.wq01": {
+        "boundary": "weapon slot equip and replacement only; unique modifier pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.wq02": {
+        "boundary": "weapon slot equip and replacement only; unique response effect pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.wq03": {
+        "boundary": "weapon slot equip and replacement only; unique modifier pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.wq04": {
+        "boundary": "weapon slot equip and replacement only; unique draw effect pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.wq05": {
+        "boundary": "weapon slot equip and replacement only; unique modifier pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.fj01": {
+        "boundary": "armor slot equip and replacement only; unique healing modifier pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.fj02": {
+        "boundary": "armor slot equip and replacement only; unique card-zone effect pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.fj03": {
+        "boundary": "armor slot equip and replacement only; unique damage effect pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.fj04": {
+        "boundary": "armor slot equip and replacement only; unique damage modifier pending",
+        "evidence": ["M03-TURN-CORE"]
+      },
+      "xyy.card.fj05": {
+        "boundary": "armor slot equip and replacement only; unique healing and damage modifiers pending",
+        "evidence": ["M03-TURN-CORE"]
+      }
+    }
+  },
+  "executionQueue": [
+    {
+      "id": "CS01A-CORE-CARD-AUDIT",
+      "items": [
+        "xyy.card.jp04",
+        "xyy.card.jp05",
+        "xyy.card.tp01",
+        "xyy.card.tp02"
+      ],
+      "completion": "legacy evidence frozen and all modes verified; first implementation closes TP02 normal self-heal"
+    },
+    {
+      "id": "CS01B-ACTION-TRICKS",
+      "items": [
+        "xyy.card.jp01",
+        "xyy.card.jp02",
+        "xyy.card.jp03",
+        "xyy.card.jp06"
+      ],
+      "completion": "targeting, hidden card choice, transfer, draw, discard and response behavior verified"
+    },
+    {
+      "id": "CS01C-DEFENSE-AND-BUFFS",
+      "items": [
+        "xyy.card.tp03",
+        "xyy.card.tp04",
+        "xyy.card.zp01",
+        "xyy.card.zp02",
+        "xyy.card.zp03",
+        "xyy.card.zp04"
+      ],
+      "completion": "all temporary, defensive and modifier lifetimes verified"
+    },
+    {
+      "id": "CS01D-EQUIPMENT-EFFECTS",
+      "items": [
+        "xyy.card.wq01",
+        "xyy.card.wq02",
+        "xyy.card.wq03",
+        "xyy.card.wq04",
+        "xyy.card.wq05",
+        "xyy.card.fj01",
+        "xyy.card.fj02",
+        "xyy.card.fj03",
+        "xyy.card.fj04",
+        "xyy.card.fj05"
+      ],
+      "completion": "equip, replacement, passive and triggered effects verified"
+    },
+    {
+      "id": "CS02-HERO-SKILLS",
+      "kinds": ["hero", "skill"],
+      "completion": "26 standard heroes and 57 standard skills verified hero by hero"
+    },
+    {
+      "id": "CS03-BATTLE-DECKS",
+      "kinds": ["monster", "npc-action", "npc"],
+      "completion": "battle draw, NPC actions and 46 standard battle cards verified"
+    },
+    {
+      "id": "CS04-EVENTS",
+      "kinds": ["event"],
+      "completion": "14 standard events verified"
+    },
+    {
+      "id": "CS05-SPECIAL",
+      "kinds": ["special-card"],
+      "completion": "standard special card verified"
+    }
+  ],
+  "acceptanceMap": {
+    "CS00-01": "all-177-standard-and-28-shared-core-items-appear-exactly-once",
+    "CS00-02": "every-item-has-stable-slice-state-dependencies-and-evidence-boundary",
+    "CS00-03": "no-item-is-verified-without-a-versioned-receipt",
+    "CS00-04": "deferred-items-require-a-concrete-reason-and-unblocking-condition",
+    "CS00-05": "generated-plan-is-byte-stable-and-verifiable-against-authoritative-catalog",
+    "CS00-06": "first-executable-slice-is-core-card-audit-with-tp02-normal-heal"
+  }
+}
