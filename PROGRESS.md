@@ -1,8 +1,8 @@
 # 当前目标检查点
 
 - 分支：`codex/goal-mvp`
-- 当前节点：`CONTENT-STANDARD / CS01B-ACTION-TRICKS`
-- 最近验证完成：`CS01B / JP01 偷盗普通手牌模式`
+- 当前节点：`CONTENT-STANDARD / CS01C-DEFENSE-AND-BUFFS`
+- 最近验证完成：`CS01B / JP06 铜钱镖普通卡区模式`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -21,9 +21,9 @@
 - M06 时间/恢复证据：`contracts/time-recovery.contract.json`、`docs/time-recovery/m06-time-recovery.md`、`docs/verification/receipts/m06-time-recovery.md`
 - CS00 内容图证据：`contracts/content-standard.contract.json`、`content/standard-plan.json`、`docs/content-standard/plan.md`、`docs/verification/receipts/cs00-content-graph.md`
 - CS01A 核心四牌证据：`contracts/core-card-audit.contract.json`、`docs/content-standard/cs01a-core-cards.md`、`docs/verification/receipts/cs01a-core-card-audit.md`
-- CS01B 行动技牌证据：`contracts/action-tricks.contract.json`、`docs/content-standard/cs01b-action-tricks.md`、`docs/verification/receipts/cs01b-jp01.md`、`docs/verification/receipts/cs01b-jp03.md`
-- 当前工作：复用匿名手牌槽原语实现 JP06 铜钱镖的手牌/装备选择与响应后权威弃置。
-- 下一 ready 节点：`CS01B / JP06-HIDDEN-DISCARD`。
+- CS01B 行动技牌证据：`contracts/action-tricks.contract.json`、`docs/content-standard/cs01b-action-tricks.md`、`docs/verification/receipts/cs01b-jp01.md`、`docs/verification/receipts/cs01b-jp03.md`、`docs/verification/receipts/cs01b-jp06.md`
+- 当前工作：冻结并实现 TP03/TP04/ZP01-ZP04 的临时效果、响应与生命周期；JP02 明确等待 CS03 怪物牌堆，不伪造替代牌堆。
+- 下一 ready 节点：`CS01C-DEFENSE-AND-BUFFS`。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-007`，见 `docs/rules-semantics/decisions.md`。
 

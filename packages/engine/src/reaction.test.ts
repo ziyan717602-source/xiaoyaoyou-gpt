@@ -187,7 +187,7 @@ describe("M04 serializable reaction core", () => {
     const claimed = new Set<CardInstanceId>([
       "xyy.card.jp01@1",
       "xyy.card.jp04@7",
-      "xyy.card.jp05@9",
+      "xyy.card.jp05@10",
     ]);
     const prepared: MatchState = {
       ...initial,
@@ -200,7 +200,7 @@ describe("M04 serializable reaction core", () => {
               player.id === actor
                 ? ["xyy.card.jp01@1"]
                 : player.id === target
-                  ? ["xyy.card.jp04@7", "xyy.card.jp05@9"]
+                  ? ["xyy.card.jp04@7", "xyy.card.jp05@10"]
                   : [],
           },
         ]),
@@ -263,7 +263,7 @@ describe("M04 serializable reaction core", () => {
       },
     ]);
     expect(JSON.stringify(actorView)).not.toContain("xyy.card.jp04@7");
-    expect(JSON.stringify(actorView)).not.toContain("xyy.card.jp05@9");
+    expect(JSON.stringify(actorView)).not.toContain("xyy.card.jp05@10");
     for (const playerId of clockwiseAfter(choosing, actor)) {
       expect(createPlayerView(choosing, playerId).pendingChoice).toBeNull();
       expect(createPlayerView(choosing, playerId).availableActions).toEqual([]);
@@ -281,7 +281,7 @@ describe("M04 serializable reaction core", () => {
       3_000,
     );
     expect(resolved.pendingChoice).toBeNull();
-    expect(resolved.players[actor]!.hand).toEqual(["xyy.card.jp05@9"]);
+    expect(resolved.players[actor]!.hand).toEqual(["xyy.card.jp05@10"]);
     expect(resolved.players[target]!.hand).toEqual(["xyy.card.jp04@7"]);
     expect(resolved.discardPile).toContain("xyy.card.jp01@1");
   });
@@ -293,7 +293,7 @@ describe("M04 serializable reaction core", () => {
     const claimed = new Set<CardInstanceId>([
       "xyy.card.jp01@1",
       "xyy.card.jp04@7",
-      "xyy.card.jp05@9",
+      "xyy.card.jp05@10",
     ]);
     let state: MatchState = {
       ...initial,
@@ -306,7 +306,7 @@ describe("M04 serializable reaction core", () => {
               player.id === actor
                 ? ["xyy.card.jp01@1"]
                 : player.id === target
-                  ? ["xyy.card.jp04@7", "xyy.card.jp05@9"]
+                  ? ["xyy.card.jp04@7", "xyy.card.jp05@10"]
                   : [],
           },
         ]),
@@ -416,6 +416,177 @@ describe("M04 serializable reaction core", () => {
     expect(state.reactionWindow).toBeNull();
     expect(state.players[actor]!.hand).toEqual([]);
     expect(state.players[target]!.hand).toEqual(["xyy.card.jp04@7"]);
+  });
+
+  it("resolves JP06 across opaque opponent hands, visible equipment, and known self cards", () => {
+    const initial = playing("jp06-card-zones");
+    const actor = initial.activePlayerId!;
+    const target = clockwiseAfter(initial, actor)[0]!;
+    const claimed = new Set<CardInstanceId>([
+      "xyy.card.jp06@13",
+      "xyy.card.jp06@14",
+      "xyy.card.jp04@8",
+      "xyy.card.wq01@47",
+    ]);
+    let state: MatchState = {
+      ...initial,
+      players: Object.fromEntries(
+        Object.values(initial.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hand:
+              player.id === actor
+                ? ["xyy.card.jp06@13", "xyy.card.jp06@14"]
+                : player.id === target
+                  ? ["xyy.card.jp04@8"]
+                  : [],
+            equipment:
+              player.id === target
+                ? { weapon: "xyy.card.wq01@47", armor: null }
+                : player.equipment,
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+    expect(
+      createPlayerView(state, actor).availableActions.find(
+        (action) =>
+          action.type === "play-card" &&
+          action.cardInstanceId === "xyy.card.jp06@13",
+      ),
+    ).toMatchObject({
+      type: "play-card",
+      cardInstanceId: "xyy.card.jp06@13",
+      targetPlayerIds: expect.arrayContaining([actor, target]),
+    });
+    state = accepted(
+      state,
+      actor,
+      "jp06-equipment-play",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp06@13",
+        targetPlayerIds: [target],
+      },
+      1_000,
+    );
+    state = passAll(state, "jp06-equipment-pass", 2_000);
+    expect(state.pendingChoice?.optionIds).toEqual([
+      "opaque-hand-slot-1",
+      "equipment:weapon",
+    ]);
+    state = accepted(
+      state,
+      actor,
+      "jp06-equipment-select",
+      {
+        type: "submit-choice",
+        choiceId: state.pendingChoice!.choiceId,
+        selections: ["equipment:weapon"],
+      },
+      3_000,
+    );
+    expect(state.players[target]!.equipment.weapon).toBeNull();
+    expect(state.discardPile).toContain("xyy.card.wq01@47");
+
+    state = accepted(
+      state,
+      actor,
+      "jp06-hand-play",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp06@14",
+        targetPlayerIds: [target],
+      },
+      4_000,
+    );
+    state = passAll(state, "jp06-hand-pass", 5_000);
+    expect(state.pendingChoice?.optionIds).toEqual(["opaque-hand-slot-1"]);
+    expect(JSON.stringify(createPlayerView(state, actor))).not.toContain(
+      "xyy.card.jp04@8",
+    );
+    state = accepted(
+      state,
+      actor,
+      "jp06-hand-select",
+      {
+        type: "submit-choice",
+        choiceId: state.pendingChoice!.choiceId,
+        selections: ["opaque-hand-slot-1"],
+      },
+      6_000,
+    );
+    expect(state.players[target]!.hand).toEqual([]);
+    expect(state.discardPile).toEqual(
+      expect.arrayContaining([
+        "xyy.card.jp06@13",
+        "xyy.card.wq01@47",
+        "xyy.card.jp06@14",
+        "xyy.card.jp04@8",
+      ]),
+    );
+
+    const selfClaimed = new Set<CardInstanceId>([
+      "xyy.card.jp06@15",
+      "xyy.card.jp04@7",
+      "xyy.card.fj01@52",
+    ]);
+    let selfState: MatchState = {
+      ...initial,
+      players: Object.fromEntries(
+        Object.values(initial.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hand:
+              player.id === actor
+                ? ["xyy.card.jp06@15", "xyy.card.jp04@7"]
+                : [],
+            equipment:
+              player.id === actor
+                ? { weapon: null, armor: "xyy.card.fj01@52" }
+                : player.equipment,
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !selfClaimed.has(card)),
+      discardPile: [],
+    };
+    selfState = accepted(
+      selfState,
+      actor,
+      "jp06-self-play",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp06@15",
+        targetPlayerIds: [actor],
+      },
+      1_000,
+    );
+    selfState = passAll(selfState, "jp06-self-pass", 2_000);
+    expect(selfState.pendingChoice?.optionIds).toEqual([
+      "own-hand:xyy.card.jp04@7",
+      "equipment:armor",
+    ]);
+    selfState = accepted(
+      selfState,
+      actor,
+      "jp06-self-select",
+      {
+        type: "submit-choice",
+        choiceId: selfState.pendingChoice!.choiceId,
+        selections: ["own-hand:xyy.card.jp04@7"],
+      },
+      3_000,
+    );
+    expect(selfState.players[actor]!.hand).toEqual([]);
+    expect(selfState.players[actor]!.equipment.armor).toBe("xyy.card.fj01@52");
+    expect(selfState.discardPile).toEqual(
+      expect.arrayContaining(["xyy.card.jp06@15", "xyy.card.jp04@7"]),
+    );
   });
 
   it("resolves JP03 team healing after responses and supports its pawn mode without a response window", () => {

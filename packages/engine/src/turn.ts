@@ -599,6 +599,29 @@ export function applyTurnCommand(
         cardInstanceId,
         target.id,
       );
+    } else if (definition.coreAction.type === "discard-one") {
+      const target = input.players[command.targetPlayerIds[0] ?? ""];
+      if (
+        command.targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive ||
+        (target.hand.length === 0 &&
+          target.equipment.weapon === null &&
+          target.equipment.armor === null)
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      return beginCancellableCardEffect(
+        input,
+        envelope,
+        serverReceivedAt,
+        cardInstanceId,
+        target.id,
+      );
     } else {
       const target = input.players[command.targetPlayerIds[0] ?? ""];
       if (

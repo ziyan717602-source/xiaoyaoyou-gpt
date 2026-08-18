@@ -16,6 +16,7 @@ export type EquipmentSlot = "weapon" | "armor";
 export type CoreCardAction =
   | { readonly type: "equip"; readonly slot: EquipmentSlot }
   | { readonly type: "steal-one" }
+  | { readonly type: "discard-one" }
   | { readonly type: "draw-two" }
   | { readonly type: "damage-two"; readonly element: "thunder" }
   | { readonly type: "heal-two" }
@@ -386,7 +387,11 @@ export const SETUP_CARDS: readonly CardDefinition[] = [
     name: "天雷破",
     coreAction: { type: "damage-two", element: "thunder" },
   },
-  { id: "xyy.card.jp06", name: "铜钱镖", coreAction: null },
+  {
+    id: "xyy.card.jp06",
+    name: "铜钱镖",
+    coreAction: { type: "discard-one" },
+  },
   { id: "xyy.card.zp01", name: "金蝉脱壳", coreAction: null },
   { id: "xyy.card.zp02", name: "天罡战气", coreAction: null },
   { id: "xyy.card.zp03", name: "金蚕王", coreAction: null },

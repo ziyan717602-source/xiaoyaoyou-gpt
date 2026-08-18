@@ -7,10 +7,10 @@
     "standard": 177,
     "sharedCore": 28,
     "total": 205,
-    "partial": 41,
+    "partial": 42,
     "verified": 1,
     "deferred": 0,
-    "unstarted": 163
+    "unstarted": 162
   },
   "executionQueue": [
     {
@@ -334,9 +334,9 @@
       "kind": "card",
       "packages": ["standard"],
       "slice": "CS01B-ACTION-TRICKS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "partial",
+      "boundary": "ordinary opponent-hand, self-hand and visible-equipment selection, cancellable authoritative discard, restart and deterministic timeout; protected-card exclusion pending CS02",
+      "evidence": ["CS01B-JP06-HIDDEN-DISCARD"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

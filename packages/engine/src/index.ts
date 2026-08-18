@@ -732,6 +732,28 @@ function turnActions(
             },
           ];
     }
+    if (definition.coreAction?.type === "discard-one") {
+      const targetPlayerIds = Object.values(state.players)
+        .filter(
+          (candidate) =>
+            candidate.alive &&
+            (candidate.hand.length > 0 ||
+              candidate.equipment.weapon !== null ||
+              candidate.equipment.armor !== null),
+        )
+        .sort((left, right) => left.seat - right.seat)
+        .map((candidate) => candidate.id);
+      return targetPlayerIds.length === 0
+        ? alternate
+        : [
+            ...alternate,
+            {
+              type: "play-card" as const,
+              cardInstanceId: instanceId,
+              targetPlayerIds,
+            },
+          ];
+    }
     if (definition.coreAction?.type === "damage-two") {
       return [
         ...alternate,

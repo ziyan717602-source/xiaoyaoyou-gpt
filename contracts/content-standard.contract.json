@@ -40,6 +40,10 @@
         "boundary": "targeted thunder damage-two, cancellation, dying and victory path; full catalog verification pending",
         "evidence": ["M04-REACTION-CORE", "M05-DAMAGE-DYING"]
       },
+      "xyy.card.jp06": {
+        "boundary": "ordinary opponent-hand, self-hand and visible-equipment selection, cancellable authoritative discard, restart and deterministic timeout; protected-card exclusion pending CS02",
+        "evidence": ["CS01B-JP06-HIDDEN-DISCARD"]
+      },
       "xyy.card.tp01": {
         "boundary": "counter-chain for current cancellable card effects; all standard response targets pending",
         "evidence": ["M04-REACTION-CORE"]

@@ -101,6 +101,98 @@ function arranged(): {
 }
 
 describe("M04 reaction event replay", () => {
+  it("resumes the mixed-zone JP06 choice identically after a JSON restart", () => {
+    const startedState = started();
+    const actor = startedState.activePlayerId!;
+    const ordered = Object.values(startedState.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const actorIndex = ordered.findIndex((player) => player.id === actor);
+    const target = ordered[(actorIndex + 1) % ordered.length]!.id;
+    const claimed = new Set<CardInstanceId>([
+      "xyy.card.jp06@13",
+      "xyy.card.jp04@7",
+      "xyy.card.wq01@47",
+    ]);
+    const initial: MatchState = {
+      ...startedState,
+      players: Object.fromEntries(
+        Object.values(startedState.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hand:
+              player.id === actor
+                ? ["xyy.card.jp06@13"]
+                : player.id === target
+                  ? ["xyy.card.jp04@7"]
+                  : [],
+            equipment:
+              player.id === target
+                ? { weapon: "xyy.card.wq01@47", armor: null }
+                : player.equipment,
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+    const events: DomainEvent[] = [];
+    let next = apply(
+      initial,
+      actor,
+      "jp06-play",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp06@13",
+        targetPlayerIds: [target],
+      },
+      1_000,
+    );
+    events.push(...next.events);
+    let passSequence = 0;
+    while (next.state.reactionWindow !== null) {
+      const window = next.state.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      next = apply(
+        next.state,
+        priority,
+        `jp06-pass-${passSequence}`,
+        { type: "pass-reaction", windowId: window.windowId },
+        2_000 + passSequence * 100,
+      );
+      events.push(...next.events);
+      passSequence += 1;
+    }
+    expect(next.state.pendingChoice?.optionIds).toEqual([
+      "opaque-hand-slot-1",
+      "equipment:weapon",
+    ]);
+    const uninterrupted = next.state;
+    const restarted = JSON.parse(JSON.stringify(next.state)) as MatchState;
+    const choice = {
+      type: "submit-choice" as const,
+      choiceId: uninterrupted.pendingChoice!.choiceId,
+      selections: ["equipment:weapon"],
+    };
+    const primary = apply(uninterrupted, actor, "jp06-choose", choice, 3_000);
+    const recovered = apply(restarted, actor, "jp06-choose", choice, 3_000);
+    expect(recovered).toEqual(primary);
+    events.push(...primary.events);
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(primary.state);
+    expect(primary.state.players[target]!.equipment.weapon).toBeNull();
+    expect(primary.state.discardPile).toEqual(
+      expect.arrayContaining(["xyy.card.jp06@13", "xyy.card.wq01@47"]),
+    );
+  });
+
   it("resumes the opaque JP01 hand choice identically after a JSON restart", () => {
     const startedState = started();
     const actor = startedState.activePlayerId!;
@@ -112,7 +204,7 @@ describe("M04 reaction event replay", () => {
     const claimed = new Set<CardInstanceId>([
       "xyy.card.jp01@1",
       "xyy.card.jp04@7",
-      "xyy.card.jp05@9",
+      "xyy.card.jp05@10",
     ]);
     const initial: MatchState = {
       ...startedState,
@@ -125,7 +217,7 @@ describe("M04 reaction event replay", () => {
               player.id === actor
                 ? ["xyy.card.jp01@1"]
                 : player.id === target
-                  ? ["xyy.card.jp04@7", "xyy.card.jp05@9"]
+                  ? ["xyy.card.jp04@7", "xyy.card.jp05@10"]
                   : [],
           },
         ]),
@@ -183,7 +275,7 @@ describe("M04 reaction event replay", () => {
       );
     }
     expect(replayed).toEqual(primary.state);
-    expect(primary.state.players[actor]!.hand).toEqual(["xyy.card.jp05@9"]);
+    expect(primary.state.players[actor]!.hand).toEqual(["xyy.card.jp05@10"]);
     expect(primary.state.players[target]!.hand).toEqual(["xyy.card.jp04@7"]);
   });
 

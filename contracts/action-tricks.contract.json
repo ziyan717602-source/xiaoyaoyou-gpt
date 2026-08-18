@@ -24,7 +24,9 @@
     "xyy.card.jp06": {
       "name": "铜钱镖",
       "rule": "choose any living target with an unprotected hand or equipment card, then choose one visible equipment or opaque opponent hand slot and discard the exact chosen card after the response resolves",
-      "status": "pending-hidden-hand-choice-and-equipment-discard"
+      "status": "partial",
+      "verifiedBoundary": "ordinary hands and equipment use private mixed-zone choices, cancellable discard, restart recovery and deterministic timeout",
+      "linkedPending": ["CS02-HERO-SKILLS:protected-card-exclusion"]
     }
   },
   "legacyEvidence": [
@@ -44,7 +46,8 @@
     "jp03Pawn": "explicit-mode-pawn-no-response-discard-one-draw-one",
     "jp06SelfTarget": "allowed-when-self-has-an-unprotected-hand-or-equipment-card",
     "hiddenOpponentHand": "server-owned-opaque-slot-identities-never-card-instance-ids",
-    "jp01ItemCompletion": "remain-partial-until-protected-card-producers-and-exclusion-are-implemented"
+    "jp01ItemCompletion": "remain-partial-until-protected-card-producers-and-exclusion-are-implemented",
+    "jp06ItemCompletion": "remain-partial-until-protected-card-producers-and-exclusion-are-implemented"
   },
   "acceptanceMap": {
     "CS01B-01": "four-action-trick-rules-and-cross-slice-dependencies-are-frozen-from-read-only-CSharp-evidence",
