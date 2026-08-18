@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ziyan717602-source/xiaoyaoyou-gpt/catalog/catalog.schema.json",
+  "title": "xiaoyaoyou standard plus fengmingyushi migration catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "rulesetId",
+    "sourceSnapshotSha256",
+    "packageRule",
+    "reconciliation",
+    "items",
+    "discrepancies"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rulesetId": { "const": "standard+fengmingyushi" },
+    "sourceSnapshotSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "packageRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legacyLevel",
+        "legacyPackageIds",
+        "selectionEvidence",
+        "ownershipRule"
+      ],
+      "properties": {
+        "legacyLevel": { "const": 4 },
+        "legacyPackageIds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [{ "const": 1 }, { "const": 2 }],
+          "items": false
+        },
+        "selectionEvidence": { "type": "string", "minLength": 1 },
+        "ownershipRule": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["standardGenre", "fengmingyushiGenre", "evidence"],
+          "properties": {
+            "standardGenre": { "const": 1 },
+            "fengmingyushiGenre": { "const": 2 },
+            "evidence": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "reconciliation": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/reconciliation" }
+    },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "discrepancies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/discrepancy" }
+    }
+  },
+  "$defs": {
+    "package": {
+      "enum": ["shared-core", "standard", "fengmingyushi"]
+    },
+    "sourceLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "line", "symbol"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^reference/psd48-master/" },
+        "line": { "type": ["integer", "null"], "minimum": 1 },
+        "symbol": { "type": ["string", "null"] }
+      }
+    },
+    "textEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "column", "sha256"],
+      "properties": {
+        "table": { "type": "string" },
+        "column": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "line", "symbol", "role"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^reference/psd48-master/" },
+        "line": { "type": "integer", "minimum": 1 },
+        "symbol": { "type": "string", "minLength": 1 },
+        "role": { "enum": ["handler", "loader", "mapper"] }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalId",
+        "kind",
+        "name",
+        "aliases",
+        "packages",
+        "legacyIds",
+        "source",
+        "textEvidence",
+        "bindings",
+        "dependencies",
+        "evidenceGrade",
+        "ruleStatus",
+        "migrationStatus",
+        "scenarioCoverage"
+      ],
+      "properties": {
+        "canonicalId": {
+          "type": "string",
+          "pattern": "^xyy\\.(configuration|hero|skill|card|special-card|monster|npc|npc-action|event|rune|five-element|operation)\\.[a-z0-9._-]+$"
+        },
+        "kind": {
+          "enum": [
+            "configuration",
+            "hero",
+            "skill",
+            "card",
+            "special-card",
+            "monster",
+            "npc",
+            "npc-action",
+            "event",
+            "rune",
+            "five-element",
+            "operation"
+          ]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "aliases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "packages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/package" }
+        },
+        "legacyIds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "table",
+            "rowId",
+            "code",
+            "physicalCopies",
+            "protocolCodes"
+          ],
+          "properties": {
+            "table": { "type": "string" },
+            "rowId": { "type": ["integer", "string"] },
+            "code": { "type": "string", "minLength": 1 },
+            "physicalCopies": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["package", "serials"],
+                "properties": {
+                  "package": { "$ref": "#/$defs/package" },
+                  "serials": {
+                    "type": "array",
+                    "items": { "type": "integer", "minimum": 0 }
+                  }
+                }
+              }
+            },
+            "protocolCodes": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "source": { "$ref": "#/$defs/sourceLocation" },
+        "textEvidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/textEvidence" }
+        },
+        "bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/binding" }
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contentIds",
+            "primitives",
+            "hiddenInformation",
+            "uiChoices"
+          ],
+          "properties": {
+            "contentIds": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^xyy\\." }
+            },
+            "primitives": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string" }
+            },
+            "hiddenInformation": {
+              "enum": ["none", "private", "mixed", "unknown"]
+            },
+            "uiChoices": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "evidenceGrade": { "enum": ["A", "B", "C", "D"] },
+        "ruleStatus": { "enum": ["confirmed", "disputed", "pending-evidence"] },
+        "migrationStatus": {
+          "enum": [
+            "unplanned",
+            "scenario-ready",
+            "implementing",
+            "verified",
+            "deferred"
+          ]
+        },
+        "scenarioCoverage": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table",
+        "totalRows",
+        "selectedRows",
+        "excludedRows",
+        "selectionRule"
+      ],
+      "properties": {
+        "table": { "type": "string", "minLength": 1 },
+        "totalRows": { "type": "integer", "minimum": 0 },
+        "selectedRows": { "type": "integer", "minimum": 0 },
+        "excludedRows": { "type": "integer", "minimum": 0 },
+        "selectionRule": { "type": "string", "minLength": 1 }
+      }
+    },
+    "discrepancy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "summary",
+        "affectedLegacyIds",
+        "provisionalDecision"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^CAT-[0-9]{3}$" },
+        "status": { "enum": ["open", "resolved", "provisional-autonomous"] },
+        "summary": { "type": "string", "minLength": 1 },
+        "affectedLegacyIds": { "type": "array", "items": { "type": "string" } },
+        "provisionalDecision": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
