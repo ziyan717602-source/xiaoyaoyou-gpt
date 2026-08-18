@@ -69,6 +69,14 @@
       "status": "verified",
       "verifiedBoundary": "native ownership, exact hand payment, JP01/JP06 mode and target validation, once-per-turn state, Bingxin cancellation, opaque choice, deterministic timeout reuse, JSON replay, SQLite window/choice restart and six-socket privacy",
       "linkedPending": []
+    },
+    "xyy.skill.jn50202": {
+      "name": "劫富济贫",
+      "owner": "xyy.hero.xj402",
+      "rule": "once during her own action phase, the owner draws one card; if her actual hand count after the draw attempt is at least two, she must discard exactly one eligible own hand card",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, zero-input activation, deterministic draw and refill reuse, post-draw threshold, owner-only mandatory choice, seeded timeout, once-per-turn state, JSON replay, SQLite choice/final restart and six-socket privacy",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -86,7 +94,10 @@
     "psd.db3:Skill:JN40401 OCCURS R#GR ONCE 0 and description each discarded hand card or equipment self-cures two",
     "PSDGamepkg/JNS/XJ405.cs:1106-1124 JN40401 selects ListOutAllCards, discards the selected card, then calls Cure on self",
     "psd.db3:Skill:JN50201 OCCURS R#GR ONCE 1 and description one arbitrary hand card as JP01 or JP06 once per action phase",
-    "PSDGamepkg/JNS/XJ405.cs:1326-1354 JN50201 requires own hand plus another player's cards, chooses one own hand card and JP01/JP06, then routes through G0CC"
+    "PSDGamepkg/JNS/XJ405.cs:1326-1354 JN50201 requires own hand plus another player's cards, chooses one own hand card and JP01/JP06, then routes through G0CC",
+    "psd.db3:Skill:JN50202 OCCURS R#GR ONCE 1 and description draw one then discard one when post-draw hand count is at least two",
+    "PSDGamepkg/JNS/XJ405.cs:1356-1360 JN50202 performs G0DH draw one before checking Tux.Count >= 2 and issuing mandatory discard one",
+    "PSDGamepkg/XIG.cs:1218-1330 G0DH draw/discard planning and ProtectedTux exclusion"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -108,7 +119,10 @@
     "jn50201ConversionRepresentation": "the command and event record the paid physical hand card, native skill id and selected virtual JP01/JP06 id; both modes reuse the canonical cancellable effect and hidden card-zone choice state machine",
     "jn50201OnceState": "usedSkillIds is serialized on the current turn, consumed when the conversion effect starts even if Bingxin later cancels it, and reset only when a new turn is created",
     "jn50201TargetProjection": "JP01 lists living opponents with hand cards; JP06 lists living targets that retain at least one selectable card after the chosen source payment, while the legacy global requirement that another player has any card remains authoritative",
-    "jn50201Timeout": "activation is optional so the action timeout pays nothing; after activation the existing mandatory card-zone choice uses deterministic seeded random fallback"
+    "jn50201Timeout": "activation is optional so the action timeout pays nothing; after activation the existing mandatory card-zone choice uses deterministic seeded random fallback",
+    "jn50202AtomicResolution": "one authoritative event records the deterministic draw result, consumes the per-turn marker and opens a serializable owner-only choice only when the actual post-draw hand count is at least two",
+    "jn50202ChoiceAndTimeout": "the pending choice contains every current own hand instance, requires exactly one discard and uses the shared deterministic seeded random timeout; no reaction window is opened",
+    "jn50202ProtectedCardsScope": "legacy G0DH excludes Board.ProtectedTux, but the only known producer is special hero SP301 outside standard plus Fengmingyushi; the scoped runtime has no protected-card state, so all scoped hand cards are eligible and broader special-hero compatibility is not claimed"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -164,6 +178,13 @@
     "CS02-51": "JN50201-reuses-the-canonical-cancellable-chain-and-Bingxin-can-cancel-it",
     "CS02-52": "JN50201-reuses-opaque-card-zone-choices-and-deterministic-mandatory-timeout-without-hidden-card-leakage",
     "CS02-53": "JN50201-is-consumed-on-start-even-if-cancelled-and-resets-on-the-next-turn-while-action-timeout-pays-nothing",
-    "CS02-54": "JN50201-replays-through-JSON-and-persists-window-choice-once-state-through-SQLite-restarts-with-six-socket-privacy"
+    "CS02-54": "JN50201-replays-through-JSON-and-persists-window-choice-once-state-through-SQLite-restarts-with-six-socket-privacy",
+    "CS02-55": "JN50202-is-offered-only-to-its-native-owner-during-own-action-with-an-unused-turn-marker-and-zero-inputs",
+    "CS02-56": "JN50202-draws-one-through-the-canonical-deterministic-draw-and-refill-plan-before-any-discard-check",
+    "CS02-57": "JN50202-opens-no-choice-below-two-post-draw-hand-cards-and-a-mandatory-choice-at-two-or-more",
+    "CS02-58": "JN50202-choice-lists-every-current-own-hand-instance-only-to-the-owner-and-discards-exactly-one",
+    "CS02-59": "JN50202-mandatory-choice-timeout-discards-one-with-replayable-seeded-randomness",
+    "CS02-60": "JN50202-opens-no-reaction-window-consumes-on-activation-and-action-timeout-does-not-activate",
+    "CS02-61": "JN50202-replays-through-JSON-and-persists-choice-final-state-and-privacy-through-SQLite-restarts-with-six-WebSockets"
   }
 }

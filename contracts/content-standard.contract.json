@@ -62,6 +62,10 @@
     "xyy.skill.jn50201": {
       "boundary": "native XJ402 once-per-action hand-card conversion into canonical JP01 or JP06 is verified through cancellation, opaque choice, replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn50201.md"]
+    },
+    "xyy.skill.jn50202": {
+      "boundary": "native XJ402 once-per-action draw-one followed by mandatory discard at post-draw hand count two or more is verified through private choice, deterministic timeout, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50202.md"]
     }
   },
   "baselinePartial": {
@@ -113,10 +117,11 @@
         ]
       },
       "xyy.hero.xj402": {
-        "boundary": "setup identity and base stats plus JN50201 once-per-action JP01/JP06 conversion are verified; JN50202 and JN50203 remain pending",
+        "boundary": "setup identity and base stats plus JN50201 once-per-action JP01/JP06 conversion and JN50202 draw-then-discard are verified; JN50203 remains pending",
         "evidence": [
           "M02-SETUP-AND-TEAMS",
-          "receipt:docs/verification/receipts/cs02-jn50201.md"
+          "receipt:docs/verification/receipts/cs02-jn50201.md",
+          "receipt:docs/verification/receipts/cs02-jn50202.md"
         ]
       }
     },

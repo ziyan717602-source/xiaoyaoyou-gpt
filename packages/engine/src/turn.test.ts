@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CommandEnvelope, PlayerId } from "@xiaoyaoyou/protocol";
 import {
   applyCommand,
+  collectSystemDeadlines,
   createPlayerView,
   createSetupMatch,
   reduceEvent,
@@ -152,6 +153,237 @@ function expectConserved(state: MatchState): void {
 }
 
 describe("M03 deterministic turn core", () => {
+  it("uses JN50202 once to draw before a mandatory private discard", () => {
+    let emptyHand = playing("jn50202-empty-hand");
+    const actor = emptyHand.activePlayerId!;
+    const other = emptyHand.turnOrder.find((id) => id !== actor)!;
+    emptyHand = arrange(emptyHand, {});
+    emptyHand = {
+      ...emptyHand,
+      players: {
+        ...emptyHand.players,
+        [actor]: { ...emptyHand.players[actor]!, heroId: "xyy.hero.xj402" },
+      },
+    };
+    const firstDrawn = emptyHand.drawPile[0]!;
+    expect(createPlayerView(emptyHand, actor).availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      requiredCardCount: 0,
+      skillId: "xyy.skill.jn50202",
+      targetPlayerIds: [],
+      requiredTargetCount: 0,
+    });
+    expect(createPlayerView(emptyHand, other).availableActions).toEqual([]);
+
+    const forged = applyCommand(emptyHand, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(emptyHand, actor, "jn50202-forged-payment", {
+        type: "activate-hero-skill",
+        cardInstanceIds: [firstDrawn],
+        skillId: "xyy.skill.jn50202",
+        targetPlayerIds: [actor],
+      }),
+    });
+    expect(forged).toMatchObject({ accepted: false, reason: "forbidden" });
+    const nonNative = applyCommand(
+      {
+        ...emptyHand,
+        players: {
+          ...emptyHand.players,
+          [actor]: { ...emptyHand.players[actor]!, heroId: "xyy.hero.xj401" },
+        },
+      },
+      {
+        origin: "player",
+        serverReceivedAt: 0,
+        envelope: envelope(emptyHand, actor, "jn50202-forged-owner", {
+          type: "activate-hero-skill",
+          cardInstanceIds: [],
+          skillId: "xyy.skill.jn50202",
+          targetPlayerIds: [],
+        }),
+      },
+    );
+    expect(nonNative).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    emptyHand = dispatch(emptyHand, actor, "jn50202-draw-only", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn50202",
+      targetPlayerIds: [],
+    });
+    expect(emptyHand.players[actor]!.hand).toEqual([firstDrawn]);
+    expect(emptyHand.pendingChoice).toBeNull();
+    expect(emptyHand.effectStack).toEqual([]);
+    expect(emptyHand.turn?.usedSkillIds).toEqual(["xyy.skill.jn50202"]);
+    const repeated = applyCommand(emptyHand, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(emptyHand, actor, "jn50202-repeat", {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn50202",
+        targetPlayerIds: [],
+      }),
+    });
+    expect(repeated).toMatchObject({ accepted: false, reason: "forbidden" });
+    expect(
+      createPlayerView(emptyHand, actor).availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn50202",
+      ),
+    ).toBe(false);
+
+    let choosing = playing("jn50202-mandatory-choice");
+    const choosingActor = choosing.activePlayerId!;
+    const originalCard = "xyy.card.jp01@1" as const;
+    choosing = arrange(choosing, { [choosingActor]: [originalCard] });
+    choosing = {
+      ...choosing,
+      players: {
+        ...choosing.players,
+        [choosingActor]: {
+          ...choosing.players[choosingActor]!,
+          heroId: "xyy.hero.xj402",
+        },
+      },
+    };
+    const drawnCard = choosing.drawPile[0]!;
+    const plannedActivation = applyCommand(choosing, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(choosing, choosingActor, "jn50202-tamper-source", {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn50202",
+        targetPlayerIds: [],
+      }),
+    });
+    expect(plannedActivation.accepted).toBe(true);
+    if (!plannedActivation.accepted) throw new Error(plannedActivation.reason);
+    expect(() =>
+      reduceEvent(choosing, {
+        ...plannedActivation.events[0]!,
+        payload: {
+          ...plannedActivation.events[0]!.payload,
+          drawnCardInstanceIds: [choosing.drawPile[1]!],
+        },
+      }),
+    ).toThrow(/deterministic|applicable/i);
+    choosing = dispatch(choosing, choosingActor, "jn50202-open-choice", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn50202",
+      targetPlayerIds: [],
+    });
+    expect(choosing.reactionWindow).toBeNull();
+    expect(choosing.players[choosingActor]!.hand).toEqual([
+      originalCard,
+      drawnCard,
+    ]);
+    expect(choosing.effectStack).toEqual([
+      expect.objectContaining({
+        kind: "hero-skill:xyy.skill.jn50202",
+        sourcePlayerId: choosingActor,
+        targetIds: [choosingActor],
+        step: "awaiting-choice",
+        status: "resolving",
+        payload: { skillId: "xyy.skill.jn50202" },
+      }),
+    ]);
+    expect(choosing.pendingChoice).toMatchObject({
+      playerIds: [choosingActor],
+      prompt: "jn50202-discard-one",
+      minSelections: 1,
+      maxSelections: 1,
+      optionIds: [originalCard, drawnCard],
+      optional: false,
+      fallback: "deterministic-random",
+    });
+    for (const playerId of choosing.turnOrder) {
+      const view = createPlayerView(choosing, playerId);
+      if (playerId === choosingActor) {
+        expect(view.pendingChoice?.optionIds).toEqual([
+          originalCard,
+          drawnCard,
+        ]);
+      } else {
+        expect(view.pendingChoice).toBeNull();
+        expect(view.availableActions).toEqual([]);
+        expect(JSON.stringify(view.effectStack)).not.toContain(originalCard);
+        expect(JSON.stringify(view.effectStack)).not.toContain(drawnCard);
+      }
+    }
+
+    choosing = dispatch(choosing, choosingActor, "jn50202-discard", {
+      type: "submit-choice",
+      choiceId: choosing.pendingChoice!.choiceId,
+      selections: [originalCard],
+    });
+    expect(choosing.players[choosingActor]!.hand).toEqual([drawnCard]);
+    expect(choosing.discardPile).toEqual([originalCard]);
+    expect(choosing.pendingChoice).toBeNull();
+    expect(choosing.effectStack).toEqual([]);
+    expectConserved(emptyHand);
+    expectConserved(choosing);
+  });
+
+  it("times out JN50202 mandatory discard with replayable seeded randomness", () => {
+    let state = playing("jn50202-timeout");
+    const actor = state.activePlayerId!;
+    state = arrange(state, { [actor]: ["xyy.card.jp01@1"] });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj402" },
+      },
+      drawPile: [],
+      discardPile: state.drawPile,
+    };
+    const beforeActivationCursor = state.rng.cursor;
+    state = dispatch(state, actor, "jn50202-timeout-open", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn50202",
+      targetPlayerIds: [],
+    });
+    expect(state.rng.cursor).toBeGreaterThan(beforeActivationCursor);
+    const before = JSON.parse(JSON.stringify(state)) as MatchState;
+    const deadline = collectSystemDeadlines(state).find((candidate) =>
+      candidate.targetId.startsWith("choice:"),
+    );
+    expect(deadline).toBeDefined();
+    const timed = applyCommand(state, {
+      origin: "system-timeout",
+      commandId: "jn50202-timeout-resolve",
+      matchId: state.matchId,
+      expectedVersion: state.version,
+      deadlineAt: deadline!.deadlineAt,
+      targetId: deadline!.targetId,
+    });
+    const recovered = applyCommand(before, {
+      origin: "system-timeout",
+      commandId: "jn50202-timeout-resolve",
+      matchId: before.matchId,
+      expectedVersion: before.version,
+      deadlineAt: deadline!.deadlineAt,
+      targetId: deadline!.targetId,
+    });
+    expect(timed.accepted).toBe(true);
+    expect(recovered).toEqual(timed);
+    if (!timed.accepted) throw new Error(timed.reason);
+    expect(timed.state.pendingChoice).toBeNull();
+    expect(timed.state.effectStack).toEqual([]);
+    expect(timed.state.players[actor]!.hand).toHaveLength(1);
+    expect(timed.state.discardPile).toHaveLength(1);
+    expect(timed.state.rng.cursor).toBeGreaterThan(state.rng.cursor);
+    expectConserved(timed.state);
+  });
+
   it("uses JN50201 once per action phase to convert one hand card into JP01 or JP06", () => {
     let state = playing("jn50201-conversion");
     const actor = state.activePlayerId!;

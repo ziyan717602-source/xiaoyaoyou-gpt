@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 41,
-    "verified": 10,
+    "verified": 11,
     "deferred": 0,
-    "unstarted": 154
+    "unstarted": 153
   },
   "executionQueue": [
     {
@@ -1640,10 +1640,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity and base stats plus JN50201 once-per-action JP01/JP06 conversion are verified; JN50202 and JN50203 remain pending",
+      "boundary": "setup identity and base stats plus JN50201 once-per-action JP01/JP06 conversion and JN50202 draw-then-discard are verified; JN50203 remains pending",
       "evidence": [
         "M02-SETUP-AND-TEAMS",
-        "receipt:docs/verification/receipts/cs02-jn50201.md"
+        "receipt:docs/verification/receipts/cs02-jn50201.md",
+        "receipt:docs/verification/receipts/cs02-jn50202.md"
       ],
       "dependencies": {
         "contentIds": [
@@ -4427,9 +4428,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ402 once-per-action draw-one followed by mandatory discard at post-draw hand count two or more is verified through private choice, deterministic timeout, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50202.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

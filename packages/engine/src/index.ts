@@ -254,6 +254,14 @@ export type AvailableAction =
       readonly targetPlayerIds: readonly PlayerId[];
       readonly requiredTargetCount: 0;
     }
+  | {
+      readonly type: "activate-hero-skill";
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly requiredCardCount: 0;
+      readonly skillId: "xyy.skill.jn50202";
+      readonly targetPlayerIds: readonly PlayerId[];
+      readonly requiredTargetCount: 0;
+    }
   | { readonly type: "end-action" }
   | {
       readonly type: "play-reaction-card";
@@ -1137,6 +1145,21 @@ function turnActions(
           },
         ]
       : [];
+  const drawDiscardActions =
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn50202") &&
+    !(state.turn.usedSkillIds ?? []).includes("xyy.skill.jn50202")
+      ? [
+          {
+            type: "activate-hero-skill" as const,
+            cardInstanceIds: [],
+            requiredCardCount: 0 as const,
+            skillId: "xyy.skill.jn50202" as const,
+            targetPlayerIds: [],
+            requiredTargetCount: 0 as const,
+          },
+        ]
+      : [];
   return [
     ...playable,
     ...equippedPawn,
@@ -1144,6 +1167,7 @@ function turnActions(
     ...jn50201TurnActions(state, viewerId, player),
     ...heroSkillActions,
     ...selfHealingActions,
+    ...drawDiscardActions,
     { type: "end-action" },
   ];
 }

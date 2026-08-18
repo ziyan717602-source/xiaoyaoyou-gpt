@@ -589,6 +589,67 @@ function injectJn50201Fixture(
   }
 }
 
+function injectJn50202Fixture(
+  databasePath: string,
+  matchId: string,
+  actor: PlayerId,
+): void {
+  const database = new Database(databasePath);
+  try {
+    const row = database
+      .prepare(
+        `SELECT rowid, state_json FROM snapshots
+         WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1`,
+      )
+      .get(matchId) as { rowid: number; state_json: string } | undefined;
+    if (row === undefined) throw new Error("Missing JN50202 fixture snapshot.");
+    const state = JSON.parse(row.state_json) as MatchState;
+    const originalCard = "xyy.card.jp01@1";
+    const now = Date.now();
+    const fixture: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === actor ? "xyy.hero.xj402" : player.heroId,
+            hand: player.id === actor ? [originalCard] : [],
+            equipment: { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      turn:
+        state.turn === null
+          ? null
+          : {
+              ...state.turn,
+              phase: "action",
+              openedAt: now,
+              deadlineAt: now + 15_000,
+              usedSkillIds: [],
+            },
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => card !== originalCard),
+      discardPile: [],
+      effectStack: [],
+      reactionWindow: null,
+      pendingChoice: null,
+      dyingBatch: null,
+    };
+    const stateJson = JSON.stringify(fixture);
+    const stateHash = createHash("sha256")
+      .update(stateJson, "utf8")
+      .digest("hex");
+    database
+      .prepare(
+        "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE rowid = ?",
+      )
+      .run(stateJson, stateHash, row.rowid);
+  } finally {
+    database.close();
+  }
+}
+
 function injectTp03Fixture(
   databasePath: string,
   matchId: string,
@@ -1782,6 +1843,118 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
       "xyy.skill.jn50201",
     ]);
     expect(jn50201Actor.latestView.pendingChoice).toBeNull();
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    injectJn50202Fixture(databasePath, room.roomId, actor);
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    let jn50202ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    let jn50202Actor = jn50202ClientByPlayer.get(actor)!;
+    expect(jn50202Actor.latestView.availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      requiredCardCount: 0,
+      skillId: "xyy.skill.jn50202",
+      targetPlayerIds: [],
+      requiredTargetCount: 0,
+    });
+    const activatedJn50202 = await sendCommand(
+      jn50202Actor,
+      sessionByPlayer.get(actor)!,
+      "network-jn50202-activate",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn50202",
+        targetPlayerIds: [],
+      },
+    );
+    expect(activatedJn50202.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    const actorHand = jn50202Actor.latestView.players.find(
+      (player) => player.id === actor,
+    )!.hand!;
+    expect(actorHand).toHaveLength(2);
+    expect(jn50202Actor.latestView.reactionWindow).toBeNull();
+    expect(jn50202Actor.latestView.pendingChoice).toMatchObject({
+      playerIds: [actor],
+      prompt: "jn50202-discard-one",
+      optionIds: actorHand,
+      fallback: "deterministic-random",
+    });
+    for (const [playerId, client] of jn50202ClientByPlayer) {
+      if (playerId === actor) continue;
+      expect(client.latestView.pendingChoice).toBeNull();
+      expect(client.latestView.availableActions).toEqual([]);
+      expect(JSON.stringify(client.latestView)).not.toContain(actorHand[0]!);
+      expect(JSON.stringify(client.latestView)).not.toContain(actorHand[1]!);
+    }
+    const persistedJn50202Choice = JSON.parse(
+      JSON.stringify(jn50202Actor.latestView.pendingChoice),
+    ) as PlayerView["pendingChoice"];
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    jn50202ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    jn50202Actor = jn50202ClientByPlayer.get(actor)!;
+    expect(jn50202Actor.latestView.pendingChoice).toEqual(
+      persistedJn50202Choice,
+    );
+    const resolvedJn50202 = await sendCommand(
+      jn50202Actor,
+      sessionByPlayer.get(actor)!,
+      "network-jn50202-discard",
+      version,
+      {
+        type: "submit-choice",
+        choiceId: jn50202Actor.latestView.pendingChoice!.choiceId,
+        selections: [actorHand[0]!],
+      },
+    );
+    expect(resolvedJn50202.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    expect(
+      jn50202Actor.latestView.players.find((player) => player.id === actor),
+    ).toMatchObject({ handCount: 1 });
+    expect(jn50202Actor.latestView.pendingChoice).toBeNull();
+    expect(jn50202Actor.latestView.effectStack).toEqual([]);
+    expect(jn50202Actor.latestView.turn?.usedSkillIds).toEqual([
+      "xyy.skill.jn50202",
+    ]);
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = Math.max(...clients.map((client) => client.latestView.version));
+    await waitForVersion(clients, version);
+    jn50202Actor =
+      clients[sessions.findIndex((session) => session.playerId === actor)]!;
+    expect(
+      jn50202Actor.latestView.players.find((player) => player.id === actor),
+    ).toMatchObject({ handCount: 1 });
+    expect(jn50202Actor.latestView.pendingChoice).toBeNull();
+    expect(jn50202Actor.latestView.turn?.usedSkillIds).toEqual([
+      "xyy.skill.jn50202",
+    ]);
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });

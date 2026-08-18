@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CommandEnvelope, PlayerId } from "@xiaoyaoyou/protocol";
 import {
   applyCommand,
+  collectSystemDeadlines,
   createPlayerView,
   createSetupMatch,
   reduceEvent,
@@ -56,6 +57,74 @@ function started(seed = "m03-replay-restart-seed"): MatchState {
 }
 
 describe("M03 turn event replay", () => {
+  it("replays JN50202 draw and seeded mandatory discard across JSON restarts", () => {
+    const base = started("jn50202-replay");
+    const actor = base.activePlayerId!;
+    const originalCard = "xyy.card.jp01@1" as const;
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          player.id === actor
+            ? {
+                ...player,
+                heroId: "xyy.hero.xj402",
+                hand: [originalCard],
+                equipment: { weapon: null, armor: null },
+              }
+            : { ...player, hand: [], equipment: { weapon: null, armor: null } },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => card !== originalCard),
+      discardPile: [],
+    };
+    const activation = apply(initial, actor, "jn50202-replay-open", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn50202",
+      targetPlayerIds: [],
+    });
+    expect(activation.state.pendingChoice?.optionIds).toEqual([
+      originalCard,
+      initial.drawPile[0],
+    ]);
+    const restored = JSON.parse(JSON.stringify(activation.state)) as MatchState;
+    const deadline = collectSystemDeadlines(restored).find((candidate) =>
+      candidate.targetId.startsWith("choice:"),
+    );
+    expect(deadline).toBeDefined();
+    const timeout = {
+      origin: "system-timeout" as const,
+      commandId: "jn50202-replay-timeout",
+      matchId: restored.matchId,
+      expectedVersion: restored.version,
+      deadlineAt: deadline!.deadlineAt,
+      targetId: deadline!.targetId,
+    };
+    const uninterrupted = applyCommand(activation.state, timeout);
+    const restarted = applyCommand(restored, timeout);
+    expect(restarted).toEqual(uninterrupted);
+    expect(uninterrupted.accepted).toBe(true);
+    if (!uninterrupted.accepted) throw new Error(uninterrupted.reason);
+
+    let replayed = initial;
+    for (const event of [...activation.events, ...uninterrupted.events]) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.pendingChoice).toBeNull();
+    expect(uninterrupted.state.effectStack).toEqual([]);
+    expect(uninterrupted.state.turn?.usedSkillIds).toEqual([
+      "xyy.skill.jn50202",
+    ]);
+    expect(uninterrupted.state.players[actor]!.hand).toHaveLength(1);
+    expect(uninterrupted.state.discardPile).toHaveLength(1);
+  });
+
   it("replays JN50201 through its response window and mandatory hidden-card choice", () => {
     const base = started("jn50201-replay");
     const actor = base.activePlayerId!;

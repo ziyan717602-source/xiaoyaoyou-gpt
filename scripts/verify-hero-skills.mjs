@@ -137,6 +137,9 @@ const selfHealingHeroPlan = plan.items.find(
 const explorationPlan = plan.items.find(
   (item) => item.id === "xyy.skill.jn50201",
 );
+const redistributionPlan = plan.items.find(
+  (item) => item.id === "xyy.skill.jn50202",
+);
 const explorationHeroPlan = plan.items.find(
   (item) => item.id === "xyy.hero.xj402",
 );
@@ -193,6 +196,10 @@ assert(
   explorationPlan?.state === "verified",
   "JN50201 must be verified in plan.",
 );
+assert(
+  redistributionPlan?.state === "verified",
+  "JN50202 must be verified in plan.",
+);
 assert(explorationHeroPlan?.state === "partial", "XJ402 must remain partial.");
 assert(
   explorationHeroPlan?.boundary.includes("JN50201") &&
@@ -246,6 +253,14 @@ for (const [source, token] of [
   [turnUnit, "uses JN50201 once per action phase"],
   [replay, "replays JN50201 through its response window"],
   [reactionNetwork, '"network-jn50201-convert-jp06"'],
+  [view, 'skillId: "xyy.skill.jn50202" as const'],
+  [turn, 'skillId === "xyy.skill.jn50202"'],
+  [turn, 'prompt: "jn50202-discard-one"'],
+  [reaction, 'effect.kind === "hero-skill:xyy.skill.jn50202"'],
+  [turnUnit, "uses JN50202 once to draw before a mandatory private discard"],
+  [turnUnit, "times out JN50202 mandatory discard"],
+  [replay, "replays JN50202 draw and seeded mandatory discard"],
+  [reactionNetwork, '"network-jn50202-activate"'],
 ]) {
   assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
@@ -258,14 +273,15 @@ for (const path of [
   "docs/verification/receipts/cs02-jn20302.md",
   "docs/verification/receipts/cs02-jn40401.md",
   "docs/verification/receipts/cs02-jn50201.md",
+  "docs/verification/receipts/cs02-jn50202.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 54,
-  "Expected 54 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 61,
+  "Expected 61 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50402/JN50501/JN20202/JN40301/JN20302/JN40401/JN50201 complete`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50402/JN50501/JN20202/JN40301/JN20302/JN40401/JN50201/JN50202 complete`,
 );

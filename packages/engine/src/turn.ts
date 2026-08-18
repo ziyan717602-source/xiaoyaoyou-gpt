@@ -268,6 +268,84 @@ export function reduceTurnEvent(
         ...paymentState,
         players: playersAfterCures(paymentState, expectedCures),
       };
+    } else if (skillId === "xyy.skill.jn50202") {
+      const drawnCardInstanceIds = stringsPayload(
+        event,
+        "drawnCardInstanceIds",
+      ) as readonly CardInstanceId[];
+      const effectId = stringPayload(event, "effectId");
+      const choiceId = stringPayload(event, "choiceId");
+      const openedAt = numberPayload(event, "openedAt");
+      const expected = planDraw(state, 1);
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn50202") ||
+        (state.turn.usedSkillIds ?? []).includes("xyy.skill.jn50202") ||
+        cardInstanceIds.length !== 0 ||
+        targetPlayerIds.length !== 0 ||
+        state.pendingChoice !== null ||
+        state.reactionWindow !== null ||
+        effectId !== `${state.matchId}:effect:${event.causationCommandId}` ||
+        choiceId !== `${state.matchId}:choice:${event.causationCommandId}` ||
+        state.effectStack.some((effect) => effect.effectId === effectId) ||
+        !sameValues(drawnCardInstanceIds, expected.cards) ||
+        numberPayload(event, "rngCursor") !== expected.rng.cursor
+      ) {
+        throw new Error("JN50202 event is not applicable.");
+      }
+      const hand = [...player.hand, ...drawnCardInstanceIds];
+      const shouldDiscard = hand.length >= 2;
+      const effect = {
+        effectId,
+        parentEffectId: null,
+        kind: "hero-skill:xyy.skill.jn50202",
+        sourcePlayerId: playerId,
+        targetIds: [playerId],
+        step: "awaiting-choice",
+        status: "resolving" as const,
+        payload: { skillId: "xyy.skill.jn50202" },
+      };
+      next = {
+        ...state,
+        players: {
+          ...state.players,
+          [playerId]: { ...player, hand },
+        },
+        drawPile: expected.drawPile,
+        discardPile: expected.discardPile,
+        rng: expected.rng,
+        turn: {
+          ...state.turn,
+          usedSkillIds: [
+            ...(state.turn.usedSkillIds ?? []),
+            "xyy.skill.jn50202",
+          ],
+        },
+        effectStack: shouldDiscard
+          ? [...state.effectStack, effect]
+          : state.effectStack,
+        pendingChoice: shouldDiscard
+          ? {
+              choiceId,
+              playerIds: [playerId],
+              prompt: "jn50202-discard-one",
+              minSelections: 1,
+              maxSelections: 1,
+              optionIds: hand,
+              optional: false,
+              status: "open",
+              openedAt,
+              deadlineAt: openedAt + ACTION_DEADLINE_MS,
+              fallback: "deterministic-random",
+              continuation: {
+                continuationId: `${choiceId}:continuation`,
+                effectId,
+                step: "after-jn50202-discard",
+                locals: {},
+                resumeWith: "resolve-jn50202-discard",
+              },
+            }
+          : null,
+      };
     } else {
       throw new Error("Unsupported active hero skill event.");
     }
@@ -941,6 +1019,31 @@ export function applyTurnCommand(
             element: "neutral",
           },
         ]),
+      });
+    } else if (command.skillId === "xyy.skill.jn50202") {
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn50202") ||
+        (input.turn.usedSkillIds ?? []).includes("xyy.skill.jn50202") ||
+        cardInstanceIds.length !== 0 ||
+        command.targetPlayerIds.length !== 0
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      const planned = planDraw(input, 1);
+      builder.append("turn.hero-skill-activated", {
+        playerId: envelope.playerId,
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn50202",
+        targetPlayerIds: [],
+        drawnCardInstanceIds: planned.cards,
+        rngCursor: planned.rng.cursor,
+        effectId: `${input.matchId}:effect:${envelope.commandId}`,
+        choiceId: `${input.matchId}:choice:${envelope.commandId}`,
+        openedAt: serverReceivedAt,
       });
     } else {
       return {

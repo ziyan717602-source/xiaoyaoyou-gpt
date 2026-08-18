@@ -124,6 +124,12 @@ function cardForChoiceOption(
   const source = state.players[effect.sourcePlayerId ?? ""];
   const target = state.players[effect.targetIds[0] ?? ""];
   if (source === undefined || target === undefined) return undefined;
+  if (effect.kind === "hero-skill:xyy.skill.jn50202") {
+    const cardInstanceId = optionId as CardInstanceId;
+    return source.id === target.id && source.hand.includes(cardInstanceId)
+      ? { cardInstanceId, zone: "hand" }
+      : undefined;
+  }
   const opaquePrefix = "opaque-hand-slot-";
   if (optionId.startsWith(opaquePrefix)) {
     const index = Number(optionId.slice(opaquePrefix.length)) - 1;
@@ -1026,7 +1032,8 @@ export function reduceReactionEvent(
       choice.choiceId !== choiceId ||
       !choice.playerIds.includes(playerId) ||
       (effect?.kind !== "card:xyy.card.jp01" &&
-        effect?.kind !== "card:xyy.card.jp06") ||
+        effect?.kind !== "card:xyy.card.jp06" &&
+        effect?.kind !== "hero-skill:xyy.skill.jn50202") ||
       effect.status !== "resolving" ||
       effect.sourcePlayerId !== playerId ||
       source === undefined ||
@@ -1050,7 +1057,7 @@ export function reduceReactionEvent(
         ...target,
         hand: target.hand.filter((card) => card !== cardInstanceId),
       };
-    } else {
+    } else if (effect.kind === "card:xyy.card.jp06") {
       players[target.id] =
         selected!.zone === "hand"
           ? {
@@ -1061,6 +1068,12 @@ export function reduceReactionEvent(
               ...target,
               equipment: { ...target.equipment, [selected!.zone]: null },
             };
+      discardPile = [...state.discardPile, cardInstanceId];
+    } else {
+      players[source.id] = {
+        ...source,
+        hand: source.hand.filter((card) => card !== cardInstanceId),
+      };
       discardPile = [...state.discardPile, cardInstanceId];
     }
     next = {
@@ -1641,7 +1654,8 @@ function resolvePendingCardChoice(
     choice.status !== "open" ||
     !choice.playerIds.includes(playerId) ||
     (effect?.kind !== "card:xyy.card.jp01" &&
-      effect?.kind !== "card:xyy.card.jp06") ||
+      effect?.kind !== "card:xyy.card.jp06" &&
+      effect?.kind !== "hero-skill:xyy.skill.jn50202") ||
     selected === undefined
   ) {
     return {
