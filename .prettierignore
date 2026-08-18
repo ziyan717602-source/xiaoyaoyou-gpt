@@ -7,3 +7,4 @@ package-lock.json
 docs/legacy-evidence/inventory.json
 catalog/catalog.json
 catalog/report.md
+catalog/dependency-graph.json

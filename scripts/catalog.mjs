@@ -22,6 +22,7 @@ const inventoryPath = join(
 const schemaPath = join(workspaceRoot, "catalog", "catalog.schema.json");
 const catalogPath = join(workspaceRoot, "catalog", "catalog.json");
 const reportPath = join(workspaceRoot, "catalog", "report.md");
+const graphPath = join(workspaceRoot, "catalog", "dependency-graph.json");
 const databaseSource = "reference/psd48-master/~ex-lib/psd.db3";
 const packageNames = new Map([
   [1, "standard"],
@@ -264,6 +265,33 @@ function walkSource(directory) {
   return files;
 }
 
+function extractMethodEvidence(lines, startIndex) {
+  const captured = [];
+  let depth = 0;
+  let bodyStarted = false;
+  for (
+    let index = startIndex;
+    index < lines.length && index < startIndex + 1200;
+    index += 1
+  ) {
+    const line = lines[index];
+    captured.push(line);
+    const structural = line
+      .replaceAll(/"(?:\\.|[^"\\])*"/gu, '""')
+      .replaceAll(/\/\/.*$/gu, "");
+    for (const character of structural) {
+      if (character === "{") {
+        bodyStarted = true;
+        depth += 1;
+      } else if (character === "}" && bodyStarted) {
+        depth -= 1;
+      }
+    }
+    if (bodyStarted && depth === 0) break;
+  }
+  return captured.join("\n");
+}
+
 function methodBindings() {
   const methods = [];
   const declaration =
@@ -278,6 +306,7 @@ function methodBindings() {
           line: index + 1,
           symbol,
           role: "handler",
+          evidenceText: extractMethodEvidence(lines, index),
         });
       }
     });
@@ -308,6 +337,91 @@ function unionPackages(entries) {
   return [...new Set(entries.flat())].sort((left, right) =>
     left.localeCompare(right, "en"),
   );
+}
+
+function classifyDependencies(kind, row, handlerEvidence) {
+  const basePrimitive = {
+    configuration: "runtime-configuration",
+    hero: "hero-state",
+    skill: "triggered-effect",
+    card: "card-resolution",
+    "special-card": "special-card-resolution",
+    monster: "battle-resolution",
+    npc: "npc-resolution",
+    "npc-action": "npc-resolution",
+    event: "event-resolution",
+    rune: "rune-resolution",
+    "five-element": "element-resolution",
+    operation: "operation-resolution",
+  }[kind];
+  const evidence = `${Object.values(row).join("\n")}\n${handlerEvidence}`;
+  const primitives = new Set([basePrimitive]);
+  const has = (pattern) => pattern.test(evidence);
+  if (has(/OCCURS|PRIORS|fuse|Pending|Trigger/iu))
+    primitives.add("effect-stack");
+  if (has(/Valid\s*\(|ConsumeValid|冰心诀|抵消|响应/iu)) {
+    primitives.add("response-window");
+  }
+  if (has(/Target|指定|选择|任意一(?:人|名)|目标/iu)) {
+    primitives.add("target-selection");
+  }
+  if (has(/Tux|手牌|卡牌|牌堆|牌/iu)) primitives.add("card-zone");
+  if (has(/Draw|补\s*\d*\s*张牌|摸\s*\d*\s*张牌/iu)) primitives.add("draw");
+  if (has(/Discard|Abandon|弃掉|弃置|弃牌|弃\s*\d*\s*张/iu)) {
+    primitives.add("discard");
+  }
+  if (has(/Transfer|Obtain|交给|获得.*牌|移交/iu)) primitives.add("transfer");
+  if (has(/Equip|装备|武器|防具/iu)) primitives.add("equipment");
+  if (has(/\bHP\b|HitPoint|体力/iu)) primitives.add("hp-change");
+  if (has(/Harm|Damage|伤害/iu)) primitives.add("damage");
+  if (has(/Cure|Heal|回复.*HP|恢复.*HP|治疗/iu)) primitives.add("healing");
+  if (has(/\bSTR\b|\bDEX\b|战力|命中|闪避|属性.*增|属性.*减/iu)) {
+    primitives.add("stat-modifier");
+  }
+  if (has(/Token|Counter|标记|计数器|计数/iu)) primitives.add("token-counter");
+  if (has(/IsAlive|ALIVE|死亡|阵亡|濒死/iu)) primitives.add("life-state");
+  if (has(/Escue|Rescue|救援|濒死/iu)) primitives.add("rescue");
+  if (has(/Random|PickSomeInRandomOrder|随机/iu))
+    primitives.add("random-choice");
+  if (has(/Cancel|Counter|冰心诀|抵消|无效化|取消.*效果/iu)) {
+    primitives.add("effect-cancellation");
+  }
+  if (has(/Transform|改用.*角色|变身|形态/iu)) primitives.add("transformation");
+  if (has(/Win|Victory|胜利|胜负/iu)) primitives.add("victory-check");
+
+  const uiChoices = new Set();
+  const interactiveKind = ["skill", "card", "rune", "operation"].includes(kind);
+  const requestsInput = has(
+    /(?:AsyncInput|MultiAsyncInput|NFSAsyncInput|MayorAsyncInput|\w+Input)\s*\(/u,
+  );
+  if (interactiveKind) uiChoices.add("respond-or-pass");
+  if (requestsInput) uiChoices.add("choose-option");
+  if (requestsInput && has(/Player|player|角色|玩家|一名|一人|目标/iu)) {
+    uiChoices.add("choose-player");
+  }
+  if (requestsInput && has(/Tux|Card|手牌|装备|牌/iu)) {
+    uiChoices.add("choose-card");
+  }
+  if (requestsInput && has(/number|count|amount|点数|数值|至多|至少/iu)) {
+    uiChoices.add("choose-number");
+  }
+  if (requestsInput && has(/order|排序|顺序/iu)) uiChoices.add("choose-order");
+  if (requestsInput && has(/confirm|yes|no|是否|确认/iu))
+    uiChoices.add("confirm");
+  if (uiChoices.size === 0) uiChoices.add("automatic");
+
+  const touchesHiddenCards = has(/Tux|Card|手牌|牌堆|摸牌|补牌/iu);
+  const hiddenInformation =
+    kind === "card" || kind === "rune" || touchesHiddenCards ? "mixed" : "none";
+  return {
+    primitives: [...primitives].sort((left, right) =>
+      left.localeCompare(right, "en"),
+    ),
+    hiddenInformation,
+    uiChoices: [...uiChoices].sort((left, right) =>
+      left.localeCompare(right, "en"),
+    ),
+  };
 }
 
 function buildCatalog() {
@@ -412,10 +526,20 @@ function buildCatalog() {
       }
       packages = unionPackages([packages]);
       const id = canonicalId(spec.kind, code);
+      const matchingMethods = methods.filter((method) =>
+        method.symbol.startsWith(code),
+      );
       const bindings = [
         tableBindings[table],
-        ...methods.filter((method) => method.symbol.startsWith(code)),
+        ...matchingMethods.map(
+          ({ evidenceText: _evidenceText, ...binding }) => binding,
+        ),
       ];
+      const classification = classifyDependencies(
+        spec.kind,
+        row,
+        matchingMethods.map((method) => method.evidenceText).join("\n"),
+      );
       const item = {
         canonicalId: id,
         kind: spec.kind,
@@ -442,9 +566,7 @@ function buildCatalog() {
         bindings,
         dependencies: {
           contentIds: [],
-          primitives: ["unclassified"],
-          hiddenInformation: "unknown",
-          uiChoices: ["unclassified"],
+          ...classification,
         },
         evidenceGrade: bindings.some((binding) => binding.role === "handler")
           ? "A"
@@ -690,6 +812,13 @@ function buildReport(catalog) {
     (left, right) => left.localeCompare(right, "en"),
   );
   const count = (predicate) => catalog.items.filter(predicate).length;
+  const occurrenceCounts = (values) =>
+    Object.entries(Object.groupBy(values, (value) => value))
+      .map(([value, entries]) => [value, entries.length])
+      .sort(
+        ([leftValue, leftCount], [rightValue, rightCount]) =>
+          rightCount - leftCount || leftValue.localeCompare(rightValue, "en"),
+      );
   const lines = [
     "# 标准包 + 凤鸣玉誓迁移目录报告",
     "",
@@ -738,6 +867,37 @@ function buildReport(catalog) {
       `| ${entry.table} | ${entry.totalRows} | ${entry.selectedRows} | ${entry.excludedRows} | ${markdownCell(entry.selectionRule)} |`,
     );
   }
+  lines.push(
+    "",
+    "## 依赖分类汇总",
+    "",
+    "### 结算原语",
+    "",
+    "| 原语 | 条目数 |",
+    "| --- | ---: |",
+  );
+  for (const [primitive, total] of occurrenceCounts(
+    catalog.items.flatMap((item) => item.dependencies.primitives),
+  )) {
+    lines.push(`| ${primitive} | ${total} |`);
+  }
+  lines.push(
+    "",
+    "### 隐藏信息与 UI 选择",
+    "",
+    "| 分类 | 值 | 条目数 |",
+    "| --- | --- | ---: |",
+  );
+  for (const [value, total] of occurrenceCounts(
+    catalog.items.map((item) => item.dependencies.hiddenInformation),
+  )) {
+    lines.push(`| hidden-information | ${value} | ${total} |`);
+  }
+  for (const [value, total] of occurrenceCounts(
+    catalog.items.flatMap((item) => item.dependencies.uiChoices),
+  )) {
+    lines.push(`| ui-choice | ${value} | ${total} |`);
+  }
   lines.push("", "## 差异与临时决定", "");
   for (const discrepancy of catalog.discrepancies) {
     lines.push(
@@ -749,11 +909,42 @@ function buildReport(catalog) {
     "## 当前证据边界",
     "",
     `- 证据 A（数据库行 + 专用 C# 方法绑定）：${count((item) => item.evidenceGrade === "A")} 项；证据 B（数据库行，暂无专用方法）：${count((item) => item.evidenceGrade === "B")} 项。`,
-    "- 结算原语、隐藏信息与 UI 选择仍标记为 `unclassified/unknown`；这是 P03 后续依赖分类工作，不以空白冒充完成。",
+    `- ${catalog.items.length} 项均已用受控词表标记结算原语、隐藏信息和 UI 选择；分类信号来自数据库行与绑定方法，不复制原始文本。`,
+    "- 这些标签用于生成迁移依赖图，不等于规则已实现；P04 仍需用黄金轨迹验证复杂结算语义。",
     "- 公开仓库只保留描述列 SHA-256、表/列定位和 C# 符号，不复制本地参考包的完整规则文本或二进制资源。",
     "",
   );
   return lines.join("\n");
+}
+
+function buildDependencyGraph(catalog) {
+  const edges = catalog.items
+    .flatMap((item) =>
+      item.dependencies.contentIds.map((target) => ({
+        from: item.canonicalId,
+        to: target,
+        type: "content",
+      })),
+    )
+    .sort((left, right) =>
+      `${left.from}\0${left.to}`.localeCompare(
+        `${right.from}\0${right.to}`,
+        "en",
+      ),
+    );
+  return {
+    schemaVersion: 1,
+    rulesetId: catalog.rulesetId,
+    nodes: catalog.items.map((item) => ({
+      id: item.canonicalId,
+      kind: item.kind,
+      packages: item.packages,
+      primitives: item.dependencies.primitives,
+      hiddenInformation: item.dependencies.hiddenInformation,
+      uiChoices: item.dependencies.uiChoices,
+    })),
+    edges,
+  };
 }
 
 const mode = process.argv[2] ?? "--verify";
@@ -762,8 +953,9 @@ if (mode === "--write") {
   const summary = validateCatalog(catalog);
   writeFileSync(catalogPath, serialize(catalog), "utf8");
   writeFileSync(reportPath, buildReport(catalog), "utf8");
+  writeFileSync(graphPath, serialize(buildDependencyGraph(catalog)), "utf8");
   console.log(
-    `Wrote catalog/catalog.json and catalog/report.md with ${summary.items} items.`,
+    `Wrote catalog data, report, and dependency graph with ${summary.items} items.`,
   );
 } else if (mode === "--oracle-verify") {
   if (!existsSync(catalogPath))
@@ -781,6 +973,15 @@ if (mode === "--write") {
   ) {
     throw new Error("Catalog report drifted; run npm run catalog:refresh.");
   }
+  if (
+    !existsSync(graphPath) ||
+    readFileSync(graphPath, "utf8") !==
+      serialize(buildDependencyGraph(generated))
+  ) {
+    throw new Error(
+      "Catalog dependency graph drifted; run npm run catalog:refresh.",
+    );
+  }
   console.log(
     `Oracle catalog verified: ${summary.items} items, ${summary.dependencies} dependencies, ${summary.bindings} C# bindings, ${summary.physicalSerials} physical card serials.`,
   );
@@ -794,6 +995,14 @@ if (mode === "--write") {
     readFileSync(reportPath, "utf8") !== buildReport(catalog)
   ) {
     throw new Error("Catalog report drifted; run npm run catalog:refresh.");
+  }
+  if (
+    !existsSync(graphPath) ||
+    readFileSync(graphPath, "utf8") !== serialize(buildDependencyGraph(catalog))
+  ) {
+    throw new Error(
+      "Catalog dependency graph drifted; run npm run catalog:refresh.",
+    );
   }
   console.log(
     `Catalog verified: ${summary.items} items, ${summary.dependencies} dependencies, ${summary.bindings} C# bindings, ${summary.physicalSerials} physical card serials.`,

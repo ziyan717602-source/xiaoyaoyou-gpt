@@ -66,6 +66,52 @@
     "package": {
       "enum": ["shared-core", "standard", "fengmingyushi"]
     },
+    "primitive": {
+      "enum": [
+        "runtime-configuration",
+        "hero-state",
+        "triggered-effect",
+        "card-resolution",
+        "special-card-resolution",
+        "battle-resolution",
+        "npc-resolution",
+        "event-resolution",
+        "rune-resolution",
+        "element-resolution",
+        "operation-resolution",
+        "effect-stack",
+        "response-window",
+        "target-selection",
+        "card-zone",
+        "draw",
+        "discard",
+        "transfer",
+        "equipment",
+        "hp-change",
+        "damage",
+        "healing",
+        "stat-modifier",
+        "token-counter",
+        "life-state",
+        "rescue",
+        "random-choice",
+        "effect-cancellation",
+        "transformation",
+        "victory-check"
+      ]
+    },
+    "uiChoice": {
+      "enum": [
+        "automatic",
+        "respond-or-pass",
+        "choose-option",
+        "choose-player",
+        "choose-card",
+        "choose-number",
+        "choose-order",
+        "confirm"
+      ]
+    },
     "sourceLocation": {
       "type": "object",
       "additionalProperties": false,
@@ -213,16 +259,14 @@
               "type": "array",
               "minItems": 1,
               "uniqueItems": true,
-              "items": { "type": "string" }
+              "items": { "$ref": "#/$defs/primitive" }
             },
-            "hiddenInformation": {
-              "enum": ["none", "private", "mixed", "unknown"]
-            },
+            "hiddenInformation": { "enum": ["none", "private", "mixed"] },
             "uiChoices": {
               "type": "array",
               "minItems": 1,
               "uniqueItems": true,
-              "items": { "type": "string" }
+              "items": { "$ref": "#/$defs/uiChoice" }
             }
           }
         },

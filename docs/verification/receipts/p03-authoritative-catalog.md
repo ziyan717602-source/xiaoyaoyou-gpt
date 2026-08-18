@@ -10,7 +10,9 @@
 - 34 名角色与旧 `reference/docs/scope.md` 的 26 标准 + 8 凤鸣数量及名单一致；“龙葵/龙葵鬼”与数据库“龙葵·蓝/龙葵·红”的名称差异保留为 alias 和 `CAT-004`。
 - 24 类手牌对应 56 个标准包物理序号；20 怪物、26 NPC、9 NPC 行动、14 事件均完成逐表对账。
 - 233 项拥有 584 个 C# loader/mapper/handler 绑定、254 条范围内内容依赖；完整描述没有复制进公开仓库，只提交表/列定位与 SHA-256。
-- P03-06 尚未完成：结算原语、隐藏信息与 UI 选择仍明确标记为 `unclassified/unknown`，未以默认值冒充已分类。
+- 数据库字段与绑定方法正文只在本地用于受控词表分类；公开目录记录 29 类结算原语、隐藏信息边界和 UI 选择需求，不复制分类证据原文。
+- 分类结果为 95 项 `mixed` 隐藏信息、138 项 `none`；UI 覆盖自动、响应/放弃、选玩家、选牌、选数值和确认。`catalog/dependency-graph.json` 固定 233 个节点及 254 条内容边。
+- 依赖标签用于 P04 生成高风险语义场景，不代表规则已经实现或验证。
 
 ## 验证命令
 
@@ -20,7 +22,7 @@ npm run catalog:oracle-verify
 npm audit --audit-level=moderate
 ```
 
-结果：公开目录的严格 JSON Schema、稳定 ID、依赖引用、逐表行数、物理牌序号和人类报告一致性通过；本地 C#/SQLite 重建与已提交目录字节一致；npm 审计为 0 个已知漏洞。
+结果：公开目录的严格 JSON Schema、稳定 ID、依赖引用、逐表行数、物理牌序号、人类报告和依赖图一致性通过；本地 C#/SQLite 重建与已提交目录字节一致；npm 审计为 0 个已知漏洞。
 
 ## 可复现更新
 
@@ -30,4 +32,4 @@ npm audit --audit-level=moderate
 npm run catalog:refresh
 ```
 
-该命令确定性生成 `catalog/catalog.json` 与 `catalog/report.md`。公开克隆无需参考快照即可运行 `npm run catalog:verify`。
+该命令确定性生成 `catalog/catalog.json`、`catalog/report.md` 与 `catalog/dependency-graph.json`。公开克隆无需参考快照即可运行 `npm run catalog:verify`。

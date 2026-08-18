@@ -49,6 +49,56 @@
 | Five | 7 | 7 | 0 | all rows; no package column, provisionally shared core |
 | Ops | 5 | 5 | 0 | all rows; no package column, provisionally shared core |
 
+## 依赖分类汇总
+
+### 结算原语
+
+| 原语 | 条目数 |
+| --- | ---: |
+| effect-stack | 124 |
+| response-window | 102 |
+| card-zone | 90 |
+| triggered-effect | 76 |
+| hp-change | 64 |
+| life-state | 60 |
+| stat-modifier | 58 |
+| damage | 47 |
+| target-selection | 44 |
+| npc-resolution | 35 |
+| hero-state | 34 |
+| equipment | 32 |
+| discard | 25 |
+| card-resolution | 24 |
+| victory-check | 22 |
+| battle-resolution | 20 |
+| healing | 18 |
+| draw | 17 |
+| event-resolution | 14 |
+| transfer | 13 |
+| rune-resolution | 8 |
+| runtime-configuration | 8 |
+| element-resolution | 7 |
+| token-counter | 7 |
+| effect-cancellation | 6 |
+| transformation | 6 |
+| operation-resolution | 5 |
+| rescue | 2 |
+| special-card-resolution | 2 |
+
+### 隐藏信息与 UI 选择
+
+| 分类 | 值 | 条目数 |
+| --- | --- | ---: |
+| hidden-information | none | 138 |
+| hidden-information | mixed | 95 |
+| ui-choice | respond-or-pass | 113 |
+| ui-choice | automatic | 99 |
+| ui-choice | choose-option | 69 |
+| ui-choice | choose-player | 69 |
+| ui-choice | choose-card | 53 |
+| ui-choice | choose-number | 46 |
+| ui-choice | confirm | 6 |
+
 ## 差异与临时决定
 
 - **CAT-001 · provisional-autonomous**：Global, training, and out-of-scope-hero Exsp rows have no package column. Include only Exsp rows whose HERO points to a selected package-1 or package-2 hero; keep the remainder excluded until scenario evidence requires one.
@@ -59,5 +109,6 @@
 ## 当前证据边界
 
 - 证据 A（数据库行 + 专用 C# 方法绑定）：151 项；证据 B（数据库行，暂无专用方法）：82 项。
-- 结算原语、隐藏信息与 UI 选择仍标记为 `unclassified/unknown`；这是 P03 后续依赖分类工作，不以空白冒充完成。
+- 233 项均已用受控词表标记结算原语、隐藏信息和 UI 选择；分类信号来自数据库行与绑定方法，不复制原始文本。
+- 这些标签用于生成迁移依赖图，不等于规则已实现；P04 仍需用黄金轨迹验证复杂结算语义。
 - 公开仓库只保留描述列 SHA-256、表/列定位和 C# 符号，不复制本地参考包的完整规则文本或二进制资源。

@@ -1,0 +1,5499 @@
+{
+  "schemaVersion": 1,
+  "rulesetId": "standard+fengmingyushi",
+  "nodes": [
+    {
+      "id": "xyy.card.fj01",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "effect-stack",
+        "equipment",
+        "healing",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.fj02",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "effect-stack",
+        "equipment",
+        "response-window"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.fj03",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "damage",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "response-window"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.fj04",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "response-window",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.fj05",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "damage",
+        "effect-stack",
+        "equipment",
+        "healing",
+        "hp-change",
+        "response-window",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.jp01",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "target-selection",
+        "transfer"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.jp02",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "effect-stack",
+        "response-window"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.jp03",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "discard",
+        "draw",
+        "effect-stack",
+        "healing",
+        "hp-change",
+        "life-state",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.jp04",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "effect-stack",
+        "target-selection",
+        "transfer"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.jp05",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.jp06",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.tp01",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "effect-cancellation",
+        "effect-stack",
+        "response-window",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.tp02",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "effect-stack",
+        "healing",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.tp03",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "damage",
+        "effect-cancellation",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.tp04",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "confirm",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.wq01",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.wq02",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "effect-stack",
+        "equipment",
+        "healing",
+        "hp-change",
+        "response-window",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.wq03",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.wq04",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "draw",
+        "equipment",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.wq05",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.zp01",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "victory-check"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.zp02",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.zp03",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "effect-stack",
+        "response-window",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.card.zp04",
+      "kind": "card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-resolution",
+        "effect-stack",
+        "stat-modifier",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.configuration.aas-1",
+      "kind": "configuration",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "runtime-configuration"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.configuration.aas-2",
+      "kind": "configuration",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "runtime-configuration"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.configuration.aas-3",
+      "kind": "configuration",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "runtime-configuration"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.configuration.aas-4",
+      "kind": "configuration",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "runtime-configuration"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.configuration.aas-5",
+      "kind": "configuration",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "runtime-configuration"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.configuration.aas-6",
+      "kind": "configuration",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "runtime-configuration"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.configuration.aas-7",
+      "kind": "configuration",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "runtime-configuration"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.configuration.aas-8",
+      "kind": "configuration",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "runtime-configuration"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.s3w01",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "event-resolution",
+        "life-state",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.s3w02",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "event-resolution",
+        "healing",
+        "hp-change",
+        "target-selection"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.event.sj101",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "discard",
+        "draw",
+        "equipment",
+        "event-resolution",
+        "life-state",
+        "target-selection"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.event.sj102",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "draw",
+        "event-resolution",
+        "life-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.sj103",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "draw",
+        "event-resolution",
+        "target-selection",
+        "transfer"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.event.sj104",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "event-resolution",
+        "transfer"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.event.sj201",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "draw",
+        "event-resolution",
+        "hp-change",
+        "life-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.sj202",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "event-resolution",
+        "hp-change",
+        "life-state",
+        "target-selection"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.event.sj301",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "event-resolution",
+        "life-state"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.sj302",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "event-resolution",
+        "healing",
+        "hp-change",
+        "life-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.sj303",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "event-resolution"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.sj401",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "draw",
+        "event-resolution"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.sj402",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "damage",
+        "event-resolution",
+        "hp-change",
+        "life-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.event.sj501",
+      "kind": "event",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "event-resolution",
+        "life-state"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.five-element.wl01",
+      "kind": "five-element",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "element-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.five-element.wl02",
+      "kind": "five-element",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "element-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.five-element.wl03",
+      "kind": "five-element",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "element-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.five-element.wl04",
+      "kind": "five-element",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "element-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.five-element.wl05",
+      "kind": "five-element",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "element-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.five-element.wl06",
+      "kind": "five-element",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "element-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.five-element.wl07",
+      "kind": "five-element",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "element-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.x3w01",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.x3w02",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.x3w03",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.x3w04",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj101",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj102",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj103",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj104",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj105",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj106",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj107",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj201",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj202",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj203",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj206",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj207",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj302",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj303",
+      "kind": "hero",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj304",
+      "kind": "hero",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj305",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj306",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj401",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj402",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj403",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj404",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj405",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj501",
+      "kind": "hero",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj502",
+      "kind": "hero",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj503",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj504",
+      "kind": "hero",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj505",
+      "kind": "hero",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj506",
+      "kind": "hero",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj507",
+      "kind": "hero",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.hero.xj508",
+      "kind": "hero",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "hero-state"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gf01",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "card-zone",
+        "damage",
+        "draw",
+        "hp-change",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gf02",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "healing",
+        "hp-change",
+        "life-state",
+        "stat-modifier",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gf03",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "healing",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "victory-check"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gf04",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "effect-stack",
+        "healing",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.monster.gh01",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "hp-change",
+        "stat-modifier",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gh02",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "stat-modifier",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gh03",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "hp-change",
+        "life-state",
+        "stat-modifier",
+        "target-selection",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.monster.gh04",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "hp-change",
+        "life-state",
+        "stat-modifier",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gl01",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "healing",
+        "hp-change",
+        "life-state",
+        "target-selection",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.monster.gl02",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "card-zone",
+        "damage",
+        "draw",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "stat-modifier",
+        "target-selection",
+        "transfer",
+        "victory-check"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.monster.gl03",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "card-zone",
+        "discard",
+        "equipment",
+        "healing",
+        "hp-change",
+        "stat-modifier",
+        "victory-check"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.monster.gl04",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "victory-check"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gs01",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "card-zone",
+        "life-state",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gs02",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "discard",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "life-state",
+        "stat-modifier",
+        "target-selection",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.monster.gs03",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "hp-change",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gs04",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "card-zone",
+        "damage",
+        "equipment",
+        "hp-change",
+        "life-state",
+        "stat-modifier",
+        "victory-check"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.monster.gt01",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "hp-change",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gt02",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "card-zone",
+        "damage",
+        "hp-change",
+        "life-state",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gt03",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "stat-modifier",
+        "target-selection",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.monster.gt04",
+      "kind": "monster",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "battle-resolution",
+        "stat-modifier",
+        "target-selection"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj01",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "life-state",
+        "npc-resolution",
+        "response-window",
+        "target-selection",
+        "transformation"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj02",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "healing",
+        "hp-change",
+        "life-state",
+        "npc-resolution",
+        "target-selection"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj03",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "draw",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "npc-resolution",
+        "target-selection"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj04",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj05",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "npc-resolution",
+        "target-selection"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj06",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "life-state",
+        "npc-resolution",
+        "response-window",
+        "target-selection",
+        "transfer"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj07",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "life-state",
+        "npc-resolution",
+        "response-window",
+        "target-selection",
+        "transfer"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj08",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "life-state",
+        "npc-resolution",
+        "response-window"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc-action.nj09",
+      "kind": "npc-action",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "npc-resolution",
+        "rescue",
+        "stat-modifier",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player"
+      ]
+    },
+    {
+      "id": "xyy.npc.n3w01",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.n3w02",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.n3w03",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.n3w04",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc101",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc102",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc103",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc104",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc105",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc106",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc107",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc201",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc202",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc203",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc206",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc207",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc302",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc305",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc306",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc401",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc402",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc403",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc404",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc405",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc503",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.npc.nc504",
+      "kind": "npc",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "npc-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.operation.cz01",
+      "kind": "operation",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "equipment",
+        "operation-resolution",
+        "response-window"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.operation.cz02",
+      "kind": "operation",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "effect-stack",
+        "operation-resolution",
+        "response-window"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "confirm",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.operation.cz03",
+      "kind": "operation",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "discard",
+        "effect-stack",
+        "operation-resolution",
+        "rescue",
+        "response-window"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.operation.cz04",
+      "kind": "operation",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "equipment",
+        "operation-resolution",
+        "response-window"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.operation.cz05",
+      "kind": "operation",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "operation-resolution",
+        "response-window",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.rune.sf01",
+      "kind": "rune",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "rune-resolution",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.rune.sf02",
+      "kind": "rune",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "rune-resolution",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.rune.sf03",
+      "kind": "rune",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "damage",
+        "effect-cancellation",
+        "effect-stack",
+        "response-window",
+        "rune-resolution"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.rune.sf04",
+      "kind": "rune",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "draw",
+        "effect-cancellation",
+        "effect-stack",
+        "healing",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "rune-resolution"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "confirm",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.rune.sf05",
+      "kind": "rune",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "rune-resolution",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.rune.sf06",
+      "kind": "rune",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "damage",
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "rune-resolution"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.rune.sf07",
+      "kind": "rune",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "effect-stack",
+        "rune-resolution",
+        "target-selection"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.rune.sf08",
+      "kind": "rune",
+      "packages": [
+        "shared-core"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "healing",
+        "hp-change",
+        "rune-resolution",
+        "stat-modifier",
+        "token-counter"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10101",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10102",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10201",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10202",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "transformation",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10302",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "transformation",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10303",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10401",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10402",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "triggered-effect",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10501",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "transfer",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10502",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10601",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10602",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "draw",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "confirm",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10701",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn10702",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20101",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20102",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20201",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "confirm",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20202",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-cancellation",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20301",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20302",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "healing",
+        "hp-change",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20601",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20602",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "equipment",
+        "life-state",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20701",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn20702",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30201",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "discard",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30202",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30203",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "draw",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30301",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "effect-stack",
+        "hp-change",
+        "target-selection",
+        "transformation",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30302",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30303",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30401",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "effect-stack",
+        "hp-change",
+        "target-selection",
+        "transformation",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30402",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "equipment",
+        "life-state",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30403",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "response-window",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30501",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "target-selection",
+        "transfer",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30502",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30601",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30602",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn30603",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40101",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40102",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "discard",
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "target-selection",
+        "transfer",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40201",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40202",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "response-window",
+        "target-selection",
+        "triggered-effect",
+        "victory-check"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40301",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "hp-change",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40302",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "transfer",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40401",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "equipment",
+        "healing",
+        "hp-change",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40402",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "triggered-effect",
+        "victory-check"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn40403",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50101",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50102",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50201",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50202",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "draw",
+        "effect-stack",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50203",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "transfer",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50301",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50302",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50401",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "draw",
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50402",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50501",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn50502",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "target-selection",
+        "token-counter",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60101",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60102",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "transfer",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60201",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "equipment",
+        "response-window",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "confirm",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60202",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "discard",
+        "effect-stack",
+        "life-state",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60301",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60302",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "target-selection",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60401",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60402",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "draw",
+        "effect-stack",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60403",
+      "kind": "skill",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "discard",
+        "draw",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "target-selection",
+        "triggered-effect",
+        "victory-check"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "choose-card",
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60501",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "damage",
+        "effect-stack",
+        "healing",
+        "hp-change",
+        "response-window",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60502",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60601",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "effect-stack",
+        "life-state",
+        "response-window",
+        "stat-modifier",
+        "token-counter",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60602",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "equipment",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "token-counter",
+        "transformation",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "mixed",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60701",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "effect-stack",
+        "stat-modifier",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60702",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60801",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "effect-stack",
+        "response-window",
+        "stat-modifier",
+        "token-counter",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60802",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "damage",
+        "effect-cancellation",
+        "effect-stack",
+        "hp-change",
+        "response-window",
+        "target-selection",
+        "token-counter",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "choose-number",
+        "choose-option",
+        "choose-player",
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.skill.jn60803",
+      "kind": "skill",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "card-zone",
+        "damage",
+        "effect-stack",
+        "hp-change",
+        "life-state",
+        "response-window",
+        "token-counter",
+        "triggered-effect"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "respond-or-pass"
+      ]
+    },
+    {
+      "id": "xyy.special-card.tkxj508",
+      "kind": "special-card",
+      "packages": [
+        "fengmingyushi"
+      ],
+      "primitives": [
+        "special-card-resolution"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    },
+    {
+      "id": "xyy.special-card.trxj405",
+      "kind": "special-card",
+      "packages": [
+        "standard"
+      ],
+      "primitives": [
+        "special-card-resolution",
+        "stat-modifier"
+      ],
+      "hiddenInformation": "none",
+      "uiChoices": [
+        "automatic"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "xyy.card.fj02",
+      "to": "xyy.card.tp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.jp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.jp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.jp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.jp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.jp05",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.jp06",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.tp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.tp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.zp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.zp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.zp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-1",
+      "to": "xyy.card.zp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-2",
+      "to": "xyy.card.tp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-2",
+      "to": "xyy.card.zp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-2",
+      "to": "xyy.card.zp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-2",
+      "to": "xyy.card.zp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-2",
+      "to": "xyy.card.zp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.fj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.fj02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.fj03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.fj04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.fj05",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.jp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.jp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.jp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.jp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.jp05",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.jp06",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.tp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.tp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.wq01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.wq02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.wq03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.wq04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.wq05",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.zp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.zp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.zp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-3",
+      "to": "xyy.card.zp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-4",
+      "to": "xyy.card.tp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-4",
+      "to": "xyy.card.tp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-4",
+      "to": "xyy.card.tp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-5",
+      "to": "xyy.card.jp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-5",
+      "to": "xyy.card.jp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-5",
+      "to": "xyy.card.jp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-5",
+      "to": "xyy.card.jp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-5",
+      "to": "xyy.card.jp05",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-5",
+      "to": "xyy.card.jp06",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-6",
+      "to": "xyy.card.tp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-6",
+      "to": "xyy.card.tp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-7",
+      "to": "xyy.card.tp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-8",
+      "to": "xyy.card.zp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-8",
+      "to": "xyy.card.zp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-8",
+      "to": "xyy.card.zp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.configuration.aas-8",
+      "to": "xyy.card.zp04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w01",
+      "to": "xyy.hero.x3w02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w01",
+      "to": "xyy.hero.x3w04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w01",
+      "to": "xyy.skill.jn40101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w01",
+      "to": "xyy.skill.jn40102",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w02",
+      "to": "xyy.hero.x3w01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w02",
+      "to": "xyy.skill.jn40201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w02",
+      "to": "xyy.skill.jn40202",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w03",
+      "to": "xyy.hero.x3w04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w03",
+      "to": "xyy.skill.jn40301",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w03",
+      "to": "xyy.skill.jn40302",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w04",
+      "to": "xyy.hero.x3w03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w04",
+      "to": "xyy.skill.jn40401",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w04",
+      "to": "xyy.skill.jn40402",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.x3w04",
+      "to": "xyy.skill.jn40403",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj101",
+      "to": "xyy.hero.xj102",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj101",
+      "to": "xyy.hero.xj104",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj101",
+      "to": "xyy.hero.xj105",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj101",
+      "to": "xyy.skill.jn10101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj101",
+      "to": "xyy.skill.jn10102",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj102",
+      "to": "xyy.hero.xj101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj102",
+      "to": "xyy.hero.xj103",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj102",
+      "to": "xyy.skill.jn10201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj102",
+      "to": "xyy.skill.jn10202",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj103",
+      "to": "xyy.hero.xj101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj103",
+      "to": "xyy.hero.xj102",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj103",
+      "to": "xyy.skill.jn10201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj103",
+      "to": "xyy.skill.jn10302",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj103",
+      "to": "xyy.skill.jn10303",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj104",
+      "to": "xyy.hero.xj101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj104",
+      "to": "xyy.skill.jn10401",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj104",
+      "to": "xyy.skill.jn10402",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj105",
+      "to": "xyy.skill.jn10501",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj105",
+      "to": "xyy.skill.jn10502",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj106",
+      "to": "xyy.skill.jn10601",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj106",
+      "to": "xyy.skill.jn10602",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj107",
+      "to": "xyy.skill.jn10701",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj107",
+      "to": "xyy.skill.jn10702",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj201",
+      "to": "xyy.hero.xj202",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj201",
+      "to": "xyy.hero.xj203",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj201",
+      "to": "xyy.skill.jn20101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj201",
+      "to": "xyy.skill.jn20102",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj202",
+      "to": "xyy.hero.xj201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj202",
+      "to": "xyy.skill.jn20201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj202",
+      "to": "xyy.skill.jn20202",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj203",
+      "to": "xyy.hero.xj201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj203",
+      "to": "xyy.skill.jn20301",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj203",
+      "to": "xyy.skill.jn20302",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj206",
+      "to": "xyy.hero.xj207",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj206",
+      "to": "xyy.skill.jn20601",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj206",
+      "to": "xyy.skill.jn20602",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj207",
+      "to": "xyy.hero.xj206",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj207",
+      "to": "xyy.skill.jn20701",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj207",
+      "to": "xyy.skill.jn20702",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj302",
+      "to": "xyy.skill.jn30201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj302",
+      "to": "xyy.skill.jn30202",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj302",
+      "to": "xyy.skill.jn30203",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj303",
+      "to": "xyy.hero.xj304",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj303",
+      "to": "xyy.skill.jn30301",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj303",
+      "to": "xyy.skill.jn30302",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj303",
+      "to": "xyy.skill.jn30303",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj304",
+      "to": "xyy.hero.xj303",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj304",
+      "to": "xyy.skill.jn30401",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj304",
+      "to": "xyy.skill.jn30402",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj304",
+      "to": "xyy.skill.jn30403",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj305",
+      "to": "xyy.hero.xj306",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj305",
+      "to": "xyy.skill.jn30501",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj305",
+      "to": "xyy.skill.jn30502",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj306",
+      "to": "xyy.skill.jn30601",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj306",
+      "to": "xyy.skill.jn30602",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj306",
+      "to": "xyy.skill.jn30603",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj401",
+      "to": "xyy.hero.xj402",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj401",
+      "to": "xyy.hero.xj403",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj401",
+      "to": "xyy.skill.jn50101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj401",
+      "to": "xyy.skill.jn50102",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj402",
+      "to": "xyy.hero.xj401",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj402",
+      "to": "xyy.skill.jn50201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj402",
+      "to": "xyy.skill.jn50202",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj402",
+      "to": "xyy.skill.jn50203",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj403",
+      "to": "xyy.hero.xj401",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj403",
+      "to": "xyy.skill.jn50301",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj403",
+      "to": "xyy.skill.jn50302",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj404",
+      "to": "xyy.skill.jn50401",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj404",
+      "to": "xyy.skill.jn50402",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj405",
+      "to": "xyy.skill.jn50501",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj405",
+      "to": "xyy.skill.jn50502",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj501",
+      "to": "xyy.hero.xj502",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj501",
+      "to": "xyy.skill.jn60101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj501",
+      "to": "xyy.skill.jn60102",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj502",
+      "to": "xyy.hero.xj501",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj502",
+      "to": "xyy.skill.jn60201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj502",
+      "to": "xyy.skill.jn60202",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj503",
+      "to": "xyy.hero.xj504",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj503",
+      "to": "xyy.skill.jn60301",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj503",
+      "to": "xyy.skill.jn60302",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj504",
+      "to": "xyy.hero.xj503",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj504",
+      "to": "xyy.skill.jn60401",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj504",
+      "to": "xyy.skill.jn60402",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj504",
+      "to": "xyy.skill.jn60403",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj505",
+      "to": "xyy.skill.jn60501",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj505",
+      "to": "xyy.skill.jn60502",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj506",
+      "to": "xyy.hero.xj507",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj506",
+      "to": "xyy.skill.jn60601",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj506",
+      "to": "xyy.skill.jn60602",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj507",
+      "to": "xyy.hero.xj506",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj507",
+      "to": "xyy.skill.jn60701",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj507",
+      "to": "xyy.skill.jn60702",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj508",
+      "to": "xyy.skill.jn60801",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj508",
+      "to": "xyy.skill.jn60802",
+      "type": "content"
+    },
+    {
+      "from": "xyy.hero.xj508",
+      "to": "xyy.skill.jn60803",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w01",
+      "to": "xyy.hero.x3w01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w01",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w01",
+      "to": "xyy.npc-action.nj07",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w02",
+      "to": "xyy.hero.x3w02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w02",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w02",
+      "to": "xyy.npc-action.nj09",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w03",
+      "to": "xyy.hero.x3w03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w03",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w03",
+      "to": "xyy.npc-action.nj02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w04",
+      "to": "xyy.hero.x3w04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w04",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.n3w04",
+      "to": "xyy.npc-action.nj02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc101",
+      "to": "xyy.hero.xj101",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc101",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc101",
+      "to": "xyy.npc-action.nj09",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc102",
+      "to": "xyy.hero.xj102",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc102",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc102",
+      "to": "xyy.npc-action.nj09",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc103",
+      "to": "xyy.hero.xj103",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc103",
+      "to": "xyy.npc-action.nj07",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc103",
+      "to": "xyy.npc-action.nj09",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc104",
+      "to": "xyy.hero.xj104",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc104",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc104",
+      "to": "xyy.npc-action.nj06",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc105",
+      "to": "xyy.hero.xj105",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc105",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc105",
+      "to": "xyy.npc-action.nj09",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc106",
+      "to": "xyy.hero.xj106",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc106",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc106",
+      "to": "xyy.npc-action.nj04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc107",
+      "to": "xyy.hero.xj107",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc107",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc107",
+      "to": "xyy.npc-action.nj07",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc201",
+      "to": "xyy.hero.xj201",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc201",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc201",
+      "to": "xyy.npc-action.nj03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc202",
+      "to": "xyy.hero.xj202",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc202",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc202",
+      "to": "xyy.npc-action.nj05",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc203",
+      "to": "xyy.hero.xj203",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc203",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc203",
+      "to": "xyy.npc-action.nj02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc206",
+      "to": "xyy.hero.xj206",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc206",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc206",
+      "to": "xyy.npc-action.nj05",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc207",
+      "to": "xyy.hero.xj207",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc207",
+      "to": "xyy.npc-action.nj04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc207",
+      "to": "xyy.npc-action.nj05",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc302",
+      "to": "xyy.hero.xj302",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc302",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc302",
+      "to": "xyy.npc-action.nj06",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc305",
+      "to": "xyy.hero.xj305",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc305",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc305",
+      "to": "xyy.npc-action.nj02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc306",
+      "to": "xyy.hero.xj306",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc306",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc306",
+      "to": "xyy.npc-action.nj09",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc401",
+      "to": "xyy.hero.xj401",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc401",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc401",
+      "to": "xyy.npc-action.nj09",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc402",
+      "to": "xyy.hero.xj402",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc402",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc402",
+      "to": "xyy.npc-action.nj08",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc403",
+      "to": "xyy.hero.xj403",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc403",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc403",
+      "to": "xyy.npc-action.nj07",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc404",
+      "to": "xyy.hero.xj404",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc404",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc404",
+      "to": "xyy.npc-action.nj03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc405",
+      "to": "xyy.hero.xj405",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc405",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc405",
+      "to": "xyy.npc-action.nj04",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc503",
+      "to": "xyy.hero.xj503",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc503",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc503",
+      "to": "xyy.npc-action.nj09",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc504",
+      "to": "xyy.hero.xj504",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc504",
+      "to": "xyy.npc-action.nj01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.npc.nc504",
+      "to": "xyy.npc-action.nj08",
+      "type": "content"
+    },
+    {
+      "from": "xyy.skill.jn20202",
+      "to": "xyy.card.tp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.skill.jn40301",
+      "to": "xyy.card.tp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.skill.jn60201",
+      "to": "xyy.card.tp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.skill.jn60201",
+      "to": "xyy.card.zp01",
+      "type": "content"
+    },
+    {
+      "from": "xyy.skill.jn60201",
+      "to": "xyy.card.zp02",
+      "type": "content"
+    },
+    {
+      "from": "xyy.skill.jn60201",
+      "to": "xyy.card.zp03",
+      "type": "content"
+    },
+    {
+      "from": "xyy.special-card.tkxj508",
+      "to": "xyy.hero.xj508",
+      "type": "content"
+    },
+    {
+      "from": "xyy.special-card.tkxj508",
+      "to": "xyy.skill.jn60801",
+      "type": "content"
+    },
+    {
+      "from": "xyy.special-card.tkxj508",
+      "to": "xyy.skill.jn60802",
+      "type": "content"
+    },
+    {
+      "from": "xyy.special-card.tkxj508",
+      "to": "xyy.skill.jn60803",
+      "type": "content"
+    },
+    {
+      "from": "xyy.special-card.trxj405",
+      "to": "xyy.hero.xj405",
+      "type": "content"
+    }
+  ]
+}
