@@ -159,20 +159,36 @@ describe("M05 six-player combat bots", () => {
         let playerId: PlayerId;
         let nextCommand: CommandEnvelope["command"];
         if (state.dyingBatch !== null) {
-          playerId =
-            state.dyingBatch.priorityOrder[state.dyingBatch.priorityIndex]!;
-          const actions = createPlayerView(state, playerId).availableActions;
-          const rescue = actions.find(
-            (action) => action.type === "play-rescue-card",
-          );
-          const pass = actions.find((action) => action.type === "pass-rescue");
-          if (rescue?.type === "play-rescue-card") {
-            rescueCardsPlayed += 1;
-            nextCommand = rescue;
-          } else if (pass?.type === "pass-rescue") {
-            nextCommand = pass;
+          if (state.dyingBatch.status === "distributing-loot") {
+            playerId = state.pendingChoice!.playerIds[0]!;
+            const finish = createPlayerView(
+              state,
+              playerId,
+            ).availableActions.find(
+              (action) => action.type === "finish-death-loot",
+            );
+            if (finish?.type !== "finish-death-loot") {
+              throw new Error("Loot Bot has no legal finish action.");
+            }
+            nextCommand = finish;
           } else {
-            throw new Error("Rescue priority Bot has no legal action.");
+            playerId =
+              state.dyingBatch.priorityOrder[state.dyingBatch.priorityIndex]!;
+            const actions = createPlayerView(state, playerId).availableActions;
+            const rescue = actions.find(
+              (action) => action.type === "play-rescue-card",
+            );
+            const pass = actions.find(
+              (action) => action.type === "pass-rescue",
+            );
+            if (rescue?.type === "play-rescue-card") {
+              rescueCardsPlayed += 1;
+              nextCommand = rescue;
+            } else if (pass?.type === "pass-rescue") {
+              nextCommand = pass;
+            } else {
+              throw new Error("Rescue priority Bot has no legal action.");
+            }
           }
         } else if (state.pendingChoice !== null) {
           playerId = state.pendingChoice.playerIds[0]!;

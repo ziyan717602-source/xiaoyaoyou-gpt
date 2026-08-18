@@ -77,6 +77,14 @@
       "status": "verified",
       "verifiedBoundary": "native ownership, zero-input activation, deterministic draw and refill reuse, post-draw threshold, owner-only mandatory choice, seeded timeout, once-per-turn state, JSON replay, SQLite choice/final restart and six-socket privacy",
       "linkedPending": []
+    },
+    "xyy.skill.jn50203": {
+      "name": "盗墓",
+      "owner": "xyy.hero.xj402",
+      "rule": "after one simultaneous death batch containing at least one other player with cards, the living owner collects every dead player's hand and equipment, may distribute any captured cards among other living players, retains the remainder, then takes one ordinary neutral self-damage",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, whole-batch death timing, owner-death and victory skip, hand/equipment collection, optional repeated distribution, retain remainder, canonical self-damage response and recursive dying, 15-second/disconnect pass, JSON replay, SQLite loot/reaction restart and six-socket privacy",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -97,7 +105,11 @@
     "PSDGamepkg/JNS/XJ405.cs:1326-1354 JN50201 requires own hand plus another player's cards, chooses one own hand card and JP01/JP06, then routes through G0CC",
     "psd.db3:Skill:JN50202 OCCURS R#GR ONCE 1 and description draw one then discard one when post-draw hand count is at least two",
     "PSDGamepkg/JNS/XJ405.cs:1356-1360 JN50202 performs G0DH draw one before checking Tux.Count >= 2 and issuing mandatory discard one",
-    "PSDGamepkg/XIG.cs:1218-1330 G0DH draw/discard planning and ProtectedTux exclusion"
+    "PSDGamepkg/XIG.cs:1218-1330 G0DH draw/discard planning and ProtectedTux exclusion",
+    "psd.db3:Skill:JN50203 OCCURS !G0ZW PRIORS 190 ONCE 1 TERMINI 1 and description collect every fallen character card, distribute arbitrarily, then lose one HP",
+    "PSDGamepkg/JNS/XJ405.cs:1362-1425 JN50203 rejects a batch containing its owner, collects every other dead player's hand/equipment, loops optional distribution, then calls Harm(self,self,1)",
+    "PSDGamepkg/XIG.cs:295-430 G0ZW marks all deaths and victory at priority 100, runs JN50203 at 190, then generic dead-card cleanup at 200",
+    "PSDGamepkg/XIG.cs:1015+ G0HQ type 1 transfers dead hand and equipment into the recipient hand"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -122,7 +134,13 @@
     "jn50201Timeout": "activation is optional so the action timeout pays nothing; after activation the existing mandatory card-zone choice uses deterministic seeded random fallback",
     "jn50202AtomicResolution": "one authoritative event records the deterministic draw result, consumes the per-turn marker and opens a serializable owner-only choice only when the actual post-draw hand count is at least two",
     "jn50202ChoiceAndTimeout": "the pending choice contains every current own hand instance, requires exactly one discard and uses the shared deterministic seeded random timeout; no reaction window is opened",
-    "jn50202ProtectedCardsScope": "legacy G0DH excludes Board.ProtectedTux, but the only known producer is special hero SP301 outside standard plus Fengmingyushi; the scoped runtime has no protected-card state, so all scoped hand cards are eligible and broader special-hero compatibility is not claimed"
+    "jn50202ProtectedCardsScope": "legacy G0DH excludes Board.ProtectedTux, but the only known producer is special hero SP301 outside standard plus Fengmingyushi; the scoped runtime has no protected-card state, so all scoped hand cards are eligible and broader special-hero compatibility is not claimed",
+    "jn50203BatchTiming": "death zones are retained until the complete simultaneous dying batch is known; JN50203 runs once after every death has been marked but is skipped when the owner also died or that batch already reduced living teams to one",
+    "jn50203CollectionAndDistribution": "all dead hands plus weapon and armor are atomically moved into the owner hand; only captured instances remain selectable for repeated owner-only transfers to any other living player, and finishing early retains every unassigned instance",
+    "jn50203Timeout": "distribution is optional, so each 15-second deadline and the disconnected auto-decision finish immediately without transferring another card; each completed transfer opens a fresh 15-second choice deadline",
+    "jn50203SelfDamage": "finishing or exhausting the captured set creates one ordinary neutral self-damage through the canonical response pipeline, so TP03/FJ05 and a subsequent dying batch remain available exactly as for other damage",
+    "jn50203Visibility": "captured instance ids exist only in the owner's hand, pending choice and availableActions; all other views expose public counts and empty dead zones without revealing the captured identities",
+    "jn50203ProtectedCardsScope": "legacy G0HQ type 1 excludes Board.ProtectedTux, but the scoped standard plus Fengmingyushi runtime has no protected-card producer; every scoped dead hand/equipment instance is therefore collectible, without claiming compatibility with out-of-scope special heroes"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -185,6 +203,15 @@
     "CS02-58": "JN50202-choice-lists-every-current-own-hand-instance-only-to-the-owner-and-discards-exactly-one",
     "CS02-59": "JN50202-mandatory-choice-timeout-discards-one-with-replayable-seeded-randomness",
     "CS02-60": "JN50202-opens-no-reaction-window-consumes-on-activation-and-action-timeout-does-not-activate",
-    "CS02-61": "JN50202-replays-through-JSON-and-persists-choice-final-state-and-privacy-through-SQLite-restarts-with-six-WebSockets"
+    "CS02-61": "JN50202-replays-through-JSON-and-persists-choice-final-state-and-privacy-through-SQLite-restarts-with-six-WebSockets",
+    "CS02-62": "JN50203-triggers-once-for-a-whole-other-player-death-batch-and-skips-owner-death-or-already-winning-batches",
+    "CS02-63": "JN50203-collects-every-dead-hand-weapon-and-armor-instance-before-generic-cleanup",
+    "CS02-64": "JN50203-clears-dead-zones-and-converts-collected-equipment-into-owner-hand-cards",
+    "CS02-65": "JN50203-allows-repeated-arbitrary-subset-transfer-only-to-other-living-players",
+    "CS02-66": "JN50203-finish-retains-all-unassigned-cards-and-applies-exactly-one-self-damage-per-batch",
+    "CS02-67": "JN50203-self-damage-reuses-the-canonical-response-and-recursive-dying-pipeline",
+    "CS02-68": "JN50203-optional-choice-timeout-and-disconnected-auto-decision-finish-without-further-transfer",
+    "CS02-69": "JN50203-captured-card-identities-and-actions-are-visible-only-to-the-owner",
+    "CS02-70": "JN50203-replays-through-JSON-and-persists-loot-choice-self-damage-window-and-privacy-through-SQLite-restarts-with-six-WebSockets"
   }
 }

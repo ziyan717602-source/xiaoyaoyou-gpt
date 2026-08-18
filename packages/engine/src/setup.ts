@@ -20,7 +20,11 @@ import {
   type TeamId,
 } from "./index.js";
 import { seedCommitment, nextInt, shuffle } from "./random.js";
-import { applyDyingCommand, reduceDyingEvent } from "./damage-dying.js";
+import {
+  applyDeathLootTimeout,
+  applyDyingCommand,
+  reduceDyingEvent,
+} from "./damage-dying.js";
 import {
   applyPendingChoiceCommand,
   applyPendingChoiceTimeout,
@@ -595,6 +599,9 @@ function resolveTimeout(
       ),
       command.deadlineAt,
     );
+  }
+  if (deadline.targetId.startsWith("death-loot:")) {
+    return applyDeathLootTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("choice:")) {
     return applyPendingChoiceTimeout(state, command, deadline.playerId);

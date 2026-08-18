@@ -4,7 +4,11 @@ import type {
   EffectId,
   PlayerId,
 } from "@xiaoyaoyou/protocol";
-import type { ApplyCommandResult, DomainEvent } from "./architecture.js";
+import type {
+  ApplyCommandResult,
+  DomainEvent,
+  EngineCommand,
+} from "./architecture.js";
 import type {
   DyingBatch,
   MatchState,
@@ -23,9 +27,53 @@ import {
   heroHasSkill,
   type CardInstanceId,
 } from "./setup-content.js";
+import { beginDamageResponse } from "./reaction.js";
 import { reduceTurnEvent } from "./turn.js";
 
 export const RESCUE_DEADLINE_MS = 15_000;
+
+function sameValues(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
+function playerCards(player: Readonly<PlayerState>): readonly CardInstanceId[] {
+  return [
+    ...player.hand,
+    ...(player.equipment.weapon === null ? [] : [player.equipment.weapon]),
+    ...(player.equipment.armor === null ? [] : [player.equipment.armor]),
+  ];
+}
+
+function deadBatchCards(
+  state: Readonly<MatchState>,
+  batch: Readonly<DyingBatch>,
+): readonly CardInstanceId[] {
+  return batch.deadPlayerIds.flatMap((playerId) =>
+    playerCards(state.players[playerId]!),
+  );
+}
+
+function jn50203Owner(
+  state: Readonly<MatchState>,
+  batch: Readonly<DyingBatch>,
+): PlayerState | undefined {
+  if (aliveTeams(state).length <= 1) return undefined;
+  return Object.values(state.players)
+    .filter(
+      (player) =>
+        player.alive &&
+        player.heroId !== null &&
+        !batch.deadPlayerIds.includes(player.id) &&
+        heroHasSkill(player.heroId, "xyy.skill.jn50203"),
+    )
+    .sort((left, right) => left.seat - right.seat)[0];
+}
 
 export interface DamageIntent {
   readonly itemId: string;
@@ -278,7 +326,18 @@ function openTarget(
     currentIndex += 1;
   }
   if (currentIndex >= batch.targetPlayerIds.length) {
-    return { ...state, dyingBatch: null, pendingChoice: null };
+    return batch.deadPlayerIds.length === 0
+      ? { ...state, dyingBatch: null, pendingChoice: null }
+      : {
+          ...state,
+          dyingBatch: {
+            ...batch,
+            status: "awaiting-batch-cleanup",
+            openedAt,
+            deadlineAt: openedAt,
+          },
+          pendingChoice: null,
+        };
   }
   const currentTargetPlayerId = batch.targetPlayerIds[currentIndex]!;
   const priorityOrder = priorityFromTarget(state, currentTargetPlayerId);
@@ -603,11 +662,7 @@ export function reduceDyingEvent(
     ) {
       throw new Error("Death event is not applicable.");
     }
-    const discarded = [
-      ...player.hand,
-      ...(player.equipment.weapon === null ? [] : [player.equipment.weapon]),
-      ...(player.equipment.armor === null ? [] : [player.equipment.armor]),
-    ];
+    const discarded = playerCards(player);
     const expectedDiscarded = stringsPayload(event, "cardInstanceIds");
     if (
       discarded.length !== expectedDiscarded.length ||
@@ -623,11 +678,8 @@ export function reduceDyingEvent(
           ...player,
           alive: false,
           hp: 0,
-          hand: [],
-          equipment: { weapon: null, armor: null },
         },
       },
-      discardPile: [...state.discardPile, ...discarded],
       dyingBatch: {
         ...batch,
         deadPlayerIds: [...batch.deadPlayerIds, playerId],
@@ -646,6 +698,228 @@ export function reduceDyingEvent(
       throw new Error("After-death completion is not applicable.");
     }
     next = advanceBatch(state, batch, completedAt);
+  } else if (event.type === "death.batch-cleaned") {
+    const deadPlayerIds = stringsPayload(
+      event,
+      "deadPlayerIds",
+    ) as readonly PlayerId[];
+    const cardInstanceIds = stringsPayload(
+      event,
+      "cardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const expectedCards = deadBatchCards(state, batch);
+    if (
+      batch.status !== "awaiting-batch-cleanup" ||
+      !sameValues(deadPlayerIds, batch.deadPlayerIds) ||
+      !sameValues(cardInstanceIds, expectedCards)
+    ) {
+      throw new Error("Death batch cleanup is not applicable.");
+    }
+    const players = { ...state.players };
+    for (const playerId of batch.deadPlayerIds) {
+      const player = players[playerId]!;
+      players[playerId] = {
+        ...player,
+        hand: [],
+        equipment: { weapon: null, armor: null },
+      };
+    }
+    next = {
+      ...state,
+      players,
+      discardPile: [...state.discardPile, ...cardInstanceIds],
+      dyingBatch: null,
+      pendingChoice: null,
+    };
+  } else if (event.type === "death.loot-opened") {
+    const ownerPlayerId = stringPayload(event, "ownerPlayerId");
+    const deadPlayerIds = stringsPayload(
+      event,
+      "deadPlayerIds",
+    ) as readonly PlayerId[];
+    const cardInstanceIds = stringsPayload(
+      event,
+      "cardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const choiceId = stringPayload(event, "choiceId");
+    const openedAt = numberPayload(event, "openedAt");
+    const owner = jn50203Owner(state, batch);
+    const expectedCards = deadBatchCards(state, batch);
+    if (
+      batch.status !== "awaiting-batch-cleanup" ||
+      owner?.id !== ownerPlayerId ||
+      expectedCards.length === 0 ||
+      !sameValues(deadPlayerIds, batch.deadPlayerIds) ||
+      !sameValues(cardInstanceIds, expectedCards) ||
+      choiceId !== `${batch.batchId}:choice:jn50203`
+    ) {
+      throw new Error("JN50203 loot opening is not applicable.");
+    }
+    const players = { ...state.players };
+    for (const playerId of batch.deadPlayerIds) {
+      const player = players[playerId]!;
+      players[playerId] = {
+        ...player,
+        hand: [],
+        equipment: { weapon: null, armor: null },
+      };
+    }
+    players[owner.id] = {
+      ...owner,
+      hand: [...owner.hand, ...cardInstanceIds],
+    };
+    next = {
+      ...state,
+      players,
+      dyingBatch: {
+        ...batch,
+        status: "distributing-loot",
+        openedAt,
+        deadlineAt: openedAt + RESCUE_DEADLINE_MS,
+      },
+      pendingChoice: {
+        choiceId,
+        playerIds: [owner.id],
+        prompt: "jn50203-distribute-loot",
+        minSelections: 0,
+        maxSelections: cardInstanceIds.length,
+        optionIds: cardInstanceIds,
+        optional: true,
+        status: "open",
+        openedAt,
+        deadlineAt: openedAt + RESCUE_DEADLINE_MS,
+        fallback: "pass",
+        continuation: {
+          continuationId: `${choiceId}:continuation`,
+          effectId: batch.sourceEffectId,
+          step: "distribute-jn50203-loot",
+          locals: { ownerPlayerId: owner.id },
+          resumeWith: "finish-jn50203-loot",
+        },
+      },
+    };
+  } else if (event.type === "death.loot-distributed") {
+    const ownerPlayerId = stringPayload(event, "ownerPlayerId");
+    const targetPlayerId = stringPayload(event, "targetPlayerId");
+    const choiceId = stringPayload(event, "choiceId");
+    const cardInstanceIds = stringsPayload(
+      event,
+      "cardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const remainingCardInstanceIds = stringsPayload(
+      event,
+      "remainingCardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const distributedAt = numberPayload(event, "distributedAt");
+    const choice = state.pendingChoice;
+    const owner = state.players[ownerPlayerId];
+    const target = state.players[targetPlayerId];
+    const selected = new Set<string>(cardInstanceIds);
+    const expectedRemaining =
+      choice?.optionIds.filter((card) => !selected.has(card)) ?? [];
+    if (
+      batch.status !== "distributing-loot" ||
+      choice === null ||
+      choice.status !== "open" ||
+      choice.choiceId !== choiceId ||
+      choice.playerIds[0] !== ownerPlayerId ||
+      owner === undefined ||
+      !owner.alive ||
+      target === undefined ||
+      !target.alive ||
+      target.id === owner.id ||
+      cardInstanceIds.length === 0 ||
+      selected.size !== cardInstanceIds.length ||
+      cardInstanceIds.some(
+        (card) =>
+          !choice.optionIds.includes(card) || !owner.hand.includes(card),
+      ) ||
+      !sameValues(remainingCardInstanceIds, expectedRemaining)
+    ) {
+      throw new Error("JN50203 loot distribution is not applicable.");
+    }
+    const nextChoice =
+      remainingCardInstanceIds.length === 0
+        ? null
+        : {
+            ...choice,
+            optionIds: remainingCardInstanceIds,
+            maxSelections: remainingCardInstanceIds.length,
+            openedAt: distributedAt,
+            deadlineAt: distributedAt + RESCUE_DEADLINE_MS,
+          };
+    next = {
+      ...state,
+      players: {
+        ...state.players,
+        [owner.id]: {
+          ...owner,
+          hand: owner.hand.filter((card) => !selected.has(card)),
+        },
+        [target.id]: {
+          ...target,
+          hand: [...target.hand, ...cardInstanceIds],
+        },
+      },
+      dyingBatch: {
+        ...batch,
+        openedAt: distributedAt,
+        deadlineAt: distributedAt + RESCUE_DEADLINE_MS,
+      },
+      pendingChoice: nextChoice,
+    };
+  } else if (event.type === "death.loot-finished") {
+    const ownerPlayerId = stringPayload(event, "ownerPlayerId");
+    const choiceId = stringPayload(event, "choiceId");
+    const finishedAt = numberPayload(event, "finishedAt");
+    const remainingCardInstanceIds = stringsPayload(
+      event,
+      "remainingCardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const choice = state.pendingChoice;
+    const owner = state.players[ownerPlayerId];
+    const expectedRemaining = choice?.optionIds ?? [];
+    if (
+      batch.status !== "distributing-loot" ||
+      owner === undefined ||
+      !owner.alive ||
+      (choice !== null &&
+        (choice.status !== "open" ||
+          choice.choiceId !== choiceId ||
+          choice.playerIds[0] !== ownerPlayerId)) ||
+      (choice === null && choiceId !== `${batch.batchId}:choice:jn50203`) ||
+      !sameValues(remainingCardInstanceIds, expectedRemaining)
+    ) {
+      throw new Error("JN50203 loot finish is not applicable.");
+    }
+    const cleared: MatchState = {
+      ...state,
+      dyingBatch: null,
+      pendingChoice: null,
+    };
+    const sourceEffectId = `${event.eventId}:jn50203`;
+    const expectedDamage = planDamageBatch(cleared, [
+      {
+        itemId: `${sourceEffectId}:damage:0`,
+        sourcePlayerId: owner.id,
+        targetPlayerId: owner.id,
+        amount: 1,
+        element: "neutral",
+      },
+    ]);
+    if (
+      JSON.stringify(event.payload.damageItems) !==
+      JSON.stringify(expectedDamage)
+    ) {
+      throw new Error("JN50203 self damage disagrees with deterministic plan.");
+    }
+    next = beginDamageResponse(
+      cleared,
+      sourceEffectId,
+      owner.id,
+      expectedDamage,
+      finishedAt,
+    );
   } else {
     throw new Error(`Unsupported dying event ${event.type}.`);
   }
@@ -699,20 +973,86 @@ class EventBuilder {
     if (this.state.dyingBatch?.status !== "awaiting-death") return;
     const playerId = this.state.dyingBatch.currentTargetPlayerId;
     const player = this.state.players[playerId]!;
-    const cardInstanceIds = [
-      ...player.hand,
-      ...(player.equipment.weapon === null ? [] : [player.equipment.weapon]),
-      ...(player.equipment.armor === null ? [] : [player.equipment.armor]),
-    ];
+    const cardInstanceIds = playerCards(player);
     this.append("death.player-died", { playerId, cardInstanceIds });
     this.append("death.after-effects-completed", {
       playerId,
       completedAt: this.serverReceivedAt,
     });
+    this.resolveBatchCleanup();
+  }
+
+  resolveBatchCleanup(): void {
+    const batch = this.state.dyingBatch;
+    if (batch?.status !== "awaiting-batch-cleanup") return;
+    const cardInstanceIds = deadBatchCards(this.state, batch);
+    const owner = jn50203Owner(this.state, batch);
+    if (owner !== undefined && cardInstanceIds.length > 0) {
+      this.append("death.loot-opened", {
+        ownerPlayerId: owner.id,
+        deadPlayerIds: batch.deadPlayerIds,
+        cardInstanceIds,
+        choiceId: `${batch.batchId}:choice:jn50203`,
+        openedAt: this.serverReceivedAt,
+      });
+    } else {
+      this.append("death.batch-cleaned", {
+        deadPlayerIds: batch.deadPlayerIds,
+        cardInstanceIds,
+        completedAt: this.serverReceivedAt,
+      });
+    }
+  }
+
+  finishLoot(timeout: boolean): void {
+    const batch = this.state.dyingBatch;
+    if (batch?.status !== "distributing-loot") {
+      throw new Error("JN50203 loot is not ready to finish.");
+    }
+    const owner = jn50203Owner(this.state, batch);
+    if (owner === undefined) throw new Error("JN50203 owner is missing.");
+    const choiceId = `${batch.batchId}:choice:jn50203`;
+    const nextEventId = `${this.state.matchId}:event:${this.state.eventSequence + 1}`;
+    const sourceEffectId = `${nextEventId}:jn50203`;
+    const cleared: MatchState = {
+      ...this.state,
+      dyingBatch: null,
+      pendingChoice: null,
+    };
+    this.append("death.loot-finished", {
+      ownerPlayerId: owner.id,
+      choiceId,
+      remainingCardInstanceIds: this.state.pendingChoice?.optionIds ?? [],
+      finishedAt: this.serverReceivedAt,
+      timeout,
+      damageItems: planDamageBatch(cleared, [
+        {
+          itemId: `${sourceEffectId}:damage:0`,
+          sourcePlayerId: owner.id,
+          targetPlayerId: owner.id,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+    });
+  }
+
+  resolveLootCompletion(): void {
+    if (
+      this.state.dyingBatch?.status === "distributing-loot" &&
+      this.state.pendingChoice === null
+    ) {
+      this.finishLoot(false);
+    }
   }
 
   finishIfNeeded(): void {
-    if (this.state.dyingBatch !== null) return;
+    if (
+      this.state.dyingBatch !== null ||
+      this.state.pendingChoice !== null ||
+      this.state.reactionWindow !== null
+    )
+      return;
     const teams = aliveTeams(this.state);
     if (teams.length > 1) return;
     this.append("match.finished", {
@@ -729,6 +1069,86 @@ export function applyDyingCommand(
 ): ApplyCommandResult {
   const batch = input.dyingBatch;
   const choice = input.pendingChoice;
+  if (batch?.status === "distributing-loot") {
+    if (
+      choice === null ||
+      choice.status !== "open" ||
+      !choice.playerIds.includes(envelope.playerId)
+    ) {
+      return {
+        accepted: false,
+        reason: "not-available",
+        currentVersion: input.version,
+      };
+    }
+    if (
+      !Number.isSafeInteger(serverReceivedAt) ||
+      serverReceivedAt < 0 ||
+      serverReceivedAt > choice.deadlineAt
+    ) {
+      return {
+        accepted: false,
+        reason:
+          serverReceivedAt > choice.deadlineAt ? "expired-window" : "invalid",
+        currentVersion: input.version,
+      };
+    }
+    const builder = new EventBuilder(
+      input,
+      envelope.commandId,
+      input.version + 1,
+      serverReceivedAt,
+    );
+    const command = envelope.command;
+    if (command.type === "distribute-death-loot") {
+      const cardInstanceIds = command.cardInstanceIds as CardInstanceId[];
+      const target = input.players[command.targetPlayerId];
+      if (
+        command.choiceId !== choice.choiceId ||
+        target === undefined ||
+        !target.alive ||
+        target.id === envelope.playerId ||
+        cardInstanceIds.length === 0 ||
+        new Set(cardInstanceIds).size !== cardInstanceIds.length ||
+        cardInstanceIds.some((card) => !choice.optionIds.includes(card))
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      const selected = new Set<string>(cardInstanceIds);
+      builder.append("death.loot-distributed", {
+        ownerPlayerId: envelope.playerId,
+        targetPlayerId: target.id,
+        choiceId: choice.choiceId,
+        cardInstanceIds,
+        remainingCardInstanceIds: choice.optionIds.filter(
+          (card) => !selected.has(card),
+        ),
+        distributedAt: serverReceivedAt,
+      });
+      builder.resolveLootCompletion();
+    } else if (command.type === "finish-death-loot") {
+      if (command.choiceId !== choice.choiceId) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      builder.finishLoot(false);
+    } else {
+      return {
+        accepted: false,
+        reason: "not-available",
+        currentVersion: input.version,
+      };
+    }
+    builder.finishIfNeeded();
+    return { accepted: true, state: builder.state, events: builder.events };
+  }
   if (
     batch === null ||
     choice === null ||
@@ -896,6 +1316,41 @@ export function applyDyingCommand(
       currentVersion: input.version,
     };
   }
+  builder.resolveBatchCleanup();
+  builder.finishIfNeeded();
+  return { accepted: true, state: builder.state, events: builder.events };
+}
+
+export function applyDeathLootTimeout(
+  input: Readonly<MatchState>,
+  command: Readonly<Extract<EngineCommand, { origin: "system-timeout" }>>,
+  playerId: PlayerId,
+): ApplyCommandResult {
+  const batch = input.dyingBatch;
+  const choice = input.pendingChoice;
+  if (
+    batch?.status !== "distributing-loot" ||
+    choice === null ||
+    choice.status !== "open" ||
+    choice.fallback !== "pass" ||
+    choice.playerIds[0] !== playerId ||
+    command.targetId !== `death-loot:${choice.choiceId}:${playerId}` ||
+    command.deadlineAt < choice.openedAt ||
+    command.deadlineAt > choice.deadlineAt
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  const builder = new EventBuilder(
+    input,
+    command.commandId,
+    input.version + 1,
+    command.deadlineAt,
+  );
+  builder.finishLoot(true);
   builder.finishIfNeeded();
   return { accepted: true, state: builder.state, events: builder.events };
 }

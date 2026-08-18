@@ -66,6 +66,19 @@
     "xyy.skill.jn50202": {
       "boundary": "native XJ402 once-per-action draw-one followed by mandatory discard at post-draw hand count two or more is verified through private choice, deterministic timeout, replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn50202.md"]
+    },
+    "xyy.skill.jn50203": {
+      "boundary": "native XJ402 once-per-other-death-batch collection and optional redistribution of every dead hand/equipment card followed by canonical self-damage is verified through privacy, timeout, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50203.md"]
+    },
+    "xyy.hero.xj402": {
+      "boundary": "setup identity, base stats and all three native skills JN50201/JN50202/JN50203 are fully verified",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn50201.md",
+        "receipt:docs/verification/receipts/cs02-jn50202.md",
+        "receipt:docs/verification/receipts/cs02-jn50203.md"
+      ]
     }
   },
   "baselinePartial": {
@@ -114,14 +127,6 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn40401.md"
-        ]
-      },
-      "xyy.hero.xj402": {
-        "boundary": "setup identity and base stats plus JN50201 once-per-action JP01/JP06 conversion and JN50202 draw-then-discard are verified; JN50203 remains pending",
-        "evidence": [
-          "M02-SETUP-AND-TEAMS",
-          "receipt:docs/verification/receipts/cs02-jn50201.md",
-          "receipt:docs/verification/receipts/cs02-jn50202.md"
         ]
       }
     },

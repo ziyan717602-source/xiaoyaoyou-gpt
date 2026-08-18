@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { CommandEnvelope, PlayerId } from "@xiaoyaoyou/protocol";
 import {
   applyCommand,
+  applyPlannedDamage,
   beginDamageResponse,
+  collectSystemDeadlines,
   createSetupMatch,
   planDamageBatch,
   reduceEvent,
@@ -106,6 +108,180 @@ function fixture(): {
 }
 
 describe("M05 damage/dying event replay", () => {
+  it("replays JN50203 loot distribution, timeout and self damage across JSON checkpoints", () => {
+    const setup = fixture();
+    const owner = setup.actor;
+    const victim = setup.target;
+    const recipient = setup.rescuer;
+    const claimed = new Set(["xyy.card.jp01@1", "xyy.card.wq01@47"]);
+    const base: MatchState = {
+      ...setup.state,
+      players: Object.fromEntries(
+        Object.values(setup.state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === owner ? "xyy.hero.xj402" : player.heroId,
+            hp: player.id === owner ? 3 : player.id === victim ? 1 : player.hp,
+            hand: player.id === victim ? ["xyy.card.jp01@1"] : [],
+            equipment:
+              player.id === victim
+                ? { weapon: "xyy.card.wq01@47", armor: null }
+                : { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+    const initial = applyPlannedDamage(
+      base,
+      "jn50203-replay-kill",
+      planDamageBatch(base, [
+        {
+          itemId: "jn50203-replay-kill-item",
+          sourcePlayerId: owner,
+          targetPlayerId: victim,
+          amount: 1,
+          element: "thunder",
+        },
+      ]),
+      1_000,
+    );
+    let uninterrupted = initial;
+    let resumed = JSON.parse(JSON.stringify(initial)) as MatchState;
+    const events: DomainEvent[] = [];
+    let sequence = 0;
+    while (uninterrupted.dyingBatch?.status === "awaiting-rescue") {
+      const batch = uninterrupted.dyingBatch;
+      const priority = batch.priorityOrder[batch.priorityIndex]!;
+      const command = {
+        type: "pass-rescue" as const,
+        choiceId: uninterrupted.pendingChoice!.choiceId,
+      };
+      const commandId = `jn50203-replay-rescue-pass-${sequence}`;
+      const next = apply(
+        uninterrupted,
+        priority,
+        commandId,
+        command,
+        2_000 + sequence,
+      );
+      const recovered = apply(
+        resumed,
+        priority,
+        commandId,
+        command,
+        2_000 + sequence,
+      );
+      expect(recovered).toEqual(next);
+      uninterrupted = next.state;
+      resumed = recovered.state;
+      events.push(...next.events);
+      sequence += 1;
+      if (sequence > 6) throw new Error("JN50203 rescue did not close.");
+    }
+    expect(uninterrupted.pendingChoice?.optionIds).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.wq01@47",
+    ]);
+
+    const distribute = {
+      type: "distribute-death-loot" as const,
+      choiceId: uninterrupted.pendingChoice!.choiceId,
+      cardInstanceIds: ["xyy.card.jp01@1"],
+      targetPlayerId: recipient,
+    };
+    const distributed = apply(
+      uninterrupted,
+      owner,
+      "jn50203-replay-distribute",
+      distribute,
+      3_000,
+    );
+    const distributedAfterRestart = apply(
+      JSON.parse(JSON.stringify(resumed)) as MatchState,
+      owner,
+      "jn50203-replay-distribute",
+      distribute,
+      3_000,
+    );
+    expect(distributedAfterRestart).toEqual(distributed);
+    uninterrupted = distributed.state;
+    resumed = distributedAfterRestart.state;
+    events.push(...distributed.events);
+
+    const deadline = collectSystemDeadlines(resumed).find((candidate) =>
+      candidate.targetId.startsWith("death-loot:"),
+    )!;
+    const timeout = {
+      origin: "system-timeout" as const,
+      commandId: "jn50203-replay-timeout",
+      matchId: resumed.matchId,
+      expectedVersion: resumed.version,
+      deadlineAt: deadline.deadlineAt,
+      targetId: deadline.targetId,
+    };
+    const timed = applyCommand(uninterrupted, timeout);
+    const timedAfterRestart = applyCommand(
+      JSON.parse(JSON.stringify(resumed)) as MatchState,
+      timeout,
+    );
+    expect(timedAfterRestart).toEqual(timed);
+    expect(timed.accepted).toBe(true);
+    if (!timed.accepted) throw new Error(timed.reason);
+    uninterrupted = timed.state;
+    resumed = timedAfterRestart.accepted
+      ? timedAfterRestart.state
+      : (() => {
+          throw new Error(timedAfterRestart.reason);
+        })();
+    events.push(...timed.events);
+
+    sequence = 0;
+    while (uninterrupted.reactionWindow !== null) {
+      const window = uninterrupted.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const command = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `jn50203-replay-damage-pass-${sequence}`;
+      const next = apply(
+        uninterrupted,
+        priority,
+        commandId,
+        command,
+        deadline.deadlineAt + sequence + 1,
+      );
+      const recovered = apply(
+        resumed,
+        priority,
+        commandId,
+        command,
+        deadline.deadlineAt + sequence + 1,
+      );
+      expect(recovered).toEqual(next);
+      uninterrupted = next.state;
+      resumed = recovered.state;
+      events.push(...next.events);
+      sequence += 1;
+    }
+
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted);
+    expect(resumed).toEqual(uninterrupted);
+    expect(uninterrupted.players[owner]).toMatchObject({ hp: 2, alive: true });
+    expect(uninterrupted.players[owner]!.hand).toEqual(["xyy.card.wq01@47"]);
+    expect(uninterrupted.players[recipient]!.hand).toEqual(["xyy.card.jp01@1"]);
+  });
+
   it("resumes JN50501 IMMUNE_INVAO fire damage after a JSON checkpoint", () => {
     const setup = fixture();
     const initialBase: MatchState = {

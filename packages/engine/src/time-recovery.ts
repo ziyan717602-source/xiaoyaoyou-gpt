@@ -116,6 +116,29 @@ export function collectSystemDeadlines(
     }
     return deadlines;
   }
+  if (
+    batch?.status === "distributing-loot" &&
+    choice !== null &&
+    choice.status === "open"
+  ) {
+    const playerId = choice.playerIds[0];
+    if (playerId !== undefined) {
+      const deadlineAt = effectiveDeadline(
+        state,
+        playerId,
+        choice.openedAt,
+        choice.deadlineAt,
+      );
+      deadlines.push({
+        id: `timeout:death-loot:${choice.choiceId}:${playerId}:${deadlineAt}`,
+        origin: "system-timeout",
+        deadlineAt,
+        targetId: `death-loot:${choice.choiceId}:${playerId}`,
+        playerId,
+      });
+    }
+    return deadlines;
+  }
   if (choice !== null && choice.status === "open") {
     const playerId = choice.playerIds[0];
     if (playerId !== undefined) {

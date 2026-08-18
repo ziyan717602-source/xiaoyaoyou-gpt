@@ -160,7 +160,10 @@ function passAllRescue(state: MatchState, now: number): MatchState {
   let next = state;
   let index = 0;
   const target = state.dyingBatch?.currentTargetPlayerId;
-  while (next.dyingBatch?.currentTargetPlayerId === target) {
+  while (
+    next.dyingBatch?.status === "awaiting-rescue" &&
+    next.dyingBatch.currentTargetPlayerId === target
+  ) {
     const batch = next.dyingBatch;
     const priority = batch.priorityOrder[batch.priorityIndex]!;
     next = accepted(
@@ -177,6 +180,342 @@ function passAllRescue(state: MatchState, now: number): MatchState {
 }
 
 describe("M05 damage and dying core", () => {
+  it("uses JN50203 once per death batch to collect and optionally distribute every dead card", () => {
+    let state = playing("jn50203-loot");
+    const ordered = Object.values(state.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const owner = ordered[0]!.id;
+    const victim = ordered[1]!.id;
+    const recipient = ordered[2]!.id;
+    state = arrange(
+      state,
+      {
+        [owner]: ["xyy.card.zp01@16"],
+        [victim]: ["xyy.card.jp01@1"],
+      },
+      {
+        [victim]: { weapon: "xyy.card.wq01@47", armor: null },
+      },
+    );
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [owner]: {
+          ...state.players[owner]!,
+          heroId: "xyy.hero.xj402",
+          hp: 3,
+        },
+        [victim]: { ...state.players[victim]!, hp: 1 },
+      },
+    };
+    const damage = planDamageBatch(state, [
+      {
+        itemId: "jn50203-kill",
+        sourcePlayerId: owner,
+        targetPlayerId: victim,
+        amount: 1,
+        element: "thunder",
+      },
+    ]);
+    state = applyPlannedDamage(state, "jn50203-kill-effect", damage, 1_000);
+    state = passAllRescue(state, 2_000);
+
+    expect(state.players[victim]).toMatchObject({
+      alive: false,
+      hand: [],
+      equipment: { weapon: null, armor: null },
+    });
+    expect(state.players[owner]!.hand).toEqual([
+      "xyy.card.zp01@16",
+      "xyy.card.jp01@1",
+      "xyy.card.wq01@47",
+    ]);
+    expect(state.dyingBatch?.status).toBe("distributing-loot");
+    expect(state.pendingChoice).toMatchObject({
+      playerIds: [owner],
+      prompt: "jn50203-distribute-loot",
+      optionIds: ["xyy.card.jp01@1", "xyy.card.wq01@47"],
+      minSelections: 0,
+      maxSelections: 2,
+      fallback: "pass",
+    });
+    expect(createPlayerView(state, owner).availableActions).toEqual([
+      {
+        type: "distribute-death-loot",
+        choiceId: state.pendingChoice!.choiceId,
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.wq01@47"],
+        minCardCount: 1,
+        maxCardCount: 2,
+        targetPlayerIds: ordered
+          .filter((player) => player.id !== owner && player.id !== victim)
+          .map((player) => player.id),
+      },
+      {
+        type: "finish-death-loot",
+        choiceId: state.pendingChoice!.choiceId,
+      },
+    ]);
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      const view = createPlayerView(state, player.id);
+      expect(view.pendingChoice).toBeNull();
+      expect(view.availableActions).toEqual([]);
+      expect(JSON.stringify(view)).not.toContain("xyy.card.jp01@1");
+      expect(JSON.stringify(view)).not.toContain("xyy.card.wq01@47");
+    }
+
+    const timeoutStart = JSON.parse(JSON.stringify(state)) as MatchState;
+    const deadline = collectSystemDeadlines(timeoutStart).find((candidate) =>
+      candidate.targetId.startsWith("death-loot:"),
+    );
+    expect(deadline).toBeDefined();
+    const timeout = applyCommand(timeoutStart, {
+      origin: "system-timeout",
+      commandId: "jn50203-timeout",
+      matchId: timeoutStart.matchId,
+      expectedVersion: timeoutStart.version,
+      deadlineAt: deadline!.deadlineAt,
+      targetId: deadline!.targetId,
+    });
+    expect(timeout.accepted).toBe(true);
+    if (!timeout.accepted) throw new Error(timeout.reason);
+    let timeoutState = timeout.state;
+    expect(
+      timeout.events.some(
+        (event) =>
+          event.type === "death.loot-finished" &&
+          event.payload.timeout === true,
+      ),
+    ).toBe(true);
+    timeoutState = passAllReactions(timeoutState, deadline!.deadlineAt + 1);
+    expect(timeoutState.players[owner]).toMatchObject({ hp: 2, alive: true });
+    expect(timeoutState.players[owner]!.hand).toEqual([
+      "xyy.card.zp01@16",
+      "xyy.card.jp01@1",
+      "xyy.card.wq01@47",
+    ]);
+
+    state = accepted(
+      state,
+      owner,
+      "jn50203-distribute-one",
+      {
+        type: "distribute-death-loot",
+        choiceId: state.pendingChoice!.choiceId,
+        cardInstanceIds: ["xyy.card.jp01@1"],
+        targetPlayerId: recipient,
+      },
+      3_000,
+    );
+    expect(state.players[recipient]!.hand).toEqual(["xyy.card.jp01@1"]);
+    expect(state.pendingChoice?.optionIds).toEqual(["xyy.card.wq01@47"]);
+    state = accepted(
+      state,
+      owner,
+      "jn50203-finish",
+      {
+        type: "finish-death-loot",
+        choiceId: state.pendingChoice!.choiceId,
+      },
+      4_000,
+    );
+    expect(state.reactionWindow?.priorityOrder).toEqual([owner]);
+    state = passAllReactions(state, 5_000);
+    expect(state.players[owner]).toMatchObject({
+      hp: 2,
+      alive: true,
+      hand: ["xyy.card.zp01@16", "xyy.card.wq01@47"],
+    });
+    expect(state.dyingBatch).toBeNull();
+    expect(state.pendingChoice).toBeNull();
+    expect(state.discardPile).toEqual([]);
+  });
+
+  it("groups simultaneous JN50203 loot into one choice and one self damage", () => {
+    let state = playing("jn50203-simultaneous");
+    const ordered = Object.values(state.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const owner = ordered[0]!.id;
+    const first = ordered[1]!.id;
+    const second = ordered[2]!.id;
+    state = arrange(state, {
+      [first]: ["xyy.card.jp01@1"],
+      [second]: ["xyy.card.zp01@16"],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [owner]: {
+          ...state.players[owner]!,
+          heroId: "xyy.hero.xj402",
+          hp: 3,
+        },
+        [first]: { ...state.players[first]!, hp: 1 },
+        [second]: { ...state.players[second]!, hp: 1 },
+      },
+    };
+    const damage = planDamageBatch(state, [
+      {
+        itemId: "jn50203-first",
+        sourcePlayerId: null,
+        targetPlayerId: first,
+        amount: 1,
+        element: "thunder",
+      },
+      {
+        itemId: "jn50203-second",
+        sourcePlayerId: null,
+        targetPlayerId: second,
+        amount: 1,
+        element: "thunder",
+      },
+    ]);
+    state = applyPlannedDamage(
+      state,
+      "jn50203-simultaneous-effect",
+      damage,
+      1_000,
+    );
+    state = passAllRescue(state, 2_000);
+    expect(state.dyingBatch?.currentTargetPlayerId).toBe(second);
+    expect(state.players[first]!.hand).toEqual(["xyy.card.jp01@1"]);
+    state = passAllRescue(state, 3_000);
+    expect(state.pendingChoice?.optionIds).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.zp01@16",
+    ]);
+    state = accepted(
+      state,
+      owner,
+      "jn50203-finish-all",
+      {
+        type: "finish-death-loot",
+        choiceId: state.pendingChoice!.choiceId,
+      },
+      4_000,
+    );
+    state = passAllReactions(state, 5_000);
+    expect(state.players[owner]).toMatchObject({ hp: 2, alive: true });
+    expect(state.players[owner]!.hand).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.zp01@16",
+    ]);
+  });
+
+  it("does not trigger JN50203 when its owner dies in the same batch", () => {
+    let state = playing("jn50203-owner-dies");
+    const ordered = Object.values(state.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const owner = ordered[0]!.id;
+    const victim = ordered[1]!.id;
+    state = arrange(state, {
+      [owner]: ["xyy.card.jp01@1"],
+      [victim]: ["xyy.card.zp01@16"],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [owner]: {
+          ...state.players[owner]!,
+          heroId: "xyy.hero.xj402",
+          hp: 1,
+        },
+        [victim]: { ...state.players[victim]!, hp: 1 },
+      },
+    };
+    const damage = planDamageBatch(state, [
+      {
+        itemId: "jn50203-owner-dies",
+        sourcePlayerId: null,
+        targetPlayerId: owner,
+        amount: 1,
+        element: "thunder",
+      },
+      {
+        itemId: "jn50203-other-dies",
+        sourcePlayerId: null,
+        targetPlayerId: victim,
+        amount: 1,
+        element: "thunder",
+      },
+    ]);
+    state = applyPlannedDamage(
+      state,
+      "jn50203-owner-dies-effect",
+      damage,
+      1_000,
+    );
+    state = passAllRescue(state, 2_000);
+    state = passAllRescue(state, 3_000);
+    expect(state.pendingChoice).toBeNull();
+    expect(state.dyingBatch).toBeNull();
+    expect(state.discardPile).toEqual(
+      expect.arrayContaining(["xyy.card.jp01@1", "xyy.card.zp01@16"]),
+    );
+    expect(state.players[owner]!.hand).toEqual([]);
+    expect(state.players[victim]!.hand).toEqual([]);
+  });
+
+  it("skips JN50203 when the death batch has already decided the winner", () => {
+    let state = playing("jn50203-winning-death");
+    const ordered = Object.values(state.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const owner = ordered[0]!.id;
+    const victim = ordered.find(
+      (player) => player.team !== state.players[owner]!.team,
+    )!.id;
+    state = arrange(state, { [victim]: ["xyy.card.jp01@1"] });
+    state = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === owner ? "xyy.hero.xj402" : player.heroId,
+            alive:
+              player.team === state.players[owner]!.team ||
+              player.id === victim,
+            hp:
+              player.id === victim
+                ? 1
+                : player.team === state.players[owner]!.team
+                  ? player.hp
+                  : 0,
+            hand: player.id === victim ? ["xyy.card.jp01@1"] : [],
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.jp01@1",
+      ),
+    };
+    const damage = planDamageBatch(state, [
+      {
+        itemId: "jn50203-winning-kill",
+        sourcePlayerId: owner,
+        targetPlayerId: victim,
+        amount: 1,
+        element: "thunder",
+      },
+    ]);
+    state = applyPlannedDamage(state, "jn50203-winning-effect", damage, 1_000);
+    state = passAllRescue(state, 2_000);
+    expect(state.phase).toBe("finished");
+    expect(state.winner).toBe(state.players[owner]!.team);
+    expect(state.pendingChoice).toBeNull();
+    expect(state.dyingBatch).toBeNull();
+    expect(state.players[owner]!.hand).toEqual([]);
+    expect(state.discardPile).toContain("xyy.card.jp01@1");
+  });
+
   it("lets JN40301 pay two hand cards as TP02 during rescue", () => {
     let state = playing("jn40301-rescue");
     const actor = state.activePlayerId!;

@@ -136,7 +136,12 @@ export interface DyingBatch {
   readonly passedPlayerIds: readonly PlayerId[];
   readonly rescuedPlayerIds: readonly PlayerId[];
   readonly deadPlayerIds: readonly PlayerId[];
-  readonly status: "awaiting-rescue" | "awaiting-death" | "after-death";
+  readonly status:
+    | "awaiting-rescue"
+    | "awaiting-death"
+    | "after-death"
+    | "awaiting-batch-cleanup"
+    | "distributing-loot";
   readonly openedAt: number;
   readonly deadlineAt: number;
 }
@@ -297,6 +302,18 @@ export type AvailableAction =
       readonly targetPlayerId: PlayerId;
     }
   | { readonly type: "pass-rescue"; readonly choiceId: ChoiceId }
+  | {
+      readonly type: "distribute-death-loot";
+      readonly choiceId: ChoiceId;
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly minCardCount: 1;
+      readonly maxCardCount: number;
+      readonly targetPlayerIds: readonly PlayerId[];
+    }
+  | {
+      readonly type: "finish-death-loot";
+      readonly choiceId: ChoiceId;
+    }
   | {
       readonly type: "submit-choice";
       readonly choiceId: ChoiceId;
@@ -586,13 +603,15 @@ export function createPlayerView(
         },
         ...(ownOffer.rerolled ? [] : [{ type: "reroll-hero" as const }]),
       ]
-    : state.dyingBatch !== null
-      ? rescueActions(state, viewerId)
-      : state.pendingChoice !== null
-        ? pendingChoiceActions(state, viewerId)
-        : state.reactionWindow === null
-          ? turnActions(state, viewerId)
-          : reactionActions(state, viewerId);
+    : state.dyingBatch?.status === "distributing-loot"
+      ? deathLootActions(state, viewerId)
+      : state.dyingBatch !== null
+        ? rescueActions(state, viewerId)
+        : state.pendingChoice !== null
+          ? pendingChoiceActions(state, viewerId)
+          : state.reactionWindow === null
+            ? turnActions(state, viewerId)
+            : reactionActions(state, viewerId);
   return {
     matchId: state.matchId,
     version: state.version,
@@ -865,6 +884,42 @@ function rescueActions(
     ...skillConversion,
     ...rescueCards,
     { type: "pass-rescue", choiceId: choice.choiceId },
+  ];
+}
+
+function deathLootActions(
+  state: Readonly<MatchState>,
+  viewerId: PlayerId,
+): AvailableAction[] {
+  const batch = state.dyingBatch;
+  const choice = state.pendingChoice;
+  if (
+    state.phase !== "playing" ||
+    batch?.status !== "distributing-loot" ||
+    choice === null ||
+    choice.status !== "open" ||
+    !choice.playerIds.includes(viewerId)
+  ) {
+    return [];
+  }
+  const targets = Object.values(state.players)
+    .filter((player) => player.alive && player.id !== viewerId)
+    .sort((left, right) => left.seat - right.seat)
+    .map((player) => player.id);
+  return [
+    ...(targets.length === 0
+      ? []
+      : [
+          {
+            type: "distribute-death-loot" as const,
+            choiceId: choice.choiceId,
+            cardInstanceIds: choice.optionIds as readonly CardInstanceId[],
+            minCardCount: 1 as const,
+            maxCardCount: choice.optionIds.length,
+            targetPlayerIds: targets,
+          },
+        ]),
+    { type: "finish-death-loot", choiceId: choice.choiceId },
   ];
 }
 
@@ -1218,6 +1273,7 @@ export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
 export { beginDamageResponse } from "./reaction.js";
 export {
   applyPlannedDamage,
+  beginDyingBatch,
   planDamageBatch,
   type AppliedDamage,
   type DamageIntent,

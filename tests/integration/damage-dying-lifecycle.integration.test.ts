@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   beginDamageResponse,
+  beginDyingBatch,
   planDamageBatch,
   SETUP_CARD_INSTANCES,
   type MatchState,
@@ -481,6 +482,53 @@ function injectJn40401(state: MatchState, actor: PlayerId): MatchState {
     ),
     discardPile: [],
   };
+}
+
+function injectJn50203Dying(
+  state: MatchState,
+  owner: PlayerId,
+  victim: PlayerId,
+): MatchState {
+  const claimed = new Set(["xyy.card.jp01@1", "xyy.card.wq01@47"]);
+  const prepared: MatchState = {
+    ...state,
+    phase: "playing",
+    activePlayerId: owner,
+    turn: {
+      ...(state.turn ?? {
+        number: 1,
+        openedAt: 0,
+        deadlineAt: 15_000,
+      }),
+      number: state.turn?.number ?? 1,
+      phase: "action",
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          heroId: player.id === owner ? "xyy.hero.xj402" : player.heroId,
+          alive: true,
+          hp: player.id === victim ? 0 : player.id === owner ? 3 : player.maxHp,
+          maxHp: player.id === owner ? 7 : player.maxHp,
+          hand: player.id === victim ? ["xyy.card.jp01@1"] : [],
+          equipment:
+            player.id === victim
+              ? { weapon: "xyy.card.wq01@47", armor: null }
+              : { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+  return beginDyingBatch(prepared, "network-jn50203-death", Date.now());
 }
 
 async function passReactions(
@@ -1241,6 +1289,173 @@ describe("M05 damage/dying over six real WebSockets", () => {
       hand: [],
       equipment: { weapon: null, armor: null },
     });
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+  });
+
+  it("keeps JN50203 death loot private and deterministic across restarts", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn50203-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn50203.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const owner = ordered[0]!.id;
+    const victim = ordered[1]!.id;
+    const recipient = ordered[2]!.id;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn50203Dying(state, owner, victim),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    let version = clients[0]!.latestView.version;
+    let pass = 0;
+    while (clients[0]!.latestView.dyingBatch?.status === "awaiting-rescue") {
+      const batch = clients[0]!.latestView.dyingBatch!;
+      const priority = batch.priorityOrder[batch.priorityIndex]!;
+      const priorityClient = clients[indexOf(priority)]!;
+      const response = await send(
+        priorityClient,
+        sessions[indexOf(priority)]!,
+        `jn50203-rescue-pass-${pass}`,
+        version,
+        {
+          type: "pass-rescue",
+          choiceId: priorityClient.latestView.pendingChoice!.choiceId,
+        },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitVersion(clients, version);
+      pass += 1;
+      if (pass > 6) throw new Error("JN50203 rescue window did not converge.");
+    }
+
+    const ownerClient = clients[indexOf(owner)]!;
+    expect(ownerClient.latestView.dyingBatch?.status).toBe("distributing-loot");
+    expect(ownerClient.latestView.pendingChoice?.optionIds).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.wq01@47",
+    ]);
+    expect(ownerClient.latestView.availableActions).toContainEqual({
+      type: "distribute-death-loot",
+      choiceId: ownerClient.latestView.pendingChoice!.choiceId,
+      cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.wq01@47"],
+      minCardCount: 1,
+      maxCardCount: 2,
+      targetPlayerIds: ordered
+        .map((player) => player.id)
+        .filter((playerId) => playerId !== owner && playerId !== victim),
+    });
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      const view = clients[indexOf(player.id)]!.latestView;
+      expect(view.pendingChoice).toBeNull();
+      expect(view.availableActions).not.toContainEqual(
+        expect.objectContaining({ type: "distribute-death-loot" }),
+      );
+      expect(JSON.stringify(view)).not.toContain("xyy.card.jp01@1");
+      expect(JSON.stringify(view)).not.toContain("xyy.card.wq01@47");
+    }
+
+    const persistedChoice = JSON.parse(
+      JSON.stringify(ownerClient.latestView.pendingChoice),
+    );
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(clients[indexOf(owner)]!.latestView.pendingChoice).toEqual(
+      persistedChoice,
+    );
+
+    let response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn50203-distribute-one",
+      version,
+      {
+        type: "distribute-death-loot",
+        choiceId: persistedChoice.choiceId,
+        cardInstanceIds: ["xyy.card.jp01@1"],
+        targetPlayerId: recipient,
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[indexOf(recipient)]!.latestView.players.find(
+        (player) => player.id === recipient,
+      )?.hand,
+    ).toEqual(["xyy.card.jp01@1"]);
+    expect(
+      clients[indexOf(owner)]!.latestView.pendingChoice?.optionIds,
+    ).toEqual(["xyy.card.wq01@47"]);
+
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn50203-finish",
+      version,
+      {
+        type: "finish-death-loot",
+        choiceId: clients[indexOf(owner)]!.latestView.pendingChoice!.choiceId,
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    const persistedReaction = JSON.parse(
+      JSON.stringify(clients[0]!.latestView.reactionWindow),
+    );
+    expect(persistedReaction).not.toBeNull();
+    expect(clients[0]!.latestView.dyingBatch).toBeNull();
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(clients[0]!.latestView.reactionWindow).toEqual(persistedReaction);
+    version = await passReactions(
+      clients,
+      sessions,
+      version,
+      "jn50203-self-damage-pass",
+    );
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === owner),
+    ).toMatchObject({ alive: true, hp: 2, handCount: 1 });
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(["xyy.card.wq01@47"]);
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === victim),
+    ).toMatchObject({
+      alive: false,
+      hp: 0,
+      handCount: 0,
+      equipment: { weapon: null, armor: null },
+    });
+
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });
