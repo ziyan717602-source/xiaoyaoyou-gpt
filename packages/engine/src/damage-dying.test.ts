@@ -455,6 +455,98 @@ describe("M05 damage and dying core", () => {
     expect(state.pendingChoice).toBeNull();
   });
 
+  it("lets the damaged owner discard FJ05 against preventable masks and cure", () => {
+    const initial = playing("fj05-damage-burst");
+    const actor = initial.activePlayerId!;
+    const target = initial.turnOrder.find((playerId) => playerId !== actor)!;
+    let state = arrange(
+      initial,
+      {},
+      {
+        [target]: {
+          weapon: "xyy.card.wq02@48",
+          armor: "xyy.card.fj05@56",
+        },
+      },
+    );
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [target]: {
+          ...state.players[target]!,
+          hp: state.players[target]!.maxHp - 2,
+        },
+      },
+    };
+    const damage = planDamageBatch(state, [
+      {
+        itemId: "fj05-tux-inavo",
+        sourcePlayerId: actor,
+        targetPlayerId: target,
+        amount: 2,
+        element: "thunder",
+        hpEvoMask: ["tux-inavo"],
+      },
+    ]);
+    state = beginDamageResponse(state, "fj05-effect", actor, damage, 1_000);
+    expect(state.reactionWindow?.priorityOrder).toEqual([target]);
+    expect(createPlayerView(state, target).availableActions[0]).toEqual({
+      type: "activate-damage-equipment",
+      cardInstanceId: "xyy.card.fj05@56",
+      targetEffectId: "fj05-effect:damage-batch",
+    });
+    state = accepted(
+      state,
+      target,
+      "fj05-activate",
+      {
+        type: "activate-damage-equipment",
+        cardInstanceId: "xyy.card.fj05@56",
+        targetEffectId: "fj05-effect:damage-batch",
+      },
+      2_000,
+    );
+    expect(state.players[target]).toMatchObject({
+      hp: state.players[target]!.maxHp,
+      equipment: { weapon: "xyy.card.wq02@48", armor: null },
+    });
+    expect(state.discardPile).toContain("xyy.card.fj05@56");
+    expect(state.reactionWindow).toBeNull();
+    expect(state.dyingBatch).toBeNull();
+
+    for (const bypass of ["decr-inavo", "immune-inavo"] as const) {
+      const bypassState = arrange(
+        initial,
+        {},
+        { [target]: { weapon: null, armor: "xyy.card.fj05@56" } },
+      );
+      const hpBefore = bypassState.players[target]!.hp;
+      const planned = planDamageBatch(bypassState, [
+        {
+          itemId: `fj05-${bypass}`,
+          sourcePlayerId: actor,
+          targetPlayerId: target,
+          amount: 1,
+          element: "thunder",
+          hpEvoMask: ["tux-inavo", bypass],
+        },
+      ]);
+      const appliedState = beginDamageResponse(
+        bypassState,
+        `fj05-${bypass}-effect`,
+        actor,
+        planned,
+        3_000,
+      );
+      expect(appliedState.reactionWindow).toBeNull();
+      expect(appliedState.players[target]!.hp).toBe(hpBefore - 1);
+      expect(appliedState.players[target]!.equipment.armor).toBe(
+        "xyy.card.fj05@56",
+      );
+    }
+  });
+
   it("lets only the damaged owner use TP03, supports Bingxin cancellation, and excludes TUX_INAVO", () => {
     const initial = playing("tp03-damage-gate");
     const actor = initial.activePlayerId!;

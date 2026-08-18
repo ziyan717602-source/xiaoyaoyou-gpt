@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { CommandEnvelope, PlayerId } from "@xiaoyaoyou/protocol";
 import {
   applyCommand,
+  beginDamageResponse,
   createSetupMatch,
+  planDamageBatch,
   reduceEvent,
   SETUP_CARD_INSTANCES,
   type DomainEvent,
@@ -104,6 +106,76 @@ function fixture(): {
 }
 
 describe("M05 damage/dying event replay", () => {
+  it("resumes FJ05 damage equipment activation from a JSON checkpoint", () => {
+    const setup = fixture();
+    const checkpointBase: MatchState = {
+      ...setup.state,
+      players: {
+        ...setup.state.players,
+        [setup.target]: {
+          ...setup.state.players[setup.target]!,
+          hp: setup.state.players[setup.target]!.maxHp - 2,
+          equipment: {
+            weapon: "xyy.card.wq02@48",
+            armor: "xyy.card.fj05@56",
+          },
+        },
+      },
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.wq02@48" && card !== "xyy.card.fj05@56",
+      ),
+    };
+    const checkpoint = beginDamageResponse(
+      checkpointBase,
+      "fj05-replay-effect",
+      setup.actor,
+      planDamageBatch(checkpointBase, [
+        {
+          itemId: "fj05-replay-damage",
+          sourcePlayerId: setup.actor,
+          targetPlayerId: setup.target,
+          amount: 2,
+          element: "thunder",
+          hpEvoMask: ["tux-inavo"],
+        },
+      ]),
+      1_000,
+    );
+    const restarted = JSON.parse(JSON.stringify(checkpoint)) as MatchState;
+    const activation = {
+      type: "activate-damage-equipment" as const,
+      cardInstanceId: "xyy.card.fj05@56",
+      targetEffectId: "fj05-replay-effect:damage-batch",
+    };
+    const uninterrupted = apply(
+      checkpoint,
+      setup.target,
+      "fj05-replay-activate",
+      activation,
+      2_000,
+    );
+    const resumed = apply(
+      restarted,
+      setup.target,
+      "fj05-replay-activate",
+      activation,
+      2_000,
+    );
+    expect(resumed).toEqual(uninterrupted);
+    let replayed = checkpoint;
+    for (const event of uninterrupted.events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.players[setup.target]).toMatchObject({
+      hp: checkpointBase.players[setup.target]!.maxHp,
+      equipment: { weapon: "xyy.card.wq02@48", armor: null },
+    });
+  });
+
   it("resumes FJ01 equipment rescue identically from a JSON checkpoint", () => {
     const setup = fixture();
     const claimed = new Set([

@@ -93,8 +93,8 @@
         "evidence": ["receipt:docs/verification/receipts/cs01d-fj03-fj04.md"]
       },
       "xyy.card.fj05": {
-        "boundary": "armor slot equip and replacement only; unique healing and damage modifiers pending",
-        "evidence": ["M03-TURN-CORE"]
+        "boundary": "equip/replacement and masked owner damage-window discard-immunity plus cure are verified; hit waits for CS03 and disabled-equipment source for CS02",
+        "evidence": ["receipt:docs/verification/receipts/cs01d-fj05.md"]
       }
     }
   },

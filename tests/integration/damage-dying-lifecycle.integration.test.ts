@@ -297,6 +297,7 @@ function injectCards(
     immuneFixture?: boolean;
     reductionFixture?: boolean;
     reviveFixture?: boolean;
+    shoeFixture?: boolean;
   },
 ): MatchState {
   const hands: Record<PlayerId, readonly string[]> = {
@@ -314,9 +315,11 @@ function injectCards(
         ? { weapon: null, armor: "xyy.card.fj03@54" }
         : input.reviveFixture
           ? { weapon: "xyy.card.wq02@48", armor: "xyy.card.fj01@52" }
-          : input.rescuer === undefined
-            ? { weapon: null, armor: null }
-            : { weapon: "xyy.card.wq02@48", armor: null };
+          : input.shoeFixture
+            ? { weapon: "xyy.card.wq02@48", armor: "xyy.card.fj05@56" }
+            : input.rescuer === undefined
+              ? { weapon: null, armor: null }
+              : { weapon: "xyy.card.wq02@48", armor: null };
   const claimed = new Set([
     ...Object.values(hands).flat(),
     ...[equipment.weapon, equipment.armor].filter(
@@ -653,6 +656,87 @@ describe("M05 damage/dying over six real WebSockets", () => {
       hp: 3,
       equipment: { weapon: "xyy.card.wq02@48", armor: null },
     });
+    expect(clients[0]!.latestView.dyingBatch).toBeNull();
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectCards(state, { actor, target, shoeFixture: true }),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    const shoeHpBefore = clients[0]!.latestView.players.find(
+      (player) => player.id === target,
+    )!.hp;
+    response = await send(
+      clients[indexOf(actor)]!,
+      sessions[indexOf(actor)]!,
+      "network-fj05-jp05",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [target],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    let originalPass = 0;
+    while (clients[0]!.latestView.effectStack.at(-1)?.kind !== "damage-batch") {
+      const window = clients[0]!.latestView.reactionWindow!;
+      response = await send(
+        clients[indexOf(window.priorityPlayerId)]!,
+        sessions[indexOf(window.priorityPlayerId)]!,
+        `network-fj05-original-pass-${originalPass}`,
+        version,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitVersion(clients, version);
+      originalPass += 1;
+      if (originalPass > 6) throw new Error("FJ05 damage gate did not open.");
+    }
+    const damageEffectId = clients[0]!.latestView.effectStack.at(-1)!.effectId;
+    expect(
+      clients[indexOf(target)]!.latestView.availableActions,
+    ).toContainEqual({
+      type: "activate-damage-equipment",
+      cardInstanceId: "xyy.card.fj05@56",
+      targetEffectId: damageEffectId,
+    });
+    for (const [clientIndex, client] of clients.entries()) {
+      if (clientIndex === indexOf(target)) continue;
+      expect(client.latestView.availableActions).not.toContainEqual(
+        expect.objectContaining({ type: "activate-damage-equipment" }),
+      );
+    }
+    response = await send(
+      clients[indexOf(target)]!,
+      sessions[indexOf(target)]!,
+      "network-fj05-activate",
+      version,
+      {
+        type: "activate-damage-equipment",
+        cardInstanceId: "xyy.card.fj05@56",
+        targetEffectId: damageEffectId,
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    const shoeTarget = clients[0]!.latestView.players.find(
+      (player) => player.id === target,
+    )!;
+    expect(shoeTarget).toMatchObject({
+      hp: Math.min(shoeTarget.maxHp, shoeHpBefore + 2),
+      equipment: { weapon: "xyy.card.wq02@48", armor: null },
+    });
+    expect(clients[0]!.latestView.reactionWindow).toBeNull();
     expect(clients[0]!.latestView.dyingBatch).toBeNull();
 
     for (const client of clients) client.socket.close();

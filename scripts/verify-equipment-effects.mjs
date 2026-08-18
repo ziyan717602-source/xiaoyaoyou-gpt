@@ -15,6 +15,7 @@ const healing = read("packages/engine/src/healing.ts");
 const hpEvolution = read("packages/engine/src/hp-evolution.ts");
 const hpEvolutionUnit = read("packages/engine/src/hp-evolution.test.ts");
 const damage = read("packages/engine/src/damage-dying.ts");
+const reaction = read("packages/engine/src/reaction.ts");
 const protocol = read("packages/protocol/src/index.ts");
 const healingUnit = read("packages/engine/src/healing.test.ts");
 const reactionUnit = read("packages/engine/src/reaction.test.ts");
@@ -37,8 +38,8 @@ assert(
   "Expected ten CS01D equipment cards.",
 );
 assert(
-  Object.keys(contract.acceptanceMap).length === 17,
-  "Expected 17 CS01D acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 18,
+  "Expected 18 CS01D acceptance items.",
 );
 for (const id of Object.keys(contract.items)) {
   const item = plan.items.find((candidate) => candidate.id === id);
@@ -139,9 +140,23 @@ for (const [source, token] of [
 ]) {
   assert(source.includes(token), `Missing FJ01 verification token ${token}.`);
 }
+assert(
+  protocol.includes('readonly type: "activate-damage-equipment"'),
+  "Missing FJ05 protocol command.",
+);
+for (const [source, token] of [
+  [view, 'type: "activate-damage-equipment" as const'],
+  [reaction, 'event.type === "reaction.equipment-activated"'],
+  [dyingUnit, "fj05-activate"],
+  [dyingReplay, "resumes FJ05 damage equipment activation"],
+  [dyingNetwork, "network-fj05-activate"],
+]) {
+  assert(source.includes(token), `Missing FJ05 verification token ${token}.`);
+}
 for (const file of [
   "docs/content-standard/cs01d-equipment-effects.md",
   "docs/verification/receipts/cs01d-fj01.md",
+  "docs/verification/receipts/cs01d-fj05.md",
   "docs/verification/receipts/cs01d-fj03-fj04.md",
   "docs/verification/receipts/cs01d-wq02.md",
   "docs/verification/receipts/cs01d-wq04.md",
@@ -157,5 +172,5 @@ for (const command of [
 }
 
 console.log(
-  "Equipment contract passed: WQ02/WQ04/FJ01/FJ03/FJ04 boundaries verified; ten items remain partial for linked effects.",
+  "Equipment contract passed: WQ02/WQ04/FJ01/FJ03/FJ04/FJ05 boundaries verified; ten items remain partial for linked effects.",
 );

@@ -227,6 +227,11 @@ export type AvailableAction =
       readonly cardInstanceId: CardInstanceId;
       readonly targetEffectId: EffectId;
     }
+  | {
+      readonly type: "activate-damage-equipment";
+      readonly cardInstanceId: CardInstanceId;
+      readonly targetEffectId: EffectId;
+    }
   | { readonly type: "pass-reaction"; readonly windowId: WindowId }
   | {
       readonly type: "play-rescue-card";
@@ -668,7 +673,38 @@ function reactionActions(
         ]
       : [],
   );
-  return [...reactions, { type: "pass-reaction", windowId: window.windowId }];
+  const armor = player.equipment.armor;
+  const damageItems = Array.isArray(targetEffect?.payload.damageItems)
+    ? (targetEffect.payload.damageItems as readonly {
+        readonly targetPlayerId?: string;
+        readonly amount?: number;
+        readonly hpEvoMask?: readonly string[];
+      }[])
+    : [];
+  const equipmentActions =
+    targetEffect?.kind === "damage-batch" &&
+    armor !== null &&
+    cardDefinition(armor).id === "xyy.card.fj05" &&
+    damageItems.some(
+      (item) =>
+        item.targetPlayerId === viewerId &&
+        (item.amount ?? 0) > 0 &&
+        !item.hpEvoMask?.includes("decr-inavo") &&
+        !item.hpEvoMask?.includes("immune-inavo"),
+    )
+      ? [
+          {
+            type: "activate-damage-equipment" as const,
+            cardInstanceId: armor,
+            targetEffectId: targetEffect.effectId,
+          },
+        ]
+      : [];
+  return [
+    ...equipmentActions,
+    ...reactions,
+    { type: "pass-reaction", windowId: window.windowId },
+  ];
 }
 
 function rescueActions(
@@ -930,6 +966,13 @@ export type {
 } from "./architecture.js";
 export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
 export { beginDamageResponse } from "./reaction.js";
+export {
+  applyPlannedDamage,
+  planDamageBatch,
+  type AppliedDamage,
+  type DamageIntent,
+  type DamageModifier,
+} from "./damage-dying.js";
 export {
   planCureBatch,
   playersAfterCures,

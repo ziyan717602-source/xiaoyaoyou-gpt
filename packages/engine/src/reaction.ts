@@ -272,7 +272,19 @@ function damageSourceEffectId(effect: Readonly<EffectFrame>): EffectId {
   return value;
 }
 
-function tp03Responders(
+function fj05Preventable(
+  item: Readonly<AppliedDamage>,
+  playerId: PlayerId,
+): boolean {
+  return (
+    item.targetPlayerId === playerId &&
+    item.amount > 0 &&
+    !hasHpEvolutionFlag(item.hpEvoMask, "decr-inavo") &&
+    !hasHpEvolutionFlag(item.hpEvoMask, "immune-inavo")
+  );
+}
+
+function damageResponders(
   state: Readonly<MatchState>,
   items: readonly AppliedDamage[],
 ): readonly PlayerId[] {
@@ -284,6 +296,16 @@ function tp03Responders(
       )
       .map((item) => item.targetPlayerId),
   );
+  for (const player of Object.values(state.players)) {
+    const armor = player.equipment.armor;
+    if (
+      armor !== null &&
+      cardDefinition(armor).id === "xyy.card.fj05" &&
+      items.some((item) => fj05Preventable(item, player.id))
+    ) {
+      targetIds.add(player.id);
+    }
+  }
   return livingSeatOrder(state).filter((playerId) => targetIds.has(playerId));
 }
 
@@ -327,7 +349,7 @@ export function beginDamageResponse(
   damageItems: readonly AppliedDamage[],
   openedAt: number,
 ): MatchState {
-  const eligiblePlayerIds = tp03Responders(state, damageItems);
+  const eligiblePlayerIds = damageResponders(state, damageItems);
   if (eligiblePlayerIds.length === 0) {
     return applyPlannedDamage(state, sourceEffectId, damageItems, openedAt);
   }
@@ -563,6 +585,91 @@ export function reduceReactionEvent(
     const closed = passedPlayerIds.length === window.priorityOrder.length;
     next = {
       ...state,
+      reactionWindow: {
+        ...window,
+        priorityIndex: closed ? window.priorityIndex : window.priorityIndex + 1,
+        passedPlayerIds,
+        status: closed ? "closed" : "open",
+        openedAt,
+        deadlineAt: openedAt + REACTION_DEADLINE_MS,
+      },
+    };
+  } else if (event.type === "reaction.equipment-activated") {
+    const playerId = stringPayload(event, "playerId");
+    const cardInstanceId = stringPayload(
+      event,
+      "cardInstanceId",
+    ) as CardInstanceId;
+    const targetEffectId = stringPayload(event, "targetEffectId");
+    const openedAt = numberPayload(event, "openedAt");
+    const preventedItemIds = stringsPayload(event, "preventedItemIds");
+    const window = state.reactionWindow;
+    const player = state.players[playerId];
+    const targetEffect = effectById(state, targetEffectId);
+    const before =
+      targetEffect?.kind === "damage-batch"
+        ? damageItemsForEffect(targetEffect)
+        : [];
+    const prevented = before.filter((item) => fj05Preventable(item, playerId));
+    if (
+      window === null ||
+      window.status !== "open" ||
+      window.effectId !== targetEffectId ||
+      window.priorityOrder[window.priorityIndex] !== playerId ||
+      player === undefined ||
+      !player.alive ||
+      player.equipment.armor !== cardInstanceId ||
+      cardDefinition(cardInstanceId).id !== "xyy.card.fj05" ||
+      targetEffect?.status !== "waiting" ||
+      prevented.length === 0 ||
+      !sameValues(
+        preventedItemIds,
+        prevented.map((item) => item.itemId),
+      )
+    ) {
+      throw new Error("Damage equipment event is not applicable.");
+    }
+    const expectedCures = planCureBatch(state, [
+      {
+        itemId: `${event.eventId}:cure:0`,
+        sourcePlayerId: playerId,
+        targetPlayerId: playerId,
+        amount: 1,
+        element: "neutral",
+      },
+    ]);
+    if (
+      JSON.stringify(event.payload.healingItems) !==
+      JSON.stringify(expectedCures)
+    ) {
+      throw new Error("Damage equipment cure disagrees with its plan.");
+    }
+    const players = playersAfterCures(state, expectedCures);
+    const passedPlayerIds = window.passedPlayerIds.includes(playerId)
+      ? window.passedPlayerIds
+      : [...window.passedPlayerIds, playerId];
+    const closed = passedPlayerIds.length === window.priorityOrder.length;
+    const remaining = before.filter(
+      (item) => !preventedItemIds.includes(item.itemId),
+    );
+    next = {
+      ...state,
+      players: {
+        ...players,
+        [playerId]: {
+          ...players[playerId]!,
+          equipment: { ...player.equipment, armor: null },
+        },
+      },
+      discardPile: [...state.discardPile, cardInstanceId],
+      effectStack: state.effectStack.map((effect) =>
+        effect.effectId === targetEffectId
+          ? {
+              ...effect,
+              payload: { ...effect.payload, damageItems: remaining },
+            }
+          : effect,
+      ),
       reactionWindow: {
         ...window,
         priorityIndex: closed ? window.priorityIndex : window.priorityIndex + 1,
@@ -1439,6 +1546,52 @@ export function applyReactionCommand(
     builder.append("reaction.passed", {
       playerId: envelope.playerId,
       windowId: window.windowId,
+      openedAt: serverReceivedAt,
+    });
+    builder.resolveClosedWindows();
+  } else if (command.type === "activate-damage-equipment") {
+    if (command.targetEffectId !== window.effectId) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    const cardInstanceId = command.cardInstanceId as CardInstanceId;
+    const player = input.players[envelope.playerId]!;
+    const targetEffect = effectById(input, window.effectId);
+    const prevented =
+      targetEffect?.kind === "damage-batch"
+        ? damageItemsForEffect(targetEffect).filter((item) =>
+            fj05Preventable(item, envelope.playerId),
+          )
+        : [];
+    if (
+      player.equipment.armor !== cardInstanceId ||
+      cardDefinition(cardInstanceId).id !== "xyy.card.fj05" ||
+      prevented.length === 0
+    ) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    const nextEventId = `${input.matchId}:event:${input.eventSequence + 1}`;
+    builder.append("reaction.equipment-activated", {
+      playerId: envelope.playerId,
+      cardInstanceId,
+      targetEffectId: window.effectId,
+      preventedItemIds: prevented.map((item) => item.itemId),
+      healingItems: planCureBatch(input, [
+        {
+          itemId: `${nextEventId}:cure:0`,
+          sourcePlayerId: envelope.playerId,
+          targetPlayerId: envelope.playerId,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
       openedAt: serverReceivedAt,
     });
     builder.resolveClosedWindows();

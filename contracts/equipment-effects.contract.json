@@ -77,9 +77,9 @@
       "name": "踏云靴",
       "rule": "while enabled hit plus one; on owner damage the owner may discard this armor, remove every positive owner item unless DECR_INVAO or IMMUNE_INVAO (including TP03-immune damage), and cure one",
       "status": "partial",
-      "verifiedBoundary": "armor equip and replacement",
+      "verifiedBoundary": "equip/replacement plus owner-only damage-window discard, DECR_INVAO/IMMUNE_INVAO bypass, TUX_INAVO prevention, deterministic cure, replay and six-socket persistence",
       "linkedPending": [
-        "CS01D-DAMAGE-EQUIPMENT-BURSTS",
+        "CS02-HERO-SKILLS:equipment-disabled-state",
         "CS03-BATTLE-DECKS:hit"
       ]
     }
@@ -135,9 +135,10 @@
     "CS01D-11": "FJ03-reduces-each-positive-owner-item-unless-TERMIN_AT-or-DECR_INVAO-and-removes-zero-items",
     "CS01D-12": "FJ04-removes-positive-FROM_JP-owner-items-unless-IMMUNE_INVAO",
     "CS01D-13": "FJ01-is-owner-only-at-zero-HP-pays-the-armor-cures-two-through-modifiers-and-resumes-the-dying-batch",
-    "CS01D-14": "FJ02-FJ05-triggered-effects-obey-cost-window-and-mask-rules",
-    "CS01D-15": "base-strength-and-hit-growth-waits-for-real-CS03-battle-state",
-    "CS01D-16": "all-completed-equipment-modes-conserve-the-56-card-action-deck",
-    "CS01D-17": "full-fast-and-specialty-verification-pass"
+    "CS01D-14": "FJ05-is-owner-only-pays-the-armor-removes-all-eligible-owner-items-including-TUX_INAVO-and-cures-one",
+    "CS01D-15": "FJ02-hand-conversion-obeys-cost-window-and-mask-rules",
+    "CS01D-16": "base-strength-and-hit-growth-waits-for-real-CS03-battle-state",
+    "CS01D-17": "all-completed-equipment-modes-conserve-the-56-card-action-deck",
+    "CS01D-18": "full-fast-and-specialty-verification-pass"
   }
 }
