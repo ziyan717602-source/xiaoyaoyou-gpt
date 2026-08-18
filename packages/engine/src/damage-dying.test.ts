@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { CommandEnvelope, PlayerId } from "@xiaoyaoyou/protocol";
 import {
   applyCommand,
+  beginDamageResponse,
+  collectSystemDeadlines,
   createPlayerView,
   createSetupMatch,
   reduceEvent,
@@ -220,6 +222,7 @@ describe("M05 damage and dying core", () => {
         ...intent,
         targetPlayerId: alternate,
         amount: 0,
+        hpEvoMask: "normal",
         appliedReplacementEffectIds: ["effect-replace"],
       },
     ]);
@@ -297,6 +300,256 @@ describe("M05 damage and dying core", () => {
     expect(state.discardPile).toEqual(
       expect.arrayContaining(["xyy.card.jp05@10", "xyy.card.tp02@36"]),
     );
+  });
+
+  it("lets only the damaged owner use TP03, supports Bingxin cancellation, and excludes TUX_INAVO", () => {
+    const initial = playing("tp03-damage-gate");
+    const actor = initial.activePlayerId!;
+    const target = Object.values(initial.players)
+      .sort((left, right) => left.seat - right.seat)
+      .find(
+        (player) =>
+          player.id !== actor &&
+          (player.seat + 1) % 6 !== initial.players[actor]!.seat,
+      )!.id;
+    const counter = Object.values(initial.players)
+      .sort((left, right) => left.seat - right.seat)
+      .find(
+        (player) => player.seat === (initial.players[target]!.seat + 1) % 6,
+      )!.id;
+
+    const openDamageWindow = (input: MatchState, prefix: string) => {
+      let next = accepted(
+        input,
+        actor,
+        `${prefix}-play-jp05`,
+        {
+          type: "play-card",
+          cardInstanceId: "xyy.card.jp05@10",
+          targetPlayerIds: [target],
+        },
+        1_000,
+      );
+      let passIndex = 0;
+      while (next.effectStack.at(-1)?.kind !== "damage-batch") {
+        const window = next.reactionWindow!;
+        const priority = window.priorityOrder[window.priorityIndex]!;
+        next = accepted(
+          next,
+          priority,
+          `${prefix}-original-pass-${passIndex}`,
+          { type: "pass-reaction", windowId: window.windowId },
+          2_000 + passIndex,
+        );
+        passIndex += 1;
+        if (passIndex > 6) throw new Error("JP05 window did not close.");
+      }
+      return next;
+    };
+
+    let protectedState = arrange(initial, {
+      [actor]: ["xyy.card.jp05@10"],
+      [target]: ["xyy.card.tp03@39"],
+    });
+    protectedState = {
+      ...protectedState,
+      players: {
+        ...protectedState.players,
+        [target]: { ...protectedState.players[target]!, hp: 2 },
+      },
+    };
+    protectedState = openDamageWindow(protectedState, "tp03-protect");
+    const damageEffectId = protectedState.effectStack.at(-1)!.effectId;
+    expect(protectedState.players[target]!.hp).toBe(2);
+    expect(protectedState.reactionWindow?.priorityOrder).toEqual([target]);
+    expect(createPlayerView(protectedState, target).availableActions).toEqual([
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp03@39",
+        targetEffectId: damageEffectId,
+      },
+      {
+        type: "pass-reaction",
+        windowId: protectedState.reactionWindow!.windowId,
+      },
+    ]);
+    expect(createPlayerView(protectedState, actor).availableActions).toEqual(
+      [],
+    );
+    protectedState = accepted(
+      protectedState,
+      target,
+      "tp03-protect-card",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp03@39",
+        targetEffectId: damageEffectId,
+      },
+      3_000,
+    );
+    protectedState = passAllReactions(protectedState, 4_000);
+    expect(protectedState.players[target]).toMatchObject({
+      hp: 2,
+      alive: true,
+    });
+    expect(protectedState.dyingBatch).toBeNull();
+    expect(protectedState.discardPile).toEqual(
+      expect.arrayContaining(["xyy.card.jp05@10", "xyy.card.tp03@39"]),
+    );
+
+    let timeoutState = arrange(initial, {
+      [actor]: ["xyy.card.jp05@10"],
+      [target]: ["xyy.card.tp03@39"],
+    });
+    timeoutState = {
+      ...timeoutState,
+      players: {
+        ...timeoutState.players,
+        [target]: { ...timeoutState.players[target]!, hp: 2 },
+      },
+    };
+    timeoutState = openDamageWindow(timeoutState, "tp03-timeout");
+    const deadline = collectSystemDeadlines(timeoutState).find((candidate) =>
+      candidate.targetId.startsWith("reaction:"),
+    )!;
+    expect(deadline.playerId).toBe(target);
+    expect(deadline.deadlineAt - timeoutState.reactionWindow!.openedAt).toBe(
+      15_000,
+    );
+    const timedOut = applyCommand(timeoutState, {
+      origin: "system-timeout",
+      commandId: "tp03-damage-timeout",
+      matchId: timeoutState.matchId,
+      expectedVersion: timeoutState.version,
+      deadlineAt: deadline.deadlineAt,
+      targetId: deadline.targetId,
+    });
+    expect(timedOut.accepted).toBe(true);
+    if (!timedOut.accepted) throw new Error(timedOut.reason);
+    expect(timedOut.state.players[target]!.hp).toBe(0);
+    expect(timedOut.state.players[target]!.hand).toEqual(["xyy.card.tp03@39"]);
+
+    let cancelledState = arrange(initial, {
+      [actor]: ["xyy.card.jp05@10"],
+      [target]: ["xyy.card.tp03@39"],
+      [counter]: ["xyy.card.tp01@33"],
+    });
+    cancelledState = {
+      ...cancelledState,
+      players: {
+        ...cancelledState.players,
+        [target]: { ...cancelledState.players[target]!, hp: 2 },
+      },
+    };
+    cancelledState = openDamageWindow(cancelledState, "tp03-cancel");
+    cancelledState = accepted(
+      cancelledState,
+      target,
+      "tp03-cancel-card",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp03@39",
+        targetEffectId: cancelledState.effectStack.at(-1)!.effectId,
+      },
+      3_000,
+    );
+    expect(
+      cancelledState.reactionWindow?.priorityOrder[
+        cancelledState.reactionWindow.priorityIndex
+      ],
+    ).toBe(counter);
+    cancelledState = accepted(
+      cancelledState,
+      counter,
+      "tp03-bingxin",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: cancelledState.effectStack.at(-1)!.effectId,
+      },
+      4_000,
+    );
+    cancelledState = passAllReactions(cancelledState, 5_000);
+    expect(cancelledState.players[target]).toMatchObject({
+      hp: 0,
+      alive: true,
+    });
+    expect(cancelledState.dyingBatch?.currentTargetPlayerId).toBe(target);
+
+    let inclinationState = arrange(initial, {
+      [target]: ["xyy.card.tp03@39"],
+    });
+    inclinationState = {
+      ...inclinationState,
+      players: {
+        ...inclinationState.players,
+        [target]: { ...inclinationState.players[target]!, hp: 2 },
+      },
+    };
+    const inclination = planDamageBatch(inclinationState, [
+      {
+        itemId: "inclination-damage",
+        sourcePlayerId: actor,
+        targetPlayerId: target,
+        amount: 2,
+        element: "none",
+        hpEvoMask: "tux-inavo",
+      },
+    ]);
+    inclinationState = beginDamageResponse(
+      inclinationState,
+      "inclination-effect",
+      actor,
+      inclination,
+      9_000,
+    );
+    expect(inclinationState.reactionWindow).toBeNull();
+    expect(inclinationState.players[target]!.hp).toBe(0);
+    expect(inclinationState.players[target]!.hand).toEqual([
+      "xyy.card.tp03@39",
+    ]);
+
+    let multiState = arrange(initial, {
+      [target]: ["xyy.card.tp03@39"],
+    });
+    const hpBefore = multiState.players[target]!.hp;
+    const multiple = planDamageBatch(multiState, [
+      {
+        itemId: "multi-normal-one",
+        sourcePlayerId: actor,
+        targetPlayerId: target,
+        amount: 1,
+        element: "fire",
+      },
+      {
+        itemId: "multi-normal-two",
+        sourcePlayerId: actor,
+        targetPlayerId: target,
+        amount: 2,
+        element: "thunder",
+      },
+    ]);
+    multiState = beginDamageResponse(
+      multiState,
+      "multi-damage-effect",
+      actor,
+      multiple,
+      10_000,
+    );
+    multiState = accepted(
+      multiState,
+      target,
+      "tp03-multi-card",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp03@39",
+        targetEffectId: multiState.effectStack.at(-1)!.effectId,
+      },
+      11_000,
+    );
+    multiState = passAllReactions(multiState, 12_000);
+    expect(multiState.players[target]!.hp).toBe(hpBefore);
+    expect(multiState.dyingBatch).toBeNull();
   });
 
   it("lets Bingxin cancel JP05 before damage and enforces rescue privacy and deadline", () => {

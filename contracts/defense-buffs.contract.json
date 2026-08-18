@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-defense-buffs-v1",
+  "scope": "CONTENT-STANDARD/CS01C-DEFENSE-AND-BUFFS",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "items": {
+    "xyy.card.tp03": {
+      "name": "隐蛊",
+      "rule": "when the owner has positive normal HP damage in the current planned batch, pay this card to remove every non-TUX_INAVO damage item for that owner from that batch after this technique card's own Bingxin response resolves",
+      "status": "partial",
+      "verifiedBoundary": "ordinary damage gate, all matching batch items, Bingxin cancellation, timeout, restart and six-socket privacy",
+      "linkedPending": [
+        "CS01D-EQUIPMENT-EFFECTS:FJ02-copy-mode",
+        "CS02-HERO-SKILLS:TP03-copy-and-locust-modes"
+      ]
+    },
+    "xyy.card.tp04": {
+      "name": "洞冥宝镜",
+      "rule": "before any player decides whether to reveal a monster, choose a targetable teammate (including self) to privately inspect the top monster card and return it unchanged",
+      "status": "pending-CS03-monster-deck-and-encounter-window"
+    },
+    "xyy.card.zp01": {
+      "name": "金蝉脱壳",
+      "rule": "while attending a battle, force that battle to end without win/loss settlement; this card cannot be answered by cleanse",
+      "status": "pending-CS03-battle-lifecycle"
+    },
+    "xyy.card.zp02": {
+      "name": "天罡战气",
+      "rule": "after an attending player hits, add that player's current positive base battle strength (including equipment and pet) again for this battle",
+      "status": "pending-CS03-battle-and-CS01D-equipment-modifiers"
+    },
+    "xyy.card.zp03": {
+      "name": "金蚕王",
+      "rule": "after an attending player hits, add three personal battle strength for this battle",
+      "status": "pending-CS03-battle-lifecycle"
+    },
+    "xyy.card.zp04": {
+      "name": "天玄五音",
+      "rule": "during a battle even when not attending, choose one side and add two side battle strength for this battle",
+      "status": "pending-CS03-battle-lifecycle"
+    }
+  },
+  "legacyEvidence": [
+    "psd.db3:Tux:TP03-TP04-ZP01-ZP04 occurs-target-description-special",
+    "PSDGamepkg/JNS/JP06.cs:523-558 TP03 valid-action-locust",
+    "PSDGamepkg/JNS/JP06.cs:560-569 TP04 teammate-top-monster-inspect",
+    "PSDGamepkg/JNS/JP06.cs:708-719 ZP01 forced-battle-terminal",
+    "PSDGamepkg/JNS/JP06.cs:721-729 ZP02 duplicate-positive-base-strength",
+    "PSDGamepkg/JNS/JP06.cs:731-738 ZP03 personal-strength-plus-three",
+    "PSDGamepkg/JNS/JP06.cs:740-744 ZP04 side-strength-plus-two",
+    "PSDGamepkg/JNS/JNSBase.cs:157-160 ATeammatesTared-includes-self",
+    "PSDGamepkg/JNS/JP06.cs:TP01-description generic-technique-cancellation"
+  ],
+  "decisions": {
+    "tp03Timing": "open-a-serialized-damage-batch-window-after-modifiers-but-before-hp-and-dying",
+    "tp03EligibilityPrivacy": "every-owner-of-positive-preventable-damage-gets-the-same-window-even-without-TP03",
+    "tp03Scope": "remove-all-current-batch-normal-items-for-owner",
+    "tp03Inclination": "TUX_INAVO-items-never-offer-or-resolve-TP03",
+    "tp03Cancellation": "TP03-is-a-technique-child-effect-and-Bingxin-cancellation-restores-the-parent-damage-window",
+    "tp03Timeout": "optional-damage-response-passes-at-15-seconds",
+    "tp04CrossSlice": "do-not-substitute-the-action-deck-for-the-missing-monster-deck",
+    "battleCardsCrossSlice": "freeze-exact-temporary-lifetimes-now-and-implement-only-after-CS03-battle-state-exists"
+  },
+  "acceptanceMap": {
+    "CS01C-01": "all-six-rules-and-cross-slice-dependencies-are-frozen-from-read-only-CSharp-evidence",
+    "CS01C-02": "TP03-opens-after-damage-planning-and-before-hp-or-dying-changes",
+    "CS01C-03": "only-each-damaged-owner-receives-its-own-private-TP03-or-pass-actions",
+    "CS01C-04": "resolved-TP03-removes-all-normal-current-batch-items-for-its-owner",
+    "CS01C-05": "TUX_INAVO-damage-does-not-open-a-TP03-response",
+    "CS01C-06": "TP03-pays-the-card-and-opens-its-own-Bingxin-response-chain",
+    "CS01C-07": "Bingxin-cancelled-TP03-restores-and-applies-the-parent-damage",
+    "CS01C-08": "TP03-optional-window-times-out-to-pass-after-15-seconds",
+    "CS01C-09": "TP03-damage-and-child-windows-replay-identically-across-JSON-restart",
+    "CS01C-10": "TP03-works-over-six-real-WebSockets-with-restart-and-view-isolation",
+    "CS01C-11": "TP04-and-ZP01-ZP04-remain-traceably-pending-without-fake-subsystems",
+    "CS01C-12": "full-fast-and-specialty-verification-pass"
+  }
+}

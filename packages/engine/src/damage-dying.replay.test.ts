@@ -95,6 +95,120 @@ function fixture(): {
 }
 
 describe("M05 damage/dying event replay", () => {
+  it("resumes TP03 prevention identically from the serialized damage window", () => {
+    const setup = fixture();
+    const claimed = new Set(["xyy.card.jp05@10", "xyy.card.tp03@39"]);
+    const initial: MatchState = {
+      ...setup.state,
+      players: Object.fromEntries(
+        Object.values(setup.state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hand:
+              player.id === setup.actor
+                ? ["xyy.card.jp05@10"]
+                : player.id === setup.target
+                  ? ["xyy.card.tp03@39"]
+                  : [],
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+    const events: DomainEvent[] = [];
+    let result = apply(
+      initial,
+      setup.actor,
+      "tp03-replay-jp05",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [setup.target],
+      },
+      1_000,
+    );
+    events.push(...result.events);
+    let sequence = 0;
+    while (result.state.effectStack.at(-1)?.kind !== "damage-batch") {
+      const window = result.state.reactionWindow!;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      result = apply(
+        result.state,
+        priority,
+        `tp03-replay-original-pass-${sequence}`,
+        { type: "pass-reaction", windowId: window.windowId },
+        2_000 + sequence,
+      );
+      events.push(...result.events);
+      sequence += 1;
+    }
+    const checkpoint = result.state;
+    const restarted = JSON.parse(JSON.stringify(checkpoint)) as MatchState;
+    const damageEffectId = checkpoint.effectStack.at(-1)!.effectId;
+    const prevention = {
+      type: "play-reaction-card" as const,
+      cardInstanceId: "xyy.card.tp03@39",
+      targetEffectId: damageEffectId,
+    };
+    let uninterrupted = apply(
+      checkpoint,
+      setup.target,
+      "tp03-replay-prevent",
+      prevention,
+      3_000,
+    );
+    let resumed = apply(
+      restarted,
+      setup.target,
+      "tp03-replay-prevent",
+      prevention,
+      3_000,
+    );
+    expect(resumed).toEqual(uninterrupted);
+    events.push(...uninterrupted.events);
+    sequence = 0;
+    while (uninterrupted.state.reactionWindow !== null) {
+      const window = uninterrupted.state.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const command = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `tp03-replay-child-pass-${sequence}`;
+      const now = 4_000 + sequence;
+      const next = apply(
+        uninterrupted.state,
+        priority,
+        commandId,
+        command,
+        now,
+      );
+      const recovered = apply(resumed.state, priority, commandId, command, now);
+      expect(recovered).toEqual(next);
+      uninterrupted = next;
+      resumed = recovered;
+      events.push(...next.events);
+      sequence += 1;
+      if (sequence > 6) throw new Error("TP03 child window did not close.");
+    }
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+    expect(resumed.state).toEqual(uninterrupted.state);
+    expect(uninterrupted.state.players[setup.target]).toMatchObject({
+      hp: 2,
+      alive: true,
+    });
+    expect(uninterrupted.state.dyingBatch).toBeNull();
+  });
+
   it("resumes identically from a JSON checkpoint inside the rescue window", () => {
     const setup = fixture();
     const initial = setup.state;

@@ -42,7 +42,7 @@ for (const token of [
   "applyReactionCommand",
   "pruneTerminalTail",
   "parentWindow",
-  'kind: "cancel-effect"',
+  ': "cancel-effect"',
 ]) {
   assert(reaction.includes(token), `Missing M04 engine boundary ${token}.`);
 }

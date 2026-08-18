@@ -122,12 +122,17 @@ assertExact(
     "apply-additive-modifiers",
     "apply-reductions",
     "floor-at-zero",
+    "open-serialized-card-prevention-windows",
     "apply-batch-simultaneously",
     "emit-applied-events",
     "enqueue-after-damage-triggers",
     "detect-dying-after-whole-batch",
   ],
   "Damage pipeline",
+);
+assert(
+  contract.damage.preventionWindowRule.includes("before-any-hp-write"),
+  "Damage prevention must complete before HP writes.",
 );
 assert(
   contract.dying.queueOrder === "ascending-seat-at-detection-snapshot",

@@ -14,6 +14,7 @@
       "additions",
       "reductions",
       "clamp-at-zero",
+      "open-serialized-card-prevention-windows",
       "write-whole-batch",
       "append-applied-events",
       "after-damage-effects",

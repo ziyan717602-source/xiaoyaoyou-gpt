@@ -22,6 +22,7 @@ export type CoreCardAction =
   | { readonly type: "heal-two" }
   | { readonly type: "heal-team-one"; readonly element: "water" }
   | { readonly type: "cancel-effect" }
+  | { readonly type: "prevent-damage" }
   | null;
 
 export type RescueCardAction = { readonly type: "rescue-two" } | null;
@@ -407,7 +408,11 @@ export const SETUP_CARDS: readonly CardDefinition[] = [
     coreAction: { type: "heal-two" },
     rescueAction: { type: "rescue-two" },
   },
-  { id: "xyy.card.tp03", name: "隐蛊", coreAction: null },
+  {
+    id: "xyy.card.tp03",
+    name: "隐蛊",
+    coreAction: { type: "prevent-damage" },
+  },
   { id: "xyy.card.tp04", name: "洞冥宝镜", coreAction: null },
   {
     id: "xyy.card.wq01",

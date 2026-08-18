@@ -7,10 +7,10 @@
     "standard": 177,
     "sharedCore": 28,
     "total": 205,
-    "partial": 42,
+    "partial": 43,
     "verified": 1,
     "deferred": 0,
-    "unstarted": 162
+    "unstarted": 161
   },
   "executionQueue": [
     {
@@ -418,9 +418,9 @@
       "kind": "card",
       "packages": ["standard"],
       "slice": "CS01C-DEFENSE-AND-BUFFS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "partial",
+      "boundary": "ordinary positive HP damage uses a serialized owner-only prevention gate, all matching batch items, Bingxin cancellation, timeout and restart; copy/locust modes pending CS01D/CS02",
+      "evidence": ["receipt:docs/verification/receipts/cs01c-tp03.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

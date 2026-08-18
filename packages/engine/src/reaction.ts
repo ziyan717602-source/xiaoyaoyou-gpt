@@ -14,6 +14,7 @@ import { planDraw } from "./card-zones.js";
 import {
   applyPlannedDamage,
   planDamageBatch,
+  type AppliedDamage,
   type DamageIntent,
 } from "./damage-dying.js";
 import type {
@@ -196,14 +197,17 @@ function makeWindow(input: {
   readonly parentWindow: ReactionWindow | null;
   readonly afterPlayerId: PlayerId;
   readonly openedAt: number;
+  readonly eligiblePlayerIds?: readonly PlayerId[];
 }): ReactionWindow {
   const sourcePlayerId = input.effect.sourcePlayerId;
-  if (sourcePlayerId === null) {
+  if (sourcePlayerId === null && input.eligiblePlayerIds === undefined) {
     throw new Error("A player-card effect requires a source player.");
   }
-  const eligiblePlayerIds = livingSeatOrder(input.state).filter(
-    (playerId) => playerId !== sourcePlayerId,
-  );
+  const eligiblePlayerIds =
+    input.eligiblePlayerIds ??
+    livingSeatOrder(input.state).filter(
+      (playerId) => playerId !== sourcePlayerId,
+    );
   const eligible = new Set(eligiblePlayerIds);
   const priorityOrder = priorityAfter(
     input.state,
@@ -233,6 +237,71 @@ function makeWindow(input: {
   };
 }
 
+function damageItemsForEffect(
+  effect: Readonly<EffectFrame>,
+): readonly AppliedDamage[] {
+  const value = effect.payload.damageItems;
+  if (!Array.isArray(value)) {
+    throw new Error("Damage-batch effect is missing its planned items.");
+  }
+  for (const item of value) {
+    if (
+      item === null ||
+      typeof item !== "object" ||
+      typeof (item as Partial<AppliedDamage>).itemId !== "string" ||
+      typeof (item as Partial<AppliedDamage>).targetPlayerId !== "string" ||
+      typeof (item as Partial<AppliedDamage>).amount !== "number" ||
+      ((item as Partial<AppliedDamage>).hpEvoMask !== "normal" &&
+        (item as Partial<AppliedDamage>).hpEvoMask !== "tux-inavo")
+    ) {
+      throw new Error("Damage-batch effect has an invalid planned item.");
+    }
+  }
+  return value as readonly AppliedDamage[];
+}
+
+function damageSourceEffectId(effect: Readonly<EffectFrame>): EffectId {
+  const value = effect.payload.sourceEffectId;
+  if (typeof value !== "string") {
+    throw new Error("Damage-batch effect is missing its source effect.");
+  }
+  return value;
+}
+
+function tp03Responders(
+  state: Readonly<MatchState>,
+  items: readonly AppliedDamage[],
+): readonly PlayerId[] {
+  const targetIds = new Set(
+    items
+      .filter((item) => item.amount > 0 && item.hpEvoMask === "normal")
+      .map((item) => item.targetPlayerId),
+  );
+  return livingSeatOrder(state).filter((playerId) => targetIds.has(playerId));
+}
+
+function advanceInterruptedWindow(
+  window: Readonly<ReactionWindow>,
+  playerId: PlayerId,
+  openedAt: number,
+): ReactionWindow {
+  if (window.priorityOrder[window.priorityIndex] !== playerId) {
+    throw new Error("Interrupted response source did not own priority.");
+  }
+  const passedPlayerIds = window.passedPlayerIds.includes(playerId)
+    ? window.passedPlayerIds
+    : [...window.passedPlayerIds, playerId];
+  const closed = passedPlayerIds.length === window.priorityOrder.length;
+  return {
+    ...window,
+    priorityIndex: closed ? window.priorityIndex : window.priorityIndex + 1,
+    passedPlayerIds,
+    status: closed ? "closed" : "open",
+    openedAt,
+    deadlineAt: openedAt + REACTION_DEADLINE_MS,
+  };
+}
+
 function parentWindow(value: unknown): ReactionWindow | null {
   if (value === null || typeof value !== "object") return null;
   const candidate = value as Partial<ReactionWindow>;
@@ -241,6 +310,46 @@ function parentWindow(value: unknown): ReactionWindow | null {
     candidate.continuation !== undefined
     ? (candidate as ReactionWindow)
     : null;
+}
+
+/** Opens the serialized TP03 gate before an already-planned damage batch. */
+export function beginDamageResponse(
+  state: Readonly<MatchState>,
+  sourceEffectId: EffectId,
+  sourcePlayerId: PlayerId | null,
+  damageItems: readonly AppliedDamage[],
+  openedAt: number,
+): MatchState {
+  const eligiblePlayerIds = tp03Responders(state, damageItems);
+  if (eligiblePlayerIds.length === 0) {
+    return applyPlannedDamage(state, sourceEffectId, damageItems, openedAt);
+  }
+  const damageEffect: EffectFrame = {
+    effectId: `${sourceEffectId}:damage-batch`,
+    parentEffectId: null,
+    kind: "damage-batch",
+    sourcePlayerId,
+    targetIds: [...new Set(damageItems.map((item) => item.targetPlayerId))],
+    step: "awaiting-reactions",
+    status: "waiting",
+    payload: { sourceEffectId, damageItems },
+  };
+  const withDamage: MatchState = {
+    ...state,
+    effectStack: [...state.effectStack, damageEffect],
+  };
+  return {
+    ...withDamage,
+    reactionWindow: makeWindow({
+      state: withDamage,
+      effect: damageEffect,
+      windowId: `${sourceEffectId}:damage-window`,
+      parentWindow: null,
+      afterPlayerId: sourcePlayerId ?? eligiblePlayerIds.at(-1)!,
+      openedAt,
+      eligiblePlayerIds,
+    }),
+  };
 }
 
 export function reduceReactionEvent(
@@ -366,6 +475,20 @@ export function reduceReactionEvent(
     const window = state.reactionWindow;
     const player = state.players[playerId];
     const targetEffect = effectById(state, targetEffectId);
+    const action = cardDefinition(cardInstanceId).coreAction;
+    const cancelsCurrentEffect =
+      action?.type === "cancel-effect" &&
+      targetEffect !== undefined &&
+      targetEffect.kind !== "damage-batch";
+    const preventsCurrentDamage =
+      action?.type === "prevent-damage" &&
+      targetEffect?.kind === "damage-batch" &&
+      damageItemsForEffect(targetEffect).some(
+        (item) =>
+          item.targetPlayerId === playerId &&
+          item.amount > 0 &&
+          item.hpEvoMask === "normal",
+      );
     if (
       window === null ||
       window.status !== "open" ||
@@ -373,7 +496,7 @@ export function reduceReactionEvent(
       window.priorityOrder[window.priorityIndex] !== playerId ||
       player === undefined ||
       !player.hand.includes(cardInstanceId) ||
-      cardDefinition(cardInstanceId).coreAction?.type !== "cancel-effect" ||
+      (!cancelsCurrentEffect && !preventsCurrentDamage) ||
       targetEffect === undefined ||
       targetEffect.status !== "waiting" ||
       effectById(state, effectId) !== undefined
@@ -383,7 +506,7 @@ export function reduceReactionEvent(
     const effect: EffectFrame = {
       effectId,
       parentEffectId: targetEffectId,
-      kind: "cancel-effect",
+      kind: preventsCurrentDamage ? "card:xyy.card.tp03" : "cancel-effect",
       sourcePlayerId: playerId,
       targetIds: [targetEffectId],
       step: "awaiting-reactions",
@@ -640,7 +763,31 @@ export function reduceReactionEvent(
         [effect.effectId]: "resolved",
         [target.effectId]: "cancelled",
       };
-      if (target.kind === "cancel-effect") {
+      if (target.kind === "card:xyy.card.tp03") {
+        const targetWindow = parentWindow(
+          window.continuation.locals.parentWindow,
+        );
+        const damageWindow = parentWindow(
+          targetWindow?.continuation.locals.parentWindow,
+        );
+        const damageEffect =
+          damageWindow === null
+            ? undefined
+            : effectById(state, damageWindow.effectId);
+        if (
+          damageWindow === null ||
+          damageEffect?.kind !== "damage-batch" ||
+          target.sourcePlayerId === null
+        ) {
+          throw new Error("Cancelled TP03 damage continuation is missing.");
+        }
+        statuses[damageEffect.effectId] = "waiting";
+        restoredWindow = advanceInterruptedWindow(
+          damageWindow,
+          target.sourcePlayerId,
+          resolvedAt,
+        );
+      } else if (target.kind === "cancel-effect") {
         const targetWindow = parentWindow(
           window.continuation.locals.parentWindow,
         );
@@ -674,6 +821,64 @@ export function reduceReactionEvent(
         ...state,
         effectStack: pruneTerminalTail(updateEffects(state, statuses)),
         reactionWindow: restoredWindow,
+      };
+    } else if (effect.kind === "card:xyy.card.tp03") {
+      const damageWindow = parentWindow(
+        window.continuation.locals.parentWindow,
+      );
+      const damageEffect =
+        damageWindow === null
+          ? undefined
+          : effectById(state, damageWindow.effectId);
+      const sourcePlayerId = effect.sourcePlayerId;
+      if (
+        damageWindow === null ||
+        damageEffect?.kind !== "damage-batch" ||
+        damageEffect.status !== "pending" ||
+        sourcePlayerId === null
+      ) {
+        throw new Error("Resolved TP03 damage continuation is missing.");
+      }
+      const before = damageItemsForEffect(damageEffect);
+      const prevented = before.filter(
+        (item) =>
+          item.targetPlayerId === sourcePlayerId && item.hpEvoMask === "normal",
+      );
+      const preventedItemIds = stringsPayload(event, "preventedItemIds");
+      if (
+        prevented.length === 0 ||
+        !sameValues(
+          preventedItemIds,
+          prevented.map((item) => item.itemId),
+        )
+      ) {
+        throw new Error(
+          "Resolved TP03 prevention disagrees with damage batch.",
+        );
+      }
+      const remaining = before.filter(
+        (item) => !preventedItemIds.includes(item.itemId),
+      );
+      const effects = state.effectStack.map((candidate) =>
+        candidate.effectId === damageEffect.effectId
+          ? {
+              ...candidate,
+              status: "waiting" as const,
+              step: "awaiting-reactions",
+              payload: { ...candidate.payload, damageItems: remaining },
+            }
+          : candidate.effectId === effect.effectId
+            ? { ...candidate, status: "resolved" as const, step: "resolved" }
+            : candidate,
+      );
+      next = {
+        ...state,
+        effectStack: pruneTerminalTail(effects),
+        reactionWindow: advanceInterruptedWindow(
+          damageWindow,
+          sourcePlayerId,
+          resolvedAt,
+        ),
       };
     } else if (effect.kind === "card:xyy.card.jp04") {
       const targetPlayerId = effect.targetIds[0];
@@ -740,7 +945,33 @@ export function reduceReactionEvent(
         ),
         reactionWindow: null,
       };
-      next = applyPlannedDamage(resolved, effectId, expected, resolvedAt);
+      next = beginDamageResponse(
+        resolved,
+        effectId,
+        effect.sourcePlayerId,
+        expected,
+        resolvedAt,
+      );
+    } else if (effect.kind === "damage-batch") {
+      const expected = damageItemsForEffect(effect);
+      if (
+        JSON.stringify(event.payload.damageItems) !== JSON.stringify(expected)
+      ) {
+        throw new Error("Resolved damage batch disagrees with planned items.");
+      }
+      const resolved: MatchState = {
+        ...state,
+        effectStack: pruneTerminalTail(
+          updateEffects(state, { [effectId]: "resolved" }),
+        ),
+        reactionWindow: null,
+      };
+      next = applyPlannedDamage(
+        resolved,
+        damageSourceEffectId(effect),
+        expected,
+        resolvedAt,
+      );
     } else if (effect.kind === "card:xyy.card.tp02") {
       const targetPlayerId = effect.targetIds[0];
       const target =
@@ -905,6 +1136,28 @@ class EventBuilder {
           effectId,
           resolvedAt: this.serverReceivedAt,
           damageItems: planned,
+        });
+      } else if (effect.kind === "card:xyy.card.tp03") {
+        const target = effectById(this.state, effect.parentEffectId ?? "");
+        if (target?.kind !== "damage-batch" || effect.sourcePlayerId === null) {
+          throw new Error("TP03 target damage batch is missing.");
+        }
+        this.append("effect.resolved", {
+          effectId,
+          resolvedAt: this.serverReceivedAt,
+          preventedItemIds: damageItemsForEffect(target)
+            .filter(
+              (item) =>
+                item.targetPlayerId === effect.sourcePlayerId &&
+                item.hpEvoMask === "normal",
+            )
+            .map((item) => item.itemId),
+        });
+      } else if (effect.kind === "damage-batch") {
+        this.append("effect.resolved", {
+          effectId,
+          resolvedAt: this.serverReceivedAt,
+          damageItems: damageItemsForEffect(effect),
         });
       } else if (effect.kind === "card:xyy.card.tp02") {
         const target = this.state.players[effect.targetIds[0]!]!;
@@ -1190,7 +1443,12 @@ export function applyReactionCommand(
     }
     if (
       !player.hand.includes(cardInstanceId) ||
-      definition.coreAction?.type !== "cancel-effect"
+      !(
+        (definition.coreAction?.type === "cancel-effect" &&
+          effectById(input, window.effectId)?.kind !== "damage-batch") ||
+        (definition.coreAction?.type === "prevent-damage" &&
+          effectById(input, window.effectId)?.kind === "damage-batch")
+      )
     ) {
       return {
         accepted: false,

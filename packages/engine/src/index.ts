@@ -600,8 +600,15 @@ function reactionActions(
   }
   const player = state.players[viewerId];
   if (player === undefined || !player.alive) return [];
+  const targetEffect = state.effectStack.find(
+    (effect) => effect.effectId === window.effectId,
+  );
   const reactions = player.hand.flatMap((cardInstanceId) =>
-    cardDefinition(cardInstanceId).coreAction?.type === "cancel-effect"
+    (
+      targetEffect?.kind === "damage-batch"
+        ? cardDefinition(cardInstanceId).coreAction?.type === "prevent-damage"
+        : cardDefinition(cardInstanceId).coreAction?.type === "cancel-effect"
+    )
       ? [
           {
             type: "play-reaction-card" as const,
@@ -841,6 +848,7 @@ export type {
   ResumeResult,
 } from "./architecture.js";
 export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
+export { beginDamageResponse } from "./reaction.js";
 export {
   ACTION_DEADLINE_MS,
   DISCONNECT_GRACE_MS,

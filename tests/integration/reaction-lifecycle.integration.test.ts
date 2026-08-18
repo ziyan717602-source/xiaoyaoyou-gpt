@@ -504,6 +504,70 @@ function injectJp06Fixture(
   }
 }
 
+function injectTp03Fixture(
+  databasePath: string,
+  matchId: string,
+  actor: PlayerId,
+  target: PlayerId,
+): void {
+  const database = new Database(databasePath);
+  try {
+    const row = database
+      .prepare(
+        `SELECT rowid, state_json FROM snapshots
+         WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1`,
+      )
+      .get(matchId) as { rowid: number; state_json: string } | undefined;
+    if (row === undefined) throw new Error("Missing TP03 fixture snapshot.");
+    const state = JSON.parse(row.state_json) as MatchState;
+    const hands: Readonly<Record<PlayerId, readonly string[]>> = {
+      [actor]: ["xyy.card.jp05@10"],
+      [target]: ["xyy.card.tp03@39"],
+    };
+    const claimed = new Set(Object.values(hands).flat());
+    const now = Date.now();
+    const fixture: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hp: player.id === target ? 2 : player.hp,
+            hand: hands[player.id] ?? [],
+          },
+        ]),
+      ),
+      turn:
+        state.turn === null
+          ? null
+          : {
+              ...state.turn,
+              phase: "action",
+              openedAt: now,
+              deadlineAt: now + 15_000,
+            },
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+      effectStack: [],
+      reactionWindow: null,
+      pendingChoice: null,
+      dyingBatch: null,
+    };
+    const stateJson = JSON.stringify(fixture);
+    const stateHash = createHash("sha256")
+      .update(stateJson, "utf8")
+      .digest("hex");
+    database
+      .prepare(
+        "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE rowid = ?",
+      )
+      .run(stateJson, stateHash, row.rowid);
+  } finally {
+    database.close();
+  }
+}
+
 describe("M04 reaction lifecycle over six real WebSockets", () => {
   it("persists a child window across restart and completes a counter-chain", async () => {
     const root = mkdtempSync(
@@ -1214,6 +1278,126 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
       jp06Actor.latestView.players.find((player) => player.id === first)!
         .handCount,
     ).toBe(0);
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+
+    injectTp03Fixture(databasePath, room.roomId, actor, first);
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    let tp03ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    const tp03Actor = tp03ClientByPlayer.get(actor)!;
+    expect(tp03Actor.latestView.availableActions).toContainEqual({
+      type: "play-card",
+      cardInstanceId: "xyy.card.jp05@10",
+      targetPlayerIds: expect.arrayContaining([first]),
+    });
+    const jp05 = await sendCommand(
+      tp03Actor,
+      sessionByPlayer.get(actor)!,
+      "network-tp03-jp05",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp05@10",
+        targetPlayerIds: [first],
+      },
+    );
+    expect(jp05.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    let tp03Pass = 0;
+    while (clients[0]!.latestView.effectStack.at(-1)?.kind !== "damage-batch") {
+      const window = clients[0]!.latestView.reactionWindow!;
+      const priority = window.priorityPlayerId!;
+      const response = await sendCommand(
+        tp03ClientByPlayer.get(priority)!,
+        sessionByPlayer.get(priority)!,
+        `network-tp03-original-pass-${tp03Pass}`,
+        version,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitForVersion(clients, version);
+      tp03Pass += 1;
+      if (tp03Pass > 6) throw new Error("TP03 original window did not close.");
+    }
+    const damageWindow = JSON.parse(
+      JSON.stringify(clients[0]!.latestView.reactionWindow),
+    ) as PlayerView["reactionWindow"];
+    const damageEffectId = clients[0]!.latestView.effectStack.at(-1)!.effectId;
+    expect(damageWindow?.priorityPlayerId).toBe(first);
+    expect(tp03ClientByPlayer.get(first)!.latestView.availableActions).toEqual([
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp03@39",
+        targetEffectId: damageEffectId,
+      },
+      { type: "pass-reaction", windowId: damageWindow!.windowId },
+    ]);
+    expect(
+      clients
+        .filter((client) => client !== tp03ClientByPlayer.get(first))
+        .every((client) => client.latestView.availableActions.length === 0),
+    ).toBe(true);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    tp03ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    version = clients[0]!.latestView.version;
+    for (const client of clients) {
+      expect(client.latestView.reactionWindow).toEqual(damageWindow);
+      expect(client.latestView.version).toBe(version);
+    }
+    const prevention = await sendCommand(
+      tp03ClientByPlayer.get(first)!,
+      sessionByPlayer.get(first)!,
+      "network-tp03-prevent",
+      version,
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp03@39",
+        targetEffectId: damageEffectId,
+      },
+    );
+    expect(prevention.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    tp03Pass = 0;
+    while (clients[0]!.latestView.reactionWindow !== null) {
+      const window = clients[0]!.latestView.reactionWindow!;
+      const priority = window.priorityPlayerId!;
+      const response = await sendCommand(
+        tp03ClientByPlayer.get(priority)!,
+        sessionByPlayer.get(priority)!,
+        `network-tp03-child-pass-${tp03Pass}`,
+        version,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitForVersion(clients, version);
+      tp03Pass += 1;
+      if (tp03Pass > 6) throw new Error("TP03 child window did not close.");
+    }
+    expect(
+      tp03ClientByPlayer
+        .get(first)!
+        .latestView.players.find((player) => player.id === first),
+    ).toMatchObject({ hp: 2, alive: true, handCount: 0 });
+    expect(tp03ClientByPlayer.get(first)!.latestView.dyingBatch).toBeNull();
+    expect(tp03ClientByPlayer.get(first)!.latestView.effectStack).toEqual([]);
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });

@@ -23,6 +23,8 @@ export interface DamageIntent {
   readonly targetPlayerId: PlayerId;
   readonly amount: number;
   readonly element: string;
+  /** Legacy HPEvoMask. TP03 cannot prevent the inclination/TUX_INAVO path. */
+  readonly hpEvoMask?: "normal" | "tux-inavo";
 }
 
 export interface DamageModifier {
@@ -40,6 +42,7 @@ export interface AppliedDamage {
   readonly targetPlayerId: PlayerId;
   readonly amount: number;
   readonly element: string;
+  readonly hpEvoMask: "normal" | "tux-inavo";
   readonly appliedReplacementEffectIds: readonly EffectId[];
 }
 
@@ -149,6 +152,7 @@ export function planDamageBatch(
       ...intent,
       targetPlayerId,
       amount: Math.max(0, amount),
+      hpEvoMask: intent.hpEvoMask ?? "normal",
       appliedReplacementEffectIds: [...replacements],
     };
   });
