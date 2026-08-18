@@ -15,9 +15,17 @@ const replay = read("packages/engine/src/turn.replay.test.ts");
 const damage = read("packages/engine/src/damage-dying.ts");
 const damageUnit = read("packages/engine/src/damage-dying.test.ts");
 const damageReplay = read("packages/engine/src/damage-dying.replay.test.ts");
+const protocol = read("packages/protocol/src/index.ts");
+const view = read("packages/engine/src/index.ts");
+const reaction = read("packages/engine/src/reaction.ts");
+const reactionUnit = read("packages/engine/src/reaction.test.ts");
+const reactionReplay = read("packages/engine/src/reaction.replay.test.ts");
 const network = read("tests/integration/setup-lifecycle.integration.test.ts");
 const damageNetwork = read(
   "tests/integration/damage-dying-lifecycle.integration.test.ts",
+);
+const reactionNetwork = read(
+  "tests/integration/reaction-lifecycle.integration.test.ts",
 );
 
 function assert(condition, message) {
@@ -111,6 +119,8 @@ const immunityPlan = plan.items.find((item) => item.id === "xyy.skill.jn50501");
 const immunityHeroPlan = plan.items.find(
   (item) => item.id === "xyy.hero.xj405",
 );
+const refusalPlan = plan.items.find((item) => item.id === "xyy.skill.jn20202");
+const refusalHeroPlan = plan.items.find((item) => item.id === "xyy.hero.xj202");
 assert(skillPlan?.state === "verified", "JN50402 must be verified in plan.");
 assert(heroPlan?.state === "partial", "XJ404 must remain partial.");
 assert(
@@ -125,6 +135,13 @@ assert(
     immunityHeroPlan?.boundary.includes("JN50502"),
   "XJ405 boundary must name completed and pending skills.",
 );
+assert(refusalPlan?.state === "verified", "JN20202 must be verified in plan.");
+assert(refusalHeroPlan?.state === "partial", "XJ202 must remain partial.");
+assert(
+  refusalHeroPlan?.boundary.includes("JN20202") &&
+    refusalHeroPlan?.boundary.includes("JN20201"),
+  "XJ202 boundary must name completed and pending skills.",
+);
 for (const [source, token] of [
   [setupSource, "handLimit: handLimitForHero(heroId)"],
   [setupUnit, "loads the complete hero-skill graph"],
@@ -135,24 +152,28 @@ for (const [source, token] of [
   [damageUnit, "applies JN50501 water/fire immunity"],
   [damageReplay, "resumes JN50501 IMMUNE_INVAO fire damage"],
   [damageNetwork, "network-jn50501-bypass-fire"],
+  [protocol, 'readonly type: "play-skill-converted-reaction-card"'],
+  [view, 'skillId: "xyy.skill.jn20202" as const'],
+  [reaction, 'builder.append("reaction.skill-card-converted"'],
+  [reactionUnit, "uses JN20202 to pay a special card"],
+  [reactionReplay, "replays a JN20202 special-card conversion"],
+  [reactionNetwork, 'skillId: "xyy.skill.jn20202"'],
 ]) {
-  assert(
-    source.includes(token),
-    `Missing JN50402 verification token ${token}.`,
-  );
+  assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
 for (const path of [
   "docs/content-standard/cs02-hero-skills.md",
   "docs/verification/receipts/cs02-jn50402.md",
   "docs/verification/receipts/cs02-jn50501.md",
+  "docs/verification/receipts/cs02-jn20202.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 15,
-  "Expected 15 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 22,
+  "Expected 22 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50402/JN50501 complete`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50402/JN50501/JN20202 complete`,
 );

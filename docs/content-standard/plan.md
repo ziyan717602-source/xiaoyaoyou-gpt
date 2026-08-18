@@ -6,9 +6,9 @@
 - 共享核心前置：28
 - 总跟踪：205
 - 当前 partial：41
-- 当前 verified：5
+- 当前 verified：6
 - 当前 deferred：0
-- 当前 unstarted：159
+- 当前 unstarted：158
 
 ## 执行切片
 
@@ -28,13 +28,14 @@
 
 ## 已验证条目
 
-| ID                  | 名称     | 完成边界                                                                                                                    | 证据                                                                                                                |
-| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `xyy.card.fj02`     | 天帝祭服 | equip/replacement and owner-only arbitrary hand-card conversion into the normal TP03 counter-chain are fully verified       | receipt:docs/verification/receipts/cs01d-fj02.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md      |
-| `xyy.card.fj03`     | 龙魂战铠 | equip/replacement and masked per-item damage minus-one are fully verified                                                   | receipt:docs/verification/receipts/cs01d-fj03-fj04.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md |
-| `xyy.card.jp03`     | 五气朝元 | primary living-team heal-one and alternate pawn draw-one modes are fully verified                                           | receipt:docs/verification/receipts/cs01b-jp03.md                                                                    |
-| `xyy.skill.jn50402` | 剑匣     | native XJ404 ownership and hand-limit-plus-two are verified through authoritative discard, replay and six-socket restart    | receipt:docs/verification/receipts/cs02-jn50402.md                                                                  |
-| `xyy.skill.jn50501` | 凝冰焚炎 | native XJ405 water/fire damage immunity with IMMUNE_INVAO bypass is verified per item through replay and six-socket restart | receipt:docs/verification/receipts/cs02-jn50501.md                                                                  |
+| ID                  | 名称     | 完成边界                                                                                                                              | 证据                                                                                                                |
+| ------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `xyy.card.fj02`     | 天帝祭服 | equip/replacement and owner-only arbitrary hand-card conversion into the normal TP03 counter-chain are fully verified                 | receipt:docs/verification/receipts/cs01d-fj02.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md      |
+| `xyy.card.fj03`     | 龙魂战铠 | equip/replacement and masked per-item damage minus-one are fully verified                                                             | receipt:docs/verification/receipts/cs01d-fj03-fj04.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md |
+| `xyy.card.jp03`     | 五气朝元 | primary living-team heal-one and alternate pawn draw-one modes are fully verified                                                     | receipt:docs/verification/receipts/cs01b-jp03.md                                                                    |
+| `xyy.skill.jn20202` | 拒绝     | native XJ202 TP-category hand-card conversion into the canonical TP01 counter-chain is verified through replay and six-socket restart | receipt:docs/verification/receipts/cs02-jn20202.md                                                                  |
+| `xyy.skill.jn50402` | 剑匣     | native XJ404 ownership and hand-limit-plus-two are verified through authoritative discard, replay and six-socket restart              | receipt:docs/verification/receipts/cs02-jn50402.md                                                                  |
+| `xyy.skill.jn50501` | 凝冰焚炎 | native XJ405 water/fire damage immunity with IMMUNE_INVAO bypass is verified per item through replay and six-socket restart           | receipt:docs/verification/receipts/cs02-jn50501.md                                                                  |
 
 ## 已有局部实现（不得误报为完成）
 
@@ -67,7 +68,7 @@
 | `xyy.hero.xj106` | 酒剑仙      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj107` | 拜月教主    | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj201` | 王小虎      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
-| `xyy.hero.xj202` | 苏媚        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
+| `xyy.hero.xj202` | 苏媚        | setup identity and base stats plus JN20202 TP-card conversion are verified; JN20201 remains pending                                                                            | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn20202.md |
 | `xyy.hero.xj203` | 沈欺霜      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj206` | 孔璘        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj207` | 魔尊        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |

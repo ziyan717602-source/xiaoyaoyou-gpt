@@ -220,7 +220,7 @@ function injectReactionFixture(
     const state = JSON.parse(row.state_json) as MatchState;
     const hands: Readonly<Record<PlayerId, readonly string[]>> = {
       [actor]: ["xyy.card.jp04@7"],
-      [first]: ["xyy.card.tp01@33"],
+      [first]: ["xyy.card.tp02@36"],
       [second]: ["xyy.card.tp01@34"],
     };
     const claimed = new Set(Object.values(hands).flat());
@@ -229,7 +229,11 @@ function injectReactionFixture(
       players: Object.fromEntries(
         Object.values(state.players).map((player) => [
           player.id,
-          { ...player, hand: hands[player.id] ?? [] },
+          {
+            ...player,
+            heroId: player.id === first ? "xyy.hero.xj202" : player.heroId,
+            hand: hands[player.id] ?? [],
+          },
         ]),
       ),
       drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
@@ -737,7 +741,7 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
       clientByPlayer
         .get(first)!
         .latestView.players.find((player) => player.id === first)!.hand,
-    ).toEqual(["xyy.card.tp01@33"]);
+    ).toEqual(["xyy.card.tp02@36"]);
 
     const original = await sendCommand(
       clientByPlayer.get(actor)!,
@@ -760,8 +764,9 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
     const originalEffectId = clients[0]!.latestView.effectStack[0]!.effectId;
     expect(clientByPlayer.get(first)!.latestView.availableActions).toEqual([
       {
-        type: "play-reaction-card",
-        cardInstanceId: "xyy.card.tp01@33",
+        type: "play-skill-converted-reaction-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        skillId: "xyy.skill.jn20202",
         targetEffectId: originalEffectId,
       },
       {
@@ -782,8 +787,9 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
       "network-first-bingxin",
       version,
       {
-        type: "play-reaction-card",
-        cardInstanceId: "xyy.card.tp01@33",
+        type: "play-skill-converted-reaction-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        skillId: "xyy.skill.jn20202",
         targetEffectId: originalEffectId,
       },
     );
@@ -815,8 +821,9 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
       "network-first-bingxin",
       version,
       {
-        type: "play-reaction-card",
-        cardInstanceId: "xyy.card.tp01@33",
+        type: "play-skill-converted-reaction-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        skillId: "xyy.skill.jn20202",
         targetEffectId: originalEffectId,
       },
     );

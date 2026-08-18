@@ -533,4 +533,105 @@ describe("M04 reaction event replay", () => {
     expect(uninterrupted.effectStack).toEqual([]);
     expect(uninterrupted.players[fixture.actor]!.hand).toHaveLength(2);
   });
+
+  it("replays a JN20202 special-card conversion across a JSON restart", () => {
+    const fixture = arranged();
+    const initial: MatchState = {
+      ...fixture.state,
+      players: {
+        ...fixture.state.players,
+        [fixture.first]: {
+          ...fixture.state.players[fixture.first]!,
+          heroId: "xyy.hero.xj202",
+          hand: ["xyy.card.tp04@43"],
+        },
+      },
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) =>
+          card !== "xyy.card.jp04@7" &&
+          card !== "xyy.card.tp04@43" &&
+          card !== "xyy.card.tp01@34",
+      ),
+    };
+    const events: DomainEvent[] = [];
+    let next = apply(
+      initial,
+      fixture.actor,
+      "jn20202-original",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.jp04@7",
+        targetPlayerIds: [fixture.actor],
+      },
+      1_000,
+    );
+    events.push(...next.events);
+    const originalEffectId = next.state.effectStack[0]!.effectId;
+    const conversion = {
+      type: "play-skill-converted-reaction-card" as const,
+      cardInstanceId: "xyy.card.tp04@43",
+      skillId: "xyy.skill.jn20202",
+      targetEffectId: originalEffectId,
+    };
+    const primary = apply(
+      next.state,
+      fixture.first,
+      "jn20202-convert-replay",
+      conversion,
+      2_000,
+    );
+    const recovered = apply(
+      JSON.parse(JSON.stringify(next.state)) as MatchState,
+      fixture.first,
+      "jn20202-convert-replay",
+      conversion,
+      2_000,
+    );
+    expect(recovered).toEqual(primary);
+    events.push(...primary.events);
+
+    let uninterrupted = primary.state;
+    let restarted = recovered.state;
+    let sequence = 0;
+    while (uninterrupted.reactionWindow !== null) {
+      const window = uninterrupted.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const command = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `jn20202-replay-pass-${sequence}`;
+      const primaryPass = apply(
+        uninterrupted,
+        priority,
+        commandId,
+        command,
+        3_000 + sequence,
+      );
+      const recoveredPass = apply(
+        restarted,
+        priority,
+        commandId,
+        command,
+        3_000 + sequence,
+      );
+      expect(recoveredPass).toEqual(primaryPass);
+      uninterrupted = primaryPass.state;
+      restarted = recoveredPass.state;
+      events.push(...primaryPass.events);
+      sequence += 1;
+      if (sequence > 12) throw new Error("JN20202 replay did not converge.");
+    }
+    let replayed = initial;
+    for (const domainEvent of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(domainEvent)) as DomainEvent,
+      );
+    }
+    expect(restarted).toEqual(uninterrupted);
+    expect(replayed).toEqual(uninterrupted);
+    expect(uninterrupted.players[fixture.first]!.hand).toEqual([]);
+    expect(uninterrupted.players[fixture.actor]!.hand).toEqual([]);
+  });
 });

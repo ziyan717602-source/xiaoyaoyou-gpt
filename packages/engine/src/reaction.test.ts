@@ -917,6 +917,92 @@ describe("M04 serializable reaction core", () => {
     expect(state.players[arranged.actor]!.hand).toHaveLength(2);
   });
 
+  it("uses JN20202 to pay a special card into the normal Bingxin chain", () => {
+    const arranged = arrangeForCounters(playing("jn20202-conversion"));
+    const claimed = new Set([
+      "xyy.card.jp04@7",
+      "xyy.card.tp02@36",
+      "xyy.card.jp01@1",
+      "xyy.card.tp01@34",
+    ]);
+    let state: MatchState = {
+      ...arranged.state,
+      players: {
+        ...arranged.state.players,
+        [arranged.first]: {
+          ...arranged.state.players[arranged.first]!,
+          heroId: "xyy.hero.xj202",
+          hand: ["xyy.card.tp02@36", "xyy.card.jp01@1"],
+        },
+        [arranged.second]: {
+          ...arranged.state.players[arranged.second]!,
+          hand: ["xyy.card.tp01@34"],
+        },
+        [arranged.third]: {
+          ...arranged.state.players[arranged.third]!,
+          hand: [],
+        },
+      },
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+    };
+    state = begin(state, arranged.actor);
+    const originalEffectId = state.effectStack[0]!.effectId;
+    expect(createPlayerView(state, arranged.first).availableActions).toEqual([
+      {
+        type: "play-skill-converted-reaction-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        skillId: "xyy.skill.jn20202",
+        targetEffectId: originalEffectId,
+      },
+      { type: "pass-reaction", windowId: state.reactionWindow!.windowId },
+    ]);
+    expect(createPlayerView(state, arranged.second).availableActions).toEqual(
+      [],
+    );
+
+    const invalid = applyPlayer(
+      state,
+      arranged.first,
+      "jn20202-invalid-normal-card",
+      {
+        type: "play-skill-converted-reaction-card",
+        cardInstanceId: "xyy.card.jp01@1",
+        skillId: "xyy.skill.jn20202",
+        targetEffectId: originalEffectId,
+      },
+      1_500,
+    );
+    expect(invalid).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    state = accepted(
+      state,
+      arranged.first,
+      "jn20202-convert",
+      {
+        type: "play-skill-converted-reaction-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        skillId: "xyy.skill.jn20202",
+        targetEffectId: originalEffectId,
+      },
+      2_000,
+    );
+    expect(state.players[arranged.first]!.hand).toEqual(["xyy.card.jp01@1"]);
+    expect(state.discardPile).toEqual(
+      expect.arrayContaining(["xyy.card.jp04@7", "xyy.card.tp02@36"]),
+    );
+    expect(state.effectStack.at(-1)).toMatchObject({
+      kind: "cancel-effect",
+      parentEffectId: originalEffectId,
+      payload: {
+        cardInstanceId: "xyy.card.tp02@36",
+        skillId: "xyy.skill.jn20202",
+      },
+    });
+    state = passAll(state, "jn20202-pass", 3_000);
+    expect(state.effectStack).toEqual([]);
+    expect(state.players[arranged.actor]!.hand).toEqual([]);
+  });
+
   it("resolves one Bingxin child and cancels the original without drawing", () => {
     const arranged = arrangeForCounters(playing("single-cancel"));
     let state = begin(arranged.state, arranged.actor);

@@ -64,6 +64,12 @@ describe("protocol runtime schema", () => {
         targetEffectId: "effect-1",
       },
       {
+        type: "play-skill-converted-reaction-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        skillId: "xyy.skill.jn20202",
+        targetEffectId: "effect-1",
+      },
+      {
         type: "activate-damage-equipment",
         cardInstanceId: "xyy.card.fj05@56",
         targetEffectId: "effect-1",

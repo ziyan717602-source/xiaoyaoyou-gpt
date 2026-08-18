@@ -42,6 +42,10 @@
     "xyy.skill.jn50501": {
       "boundary": "native XJ405 water/fire damage immunity with IMMUNE_INVAO bypass is verified per item through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn50501.md"]
+    },
+    "xyy.skill.jn20202": {
+      "boundary": "native XJ202 TP-category hand-card conversion into the canonical TP01 counter-chain is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn20202.md"]
     }
   },
   "baselinePartial": {
@@ -62,6 +66,13 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn50501.md"
+        ]
+      },
+      "xyy.hero.xj202": {
+        "boundary": "setup identity and base stats plus JN20202 TP-card conversion are verified; JN20201 remains pending",
+        "evidence": [
+          "M02-SETUP-AND-TEAMS",
+          "receipt:docs/verification/receipts/cs02-jn20202.md"
         ]
       }
     },

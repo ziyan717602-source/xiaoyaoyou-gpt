@@ -7,7 +7,7 @@ import type {
   WindowId,
 } from "@xiaoyaoyou/protocol";
 import { PROTOCOL_VERSION } from "@xiaoyaoyou/protocol";
-import { cardDefinition } from "./setup-content.js";
+import { cardDefinition, cardIdOf, heroHasSkill } from "./setup-content.js";
 import type { CardInstanceId, HeroId } from "./setup-content.js";
 
 export const MATCH_SCHEMA_VERSION = 6 as const;
@@ -231,6 +231,12 @@ export type AvailableAction =
       readonly type: "play-converted-reaction-card";
       readonly cardInstanceId: CardInstanceId;
       readonly equipmentCardInstanceId: CardInstanceId;
+      readonly targetEffectId: EffectId;
+    }
+  | {
+      readonly type: "play-skill-converted-reaction-card";
+      readonly cardInstanceId: CardInstanceId;
+      readonly skillId: "xyy.skill.jn20202";
       readonly targetEffectId: EffectId;
     }
   | {
@@ -729,9 +735,28 @@ function reactionActions(
               ],
         )
       : [];
+  const skillConversionActions =
+    targetEffect !== undefined &&
+    targetEffect.kind !== "damage-batch" &&
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn20202")
+      ? player.hand.flatMap((cardInstanceId) =>
+          cardIdOf(cardInstanceId).startsWith("xyy.card.tp")
+            ? [
+                {
+                  type: "play-skill-converted-reaction-card" as const,
+                  cardInstanceId,
+                  skillId: "xyy.skill.jn20202" as const,
+                  targetEffectId: targetEffect.effectId,
+                },
+              ]
+            : [],
+        )
+      : [];
   return [
     ...equipmentActions,
     ...conversionActions,
+    ...skillConversionActions,
     ...reactions,
     { type: "pass-reaction", windowId: window.windowId },
   ];

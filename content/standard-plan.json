@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 41,
-    "verified": 5,
+    "verified": 6,
     "deferred": 0,
-    "unstarted": 159
+    "unstarted": 158
   },
   "executionQueue": [
     {
@@ -1467,8 +1467,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN20202 TP-card conversion are verified; JN20201 remains pending",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn20202.md"
+      ],
       "dependencies": {
         "contentIds": [
           "xyy.hero.xj201",
@@ -3729,9 +3732,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ202 TP-category hand-card conversion into the canonical TP01 counter-chain is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn20202.md"],
       "dependencies": {
         "contentIds": ["xyy.card.tp01"],
         "primitives": [

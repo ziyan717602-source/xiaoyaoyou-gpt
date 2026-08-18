@@ -30,7 +30,12 @@ import type {
   ReactionWindow,
 } from "./index.js";
 import { nextInt } from "./random.js";
-import { cardDefinition, type CardInstanceId } from "./setup-content.js";
+import {
+  cardDefinition,
+  cardIdOf,
+  heroHasSkill,
+  type CardInstanceId,
+} from "./setup-content.js";
 
 const REACTION_DEADLINE_MS = 15_000;
 
@@ -573,16 +578,22 @@ export function reduceReactionEvent(
         openedAt,
       }),
     };
-  } else if (event.type === "reaction.card-converted") {
+  } else if (
+    event.type === "reaction.card-converted" ||
+    event.type === "reaction.skill-card-converted"
+  ) {
+    const equipmentConversion = event.type === "reaction.card-converted";
     const playerId = stringPayload(event, "playerId");
     const cardInstanceId = stringPayload(
       event,
       "cardInstanceId",
     ) as CardInstanceId;
-    const equipmentCardInstanceId = stringPayload(
-      event,
-      "equipmentCardInstanceId",
-    ) as CardInstanceId;
+    const equipmentCardInstanceId = equipmentConversion
+      ? (stringPayload(event, "equipmentCardInstanceId") as CardInstanceId)
+      : null;
+    const skillId = equipmentConversion
+      ? null
+      : stringPayload(event, "skillId");
     const targetEffectId = stringPayload(event, "targetEffectId");
     const effectId = stringPayload(event, "effectId");
     const windowId = stringPayload(event, "windowId");
@@ -595,6 +606,17 @@ export function reduceReactionEvent(
       damageItemsForEffect(targetEffect).some((item) =>
         tp03Preventable(item, playerId),
       );
+    const validConversionSource = equipmentConversion
+      ? player?.equipment.armor === equipmentCardInstanceId &&
+        equipmentCardInstanceId !== null &&
+        cardDefinition(equipmentCardInstanceId).id === "xyy.card.fj02" &&
+        preventsCurrentDamage
+      : skillId === "xyy.skill.jn20202" &&
+        player?.heroId !== null &&
+        player?.heroId !== undefined &&
+        heroHasSkill(player.heroId, "xyy.skill.jn20202") &&
+        cardIdOf(cardInstanceId).startsWith("xyy.card.tp") &&
+        targetEffect?.kind !== "damage-batch";
     if (
       window === null ||
       window.status !== "open" ||
@@ -602,9 +624,7 @@ export function reduceReactionEvent(
       window.priorityOrder[window.priorityIndex] !== playerId ||
       player === undefined ||
       !player.hand.includes(cardInstanceId) ||
-      player.equipment.armor !== equipmentCardInstanceId ||
-      cardDefinition(equipmentCardInstanceId).id !== "xyy.card.fj02" ||
-      !preventsCurrentDamage ||
+      !validConversionSource ||
       targetEffect?.status !== "waiting" ||
       effectById(state, effectId) !== undefined
     ) {
@@ -613,12 +633,14 @@ export function reduceReactionEvent(
     const effect: EffectFrame = {
       effectId,
       parentEffectId: targetEffectId,
-      kind: "card:xyy.card.tp03",
+      kind: equipmentConversion ? "card:xyy.card.tp03" : "cancel-effect",
       sourcePlayerId: playerId,
       targetIds: [targetEffectId],
       step: "awaiting-reactions",
       status: "waiting",
-      payload: { cardInstanceId, equipmentCardInstanceId },
+      payload: equipmentConversion
+        ? { cardInstanceId, equipmentCardInstanceId }
+        : { cardInstanceId, skillId },
     };
     const intermediate: MatchState = {
       ...state,
@@ -1664,6 +1686,48 @@ export function applyReactionCommand(
           element: "neutral",
         },
       ]),
+      openedAt: serverReceivedAt,
+    });
+    builder.resolveClosedWindows();
+  } else if (command.type === "play-skill-converted-reaction-card") {
+    if (command.targetEffectId !== window.effectId) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    const cardInstanceId = command.cardInstanceId as CardInstanceId;
+    const player = input.players[envelope.playerId]!;
+    const targetEffect = effectById(input, window.effectId);
+    let specialCard = false;
+    try {
+      specialCard = cardIdOf(cardInstanceId).startsWith("xyy.card.tp");
+    } catch {
+      specialCard = false;
+    }
+    if (
+      command.skillId !== "xyy.skill.jn20202" ||
+      player.heroId === null ||
+      !heroHasSkill(player.heroId, "xyy.skill.jn20202") ||
+      !player.hand.includes(cardInstanceId) ||
+      !specialCard ||
+      targetEffect === undefined ||
+      targetEffect.kind === "damage-batch"
+    ) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    builder.append("reaction.skill-card-converted", {
+      playerId: envelope.playerId,
+      cardInstanceId,
+      skillId: "xyy.skill.jn20202",
+      targetEffectId: window.effectId,
+      effectId: `${input.matchId}:effect:${envelope.commandId}`,
+      windowId: `${input.matchId}:window:${envelope.commandId}`,
       openedAt: serverReceivedAt,
     });
     builder.resolveClosedWindows();

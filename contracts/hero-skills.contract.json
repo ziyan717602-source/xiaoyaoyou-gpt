@@ -29,6 +29,14 @@
       "status": "verified",
       "verifiedBoundary": "per-item water/fire immunity, thunder non-match, IMMUNE_INVAO bypass, mixed targets, JSON replay, SQLite restart, six-socket response isolation and resumed damage",
       "linkedPending": []
+    },
+    "xyy.skill.jn20202": {
+      "name": "拒绝",
+      "owner": "xyy.hero.xj202",
+      "rule": "while a normal TP01 is legal, the owner may pay any own TP-category hand card as TP01 and enter the same nested cancellation chain",
+      "status": "verified",
+      "verifiedBoundary": "TP-category filtering, ordinary-card rejection, physical payment, canonical cancel-effect child, nested counter, timeout pass, JSON replay, SQLite restart and six-socket privacy",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -37,14 +45,17 @@
     "PSDGamepkg/JNS/XJ405.cs:1608-1622 JN50402Valid/Action",
     "PSDGamepkg/XIR.cs:53 native hero skills loaded through G0IS",
     "PSDGamepkg/XIG.cs:2630-2658 G0IS skill attachment",
-    "PSDGamepkg/XIG.cs:2547 discard only when Tux.Count exceeds TuxLimit"
+    "PSDGamepkg/XIG.cs:2547 discard only when Tux.Count exceeds TuxLimit",
+    "PSDGamepkg/JNS/XJ405.cs:443-462 JN20202 reuses TP01 validity and pays one TP-category hand card"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
     "activeSkillRepresentation": "native passive lookup is derived from authoritative heroId; dynamic gain/loss state is introduced only when a migrated rule requires it",
     "jn50402Timing": "apply hand limit five atomically when setup finalizes XJ404, matching native G0IS skill loading",
     "jn50402Visibility": "hand limit is public match state; hand identities remain owner-only",
-    "futureHeroChanges": "any later hero transformation or dynamic skill ownership node must call the same skill-derived stat recomputation before it can be verified"
+    "futureHeroChanges": "any later hero transformation or dynamic skill ownership node must call the same skill-derived stat recomputation before it can be verified",
+    "jn20202ConversionRepresentation": "the paid physical TP-category card and JN20202 source are recorded while the child uses the canonical cancel-effect node shared by normal TP01",
+    "jn20202Timeout": "conversion is optional and the existing 15-second reaction timeout is a pass without payment"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -61,6 +72,13 @@
     "CS02-12": "IMMUNE_INVAO-bypasses-JN50501-and-damage-resumes-normally",
     "CS02-13": "JN50501-removes-only-matching-owner-items-from-mixed-batches",
     "CS02-14": "JN50501-bypass-replays-identically-after-JSON-checkpoint",
-    "CS02-15": "JN50501-immunity-and-bypass-persist-through-SQLite-restart-and-six-WebSockets"
+    "CS02-15": "JN50501-immunity-and-bypass-persist-through-SQLite-restart-and-six-WebSockets",
+    "CS02-16": "JN20202-is-offered-only-when-normal-TP01-is-legal",
+    "CS02-17": "JN20202-accepts-own-TP-category-hand-cards-and-rejects-ordinary-cards",
+    "CS02-18": "JN20202-pays-the-physical-card-and-records-the-skill-source",
+    "CS02-19": "JN20202-reuses-the-canonical-nested-cancel-effect-chain",
+    "CS02-20": "JN20202-optional-timeout-is-pass-without-payment",
+    "CS02-21": "JN20202-replays-identically-after-JSON-checkpoint",
+    "CS02-22": "JN20202-persists-a-child-window-through-SQLite-restart-with-six-socket-privacy"
   }
 }
