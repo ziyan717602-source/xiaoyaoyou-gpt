@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-ux-prototype-v1",
+  "viewports": {
+    "desktop": {
+      "width": 1366,
+      "height": 768,
+      "layout": "table-plus-side-rail"
+    },
+    "mobile": {
+      "width": 360,
+      "height": 800,
+      "layout": "seat-strip-plus-bottom-action-dock"
+    }
+  },
+  "journeys": [
+    "create-room",
+    "take-seat",
+    "ready-check",
+    "hero-selection",
+    "playing",
+    "reconnecting",
+    "settlement"
+  ],
+  "informationPriority": [
+    "what-is-happening",
+    "who-must-act",
+    "what-can-i-do",
+    "what-happens-on-timeout",
+    "public-board-state",
+    "history-and-detail"
+  ],
+  "scenarioIds": [
+    "own-turn",
+    "single-target",
+    "multi-target",
+    "bingxin-response",
+    "multi-dying",
+    "waiting",
+    "disconnected",
+    "reconnecting",
+    "expired-action",
+    "long-content",
+    "settlement"
+  ],
+  "actionSource": "player-view.availableActions-only",
+  "actionTray": {
+    "requiredFields": [
+      "prompt",
+      "actor",
+      "selection-range",
+      "deadline",
+      "timeout-consequence",
+      "primary-action",
+      "pass-when-optional"
+    ],
+    "confirmationRule": "selection-actions-require-explicit-confirmation",
+    "staleRule": "expired-action-is-disabled-and-explains-refresh"
+  },
+  "accessibility": {
+    "minimumHitTargetPx": 44,
+    "minimumBodyFontPx": 14,
+    "minimumMetadataFontPx": 12,
+    "focusVisible": true,
+    "keyboard": ["tab", "shift-tab", "enter", "space", "escape"],
+    "reducedMotion": true,
+    "mobileSafeArea": true,
+    "colorNotSoleSignal": true
+  },
+  "privacy": {
+    "otherPlayersShow": [
+      "hero",
+      "team",
+      "hp",
+      "equipment",
+      "hand-count",
+      "public-status"
+    ],
+    "otherPlayersHide": [
+      "hand-card-ids",
+      "private-actions",
+      "response-capability"
+    ],
+    "waitingCopyRule": "never-identify-which-opponent-can-respond"
+  },
+  "acceptanceMap": {
+    "P05-01": ["journeys"],
+    "P05-02": ["informationPriority", "privacy"],
+    "P05-03": ["viewports.desktop"],
+    "P05-04": ["viewports.mobile"],
+    "P05-05": ["actionSource", "actionTray"],
+    "P05-06": ["scenarioIds"],
+    "P05-07": ["scenarioIds"],
+    "P05-08": ["accessibility"],
+    "P05-09": ["viewports", "scenarioIds"],
+    "P05-10": ["informationPriority", "privacy", "actionTray"],
+    "P05-11": ["reviewPolicy"]
+  },
+  "reviewPolicy": "objective-acceptance-blocks-human-aesthetic-feedback-is-optional"
+}

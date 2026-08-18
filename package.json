@@ -13,7 +13,7 @@
   "packageManager": "npm@10.9.2",
   "scripts": {
     "build": "tsc -b && npm run build -w @xiaoyaoyou/web",
-    "check:fast": "npm run format:check && npm run typecheck && npm run check:public-history && npm run catalog:verify && npm run oracle:golden-traces && npm run semantics:verify && npm run test:unit",
+    "check:fast": "npm run format:check && npm run typecheck && npm run check:public-history && npm run catalog:verify && npm run oracle:golden-traces && npm run semantics:verify && npm run ux:verify && npm run test:unit",
     "check:full": "npm run check:fast && npm run build && npm run test:replay && npm run test:bots && npm run test:e2e",
     "check:public-history": "node scripts/check-public-history.mjs",
     "catalog:oracle-verify": "node --disable-warning=ExperimentalWarning scripts/catalog.mjs --oracle-verify",
@@ -35,6 +35,7 @@
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "test:watch": "vitest",
     "typecheck": "tsc -b --pretty false && tsc -p apps/web/tsconfig.json --noEmit --pretty false",
+    "ux:verify": "node scripts/verify-ux-prototype.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
