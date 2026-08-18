@@ -4,3 +4,4 @@ dist-types
 coverage
 reference
 package-lock.json
+docs/legacy-evidence/inventory.json

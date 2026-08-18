@@ -19,6 +19,8 @@
     "dev:server": "npm run dev -w @xiaoyaoyou/server",
     "dev:web": "npm run dev -w @xiaoyaoyou/web",
     "goal:preflight": "node scripts/goal-preflight.mjs",
+    "oracle:inventory": "node --disable-warning=ExperimentalWarning scripts/legacy/inventory.mjs --verify",
+    "oracle:refresh-inventory": "node --disable-warning=ExperimentalWarning scripts/legacy/inventory.mjs --write",
     "test": "vitest run",
     "test:unit": "vitest run packages --exclude **/*.replay.test.ts --exclude **/*.bot.test.ts",
     "test:replay": "vitest run --config vitest.replay.config.ts",
