@@ -8,7 +8,7 @@
     "websocket": "@fastify/websocket@11",
     "schema": "json-schema-draft-07-plus-ajv@8",
     "database": "sqlite-wal-full",
-    "driver": "better-sqlite3@13",
+    "driver": "better-sqlite3@12.11.1-exact",
     "orm": null,
     "metrics": "prom-client@15",
     "logging": "fastify-pino"

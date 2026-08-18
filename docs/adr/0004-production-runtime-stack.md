@@ -11,7 +11,7 @@ P06/P07 已证明显式等待点、六投影、幂等、重启恢复和真实 We
 
 - Node.js 22、Fastify 5、`@fastify/websocket` 11；HTTP 与 WebSocket 共享生命周期和 Pino 日志。
 - 跨进程输入使用 JSON Schema Draft 7 子集和 Ajv 8。Schema 位于 `packages/protocol`，输入必须先通过运行时校验。TypeScript 类型不代替运行时校验。
-- 当前 MVP 使用 `better-sqlite3` 13、SQLite WAL 和 `synchronous=FULL`，直接写显式 SQL，不引入 ORM。
+- 当前 MVP 使用精确锁定的 `better-sqlite3` 12.11.1、SQLite WAL 和 `synchronous=FULL`，直接写显式 SQL，不引入 ORM。该官方 release 明确提供 Node ABI v127（Node 22）Windows x64 预编译资产；不使用缺少该资产、会回退到本机 C++ 编译的 v13.0.3。
 - 当前只允许运行一个应用实例；一个进程内每局只有一个 Actor。首次云部署也必须是带持久卷的单实例，直到触发重评。
 - Prometheus 文本指标使用 `prom-client`，结构化日志使用 Fastify 内置 Pino。
 

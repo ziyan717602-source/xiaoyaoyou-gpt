@@ -28,7 +28,7 @@ function assert(condition, message) {
 for (const [dependency, major] of [
   ["fastify", "5"],
   ["@fastify/websocket", "11"],
-  ["better-sqlite3", "13"],
+  ["better-sqlite3", "12.11.1"],
   ["prom-client", "15"],
 ]) {
   const value = serverPackage.dependencies[dependency];

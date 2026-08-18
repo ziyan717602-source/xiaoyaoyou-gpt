@@ -10,7 +10,7 @@
 - Schema：`packages/protocol` 拥有 JSON Schema + Ajv 8 运行时校验；协议 v1 精确协商。
 - 引擎：`applyCommand`、`resume`、`projectPlayerView`、`reduceEvent` 纯确定性端口已固定。
 - 并发：每局一个 `MatchActor`、单 FIFO Promise lane；绝对期限只入队幂等系统命令。
-- 持久化：`better-sqlite3` 13，WAL + FULL；事件、收据、版本和可选快照同一事务；事件哈希链与快照双锚校验。
+- 持久化：精确锁定 `better-sqlite3` 12.11.1（Node 22/Windows x64 有官方预编译资产），WAL + FULL；事件、收据、版本和可选快照同一事务；事件哈希链与快照双锚校验。
 - 恢复：每 25 条已接受命令、玩家等待点、结束和优雅停止保存快照；显式向前迁移，拒绝未知新版本。
 - 安全：威胁模型覆盖座位冒用、越权/重放、隐私窥探、CSWSH、DoS、日志和事件篡改；无观战入口。
 - 可观测性：Pino 关联 ID/脱敏红线和 Prometheus 低基数指标已定义。
