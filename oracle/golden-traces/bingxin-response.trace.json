@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "id": "legacy-bingxin-response",
+  "title": "冰心诀响应：取消当前技牌且不执行原效果",
+  "evidenceGrade": "B",
+  "derivation": "source-derived-normalized",
+  "sourceSnapshotSha256": "c32a3e5e72e2b15da2891b8a04fe6856c030ac61e15345b4b196afc4e8a2df30",
+  "nondeterminism": {
+    "legacy": "旧服务端的并发响应线程可能改变同优先级日志到达次序。",
+    "normalization": "固定按座位 2..6 打开响应窗，座位 2 首个响应；只比较效果栈结果，不比较线程日志顺序。"
+  },
+  "sources": [
+    {
+      "path": "reference/psd48-master/PSDGamepkg/JNS/JP06.cs",
+      "lineStart": 416,
+      "lineEnd": 450,
+      "sha256": "5c1a5a30b3de3409233482c72b8fd04d41f2346292662411203ee57913481785",
+      "claim": "TP01Valid 拒绝已经无效的牌；TP01Action 发出取消并按原牌优先级重新进入原消息，使原牌不再执行。"
+    },
+    {
+      "path": "reference/psd48-master/PSDGamepkg/XIG.cs",
+      "lineStart": 551,
+      "lineEnd": 614,
+      "sha256": "5399cde7f86dc457e888c074004a813a155057793cbb7da4f9625efdd36d6feb",
+      "claim": "G0CC 将当前牌加入 PendingTux 并在后续优先级处理使用/取消结果。"
+    }
+  ],
+  "contentIds": ["xyy.card.jp01", "xyy.card.tp01"],
+  "initialState": {
+    "phase": "R1/GR",
+    "rounder": 1,
+    "players": [
+      { "id": 1, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 2, "team": 2, "hp": 4, "alive": true, "hand": 3 },
+      { "id": 3, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 4, "team": 2, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 5, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 6, "team": 2, "hp": 4, "alive": true, "hand": 4 }
+    ],
+    "effects": [],
+    "window": null,
+    "pendingDying": [],
+    "winner": null
+  },
+  "steps": [
+    {
+      "id": "play-original",
+      "operation": "play-effect",
+      "params": { "id": "effect-jp01", "kind": "xyy.card.jp01", "source": 1 },
+      "evidence": [1],
+      "note": "座位 1 使用技牌并成为 PendingTux 中的当前效果。"
+    },
+    {
+      "id": "open-counter-window",
+      "operation": "open-response",
+      "params": { "effectId": "effect-jp01", "eligible": [2, 3, 4, 5, 6] },
+      "evidence": [0, 1],
+      "note": "未失效的技牌允许其他玩家响应冰心诀。"
+    },
+    {
+      "id": "play-bingxin",
+      "operation": "play-counter",
+      "params": {
+        "id": "effect-tp01",
+        "kind": "xyy.card.tp01",
+        "source": 2,
+        "targetEffectId": "effect-jp01",
+        "discard": 1
+      },
+      "evidence": [0],
+      "note": "座位 2 打出冰心诀并消耗一张手牌。"
+    },
+    {
+      "id": "cancel-original",
+      "operation": "cancel-effect",
+      "params": { "effectId": "effect-jp01" },
+      "evidence": [0],
+      "note": "TP01Action 将当前牌标记无效；原牌效果不得产生状态变化。"
+    }
+  ],
+  "expectedFinalState": {
+    "phase": "R1/GR",
+    "rounder": 1,
+    "players": [
+      { "id": 1, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 2, "team": 2, "hp": 4, "alive": true, "hand": 2 },
+      { "id": 3, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 4, "team": 2, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 5, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 6, "team": 2, "hp": 4, "alive": true, "hand": 4 }
+    ],
+    "effects": [
+      {
+        "id": "effect-jp01",
+        "kind": "xyy.card.jp01",
+        "source": 1,
+        "status": "cancelled",
+        "targetEffectId": null
+      },
+      {
+        "id": "effect-tp01",
+        "kind": "xyy.card.tp01",
+        "source": 2,
+        "status": "resolved",
+        "targetEffectId": "effect-jp01"
+      }
+    ],
+    "window": null,
+    "pendingDying": [],
+    "winner": null
+  }
+}

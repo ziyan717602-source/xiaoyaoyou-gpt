@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "id": "legacy-basic-turn",
+  "title": "六人基本回合：阶段推进、回合奖励补牌与轮转",
+  "evidenceGrade": "B",
+  "derivation": "source-derived-normalized",
+  "sourceSnapshotSha256": "c32a3e5e72e2b15da2891b8a04fe6856c030ac61e15345b4b196afc4e8a2df30",
+  "nondeterminism": {
+    "legacy": "怪物抽取、座次和线程调度使用未注入种子的旧 Random/并发流程。",
+    "normalization": "固定座次 1..6、固定存在 battler 的奖励分支，只保留阶段顺序和可观察状态变化。"
+  },
+  "sources": [
+    {
+      "path": "reference/psd48-master/PSDGamepkg/XIR.cs",
+      "lineStart": 100,
+      "lineEnd": 189,
+      "sha256": "acf1c98e7708b8414f57455f493dbd66fd0db6ee24e710200816b8ca78a22179",
+      "claim": "RunRound 固定 R{seat}00 至 OC/ST/EP/EV/EE/GS/GR/GE/Z0 的阶段推进。"
+    },
+    {
+      "path": "reference/psd48-master/PSDGamepkg/XIR.cs",
+      "lineStart": 620,
+      "lineEnd": 704,
+      "sha256": "acf1c98e7708b8414f57455f493dbd66fd0db6ee24e710200816b8ca78a22179",
+      "claim": "BC 在存在 battler 时令回合玩家补 2 张，ED 清理并轮转到下一存活玩家的 00。"
+    }
+  ],
+  "contentIds": [],
+  "initialState": {
+    "phase": "R1/00",
+    "rounder": 1,
+    "players": [
+      { "id": 1, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 2, "team": 2, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 3, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 4, "team": 2, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 5, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 6, "team": 2, "hp": 4, "alive": true, "hand": 4 }
+    ],
+    "effects": [],
+    "window": null,
+    "pendingDying": [],
+    "winner": null
+  },
+  "steps": [
+    {
+      "id": "opening",
+      "operation": "set-phase",
+      "params": { "phase": "R1/OC" },
+      "evidence": [0],
+      "note": "回合 00 初始化后进入开局触发阶段 OC。"
+    },
+    {
+      "id": "start",
+      "operation": "set-phase",
+      "params": { "phase": "R1/ST" },
+      "evidence": [0],
+      "note": "OC 完成后进入 ST。"
+    },
+    {
+      "id": "event-preparation",
+      "operation": "set-phase",
+      "params": { "phase": "R1/EP" },
+      "evidence": [0],
+      "note": "ST 完成后进入事件准备。"
+    },
+    {
+      "id": "event",
+      "operation": "set-phase",
+      "params": { "phase": "R1/EV" },
+      "evidence": [0],
+      "note": "事件阶段允许旧客户端选择或放弃对应操作。"
+    },
+    {
+      "id": "event-end",
+      "operation": "set-phase",
+      "params": { "phase": "R1/EE" },
+      "evidence": [0],
+      "note": "事件结束后进入手牌阶段准备。"
+    },
+    {
+      "id": "card-start",
+      "operation": "set-phase",
+      "params": { "phase": "R1/GS" },
+      "evidence": [0],
+      "note": "GS 初始化可用卡牌/技能窗口。"
+    },
+    {
+      "id": "card-round",
+      "operation": "set-phase",
+      "params": { "phase": "R1/GR" },
+      "evidence": [0],
+      "note": "GR 是可响应的主要出牌阶段。"
+    },
+    {
+      "id": "card-end",
+      "operation": "set-phase",
+      "params": { "phase": "R1/GE" },
+      "evidence": [0],
+      "note": "GR 清空后进入 GE。"
+    },
+    {
+      "id": "encounter",
+      "operation": "set-phase",
+      "params": { "phase": "R1/Z0" },
+      "evidence": [0],
+      "note": "GE 后初始化遭遇/战斗上下文。"
+    },
+    {
+      "id": "battle-cleanup",
+      "operation": "set-phase",
+      "params": { "phase": "R1/BC" },
+      "evidence": [1],
+      "note": "归一化省略随机遭遇的内部支路，落到 BC 奖励阶段。"
+    },
+    {
+      "id": "reward-draw",
+      "operation": "draw",
+      "params": { "player": 1, "count": 2 },
+      "evidence": [1],
+      "note": "存在 battler 时 G0HT 为回合玩家补 2 张。"
+    },
+    {
+      "id": "turn-end",
+      "operation": "set-phase",
+      "params": { "phase": "R1/ED" },
+      "evidence": [1],
+      "note": "ED 执行回合清理。"
+    },
+    {
+      "id": "next-rounder",
+      "operation": "advance-rounder",
+      "params": { "player": 2, "phase": "R2/00" },
+      "evidence": [1],
+      "note": "GetNextPlayer 将回合交给下一个存活座位。"
+    }
+  ],
+  "expectedFinalState": {
+    "phase": "R2/00",
+    "rounder": 2,
+    "players": [
+      { "id": 1, "team": 1, "hp": 4, "alive": true, "hand": 6 },
+      { "id": 2, "team": 2, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 3, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 4, "team": 2, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 5, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 6, "team": 2, "hp": 4, "alive": true, "hand": 4 }
+    ],
+    "effects": [],
+    "window": null,
+    "pendingDying": [],
+    "winner": null
+  }
+}

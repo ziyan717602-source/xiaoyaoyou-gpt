@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "id": "legacy-dying-rescue",
+  "title": "同时濒死：逐目标救援、全员放弃、死亡与胜负重算",
+  "evidenceGrade": "B",
+  "derivation": "source-derived-normalized",
+  "sourceSnapshotSha256": "c32a3e5e72e2b15da2891b8a04fe6856c030ac61e15345b4b196afc4e8a2df30",
+  "nondeterminism": {
+    "legacy": "旧实现从 Dictionary/线程响应收集候选，日志次序不保证稳定。",
+    "normalization": "同时为 0 HP 的角色按座位号排序；每个救援窗按座位 1..6 轮询，所有人放弃后才确认死亡。"
+  },
+  "sources": [
+    {
+      "path": "reference/psd48-master/PSDGamepkg/Artiad/Procedure.cs",
+      "lineStart": 177,
+      "lineEnd": 186,
+      "sha256": "7076fc8f6f4f29413720141b19817e4cb04967a92a0d3bf08d336216dc3029ab",
+      "claim": "ArticuloMortis 收集仍存活且 HP=0 的角色，广播 E0ZH 并进入 G0ZH。"
+    },
+    {
+      "path": "reference/psd48-master/PSDGamepkg/XIG.cs",
+      "lineStart": 166,
+      "lineEnd": 340,
+      "sha256": "5399cde7f86dc457e888c074004a813a155057793cbb7da4f9625efdd36d6feb",
+      "claim": "G0ZH 在救援/濒死相关优先级结算后，再次筛选 HP=0 且 IsAlive 的角色并发出 G0ZW。"
+    },
+    {
+      "path": "reference/psd48-master/PSDGamepkg/XIG.cs",
+      "lineStart": 343,
+      "lineEnd": 383,
+      "sha256": "5399cde7f86dc457e888c074004a813a155057793cbb7da4f9625efdd36d6feb",
+      "claim": "G0ZW 将仍为 0 HP 的角色标为死亡，并按双方是否仍有存活角色重算胜负。"
+    },
+    {
+      "path": "reference/psd48-master/PSDGamepkg/JNS/JP06.cs",
+      "lineStart": 463,
+      "lineEnd": 519,
+      "sha256": "5c1a5a30b3de3409233482c72b8fd04d41f2346292662411203ee57913481785",
+      "claim": "TP02 可选择 HP=0 的目标回复 2 HP，并在仍有 0 HP 存活角色时重新进入 G0ZH。"
+    }
+  ],
+  "contentIds": ["xyy.card.tp02"],
+  "initialState": {
+    "phase": "G1TH/200",
+    "rounder": 1,
+    "players": [
+      { "id": 1, "team": 1, "hp": 1, "alive": true, "hand": 2 },
+      { "id": 2, "team": 2, "hp": 1, "alive": true, "hand": 2 },
+      { "id": 3, "team": 1, "hp": 4, "alive": true, "hand": 3 },
+      { "id": 4, "team": 2, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 5, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 6, "team": 2, "hp": 4, "alive": true, "hand": 4 }
+    ],
+    "effects": [],
+    "window": null,
+    "pendingDying": [],
+    "winner": null
+  },
+  "steps": [
+    {
+      "id": "damage-seat-1",
+      "operation": "damage",
+      "params": { "player": 1, "amount": 1 },
+      "evidence": [0],
+      "note": "伤害把座位 1 降至 0 HP，但尚未立即把 IsAlive 改为 false。"
+    },
+    {
+      "id": "damage-seat-2",
+      "operation": "damage",
+      "params": { "player": 2, "amount": 1 },
+      "evidence": [0],
+      "note": "同批结算令座位 2 也进入 0 HP 存活状态。"
+    },
+    {
+      "id": "detect-both-dying",
+      "operation": "detect-dying",
+      "params": {},
+      "evidence": [0, 1],
+      "note": "归一化为座位顺序 [1,2] 的待救援队列。"
+    },
+    {
+      "id": "open-seat-1-rescue",
+      "operation": "open-rescue",
+      "params": { "target": 1, "eligible": [1, 2, 3, 4, 5, 6] },
+      "evidence": [1, 3],
+      "note": "先处理座位 1 的救援窗口。"
+    },
+    {
+      "id": "seat-3-uses-tp02",
+      "operation": "rescue",
+      "params": { "source": 3, "target": 1, "amount": 2, "discard": 1 },
+      "evidence": [3],
+      "note": "座位 3 消耗灵葫仙丹，使座位 1 从 0 HP 回复到 2 HP。"
+    },
+    {
+      "id": "open-seat-2-rescue",
+      "operation": "open-rescue",
+      "params": { "target": 2, "eligible": [1, 2, 3, 4, 5, 6] },
+      "evidence": [1, 3],
+      "note": "座位 1 被移出待救援队列后，继续处理座位 2。"
+    },
+    {
+      "id": "seat-1-passes",
+      "operation": "pass-rescue",
+      "params": { "player": 1 },
+      "evidence": [1],
+      "note": "座位 1 放弃救援。"
+    },
+    {
+      "id": "seat-2-passes",
+      "operation": "pass-rescue",
+      "params": { "player": 2 },
+      "evidence": [1],
+      "note": "濒死者本人放弃可用救援。"
+    },
+    {
+      "id": "seat-3-passes",
+      "operation": "pass-rescue",
+      "params": { "player": 3 },
+      "evidence": [1],
+      "note": "座位 3 放弃继续救援。"
+    },
+    {
+      "id": "seat-4-passes",
+      "operation": "pass-rescue",
+      "params": { "player": 4 },
+      "evidence": [1],
+      "note": "座位 4 放弃救援。"
+    },
+    {
+      "id": "seat-5-passes",
+      "operation": "pass-rescue",
+      "params": { "player": 5 },
+      "evidence": [1],
+      "note": "座位 5 放弃救援。"
+    },
+    {
+      "id": "seat-6-passes",
+      "operation": "pass-rescue",
+      "params": { "player": 6 },
+      "evidence": [1],
+      "note": "座位 6 放弃救援，窗口可以关闭。"
+    },
+    {
+      "id": "seat-2-dies",
+      "operation": "close-rescue",
+      "params": { "target": 2 },
+      "evidence": [1, 2],
+      "note": "全员放弃且目标仍为 0 HP，G0ZW 将其标记死亡。"
+    },
+    {
+      "id": "recompute-winner",
+      "operation": "check-winner",
+      "params": {},
+      "evidence": [2],
+      "note": "两队仍各有存活角色，因此本次死亡后没有胜者。"
+    }
+  ],
+  "expectedFinalState": {
+    "phase": "G1TH/200",
+    "rounder": 1,
+    "players": [
+      { "id": 1, "team": 1, "hp": 2, "alive": true, "hand": 2 },
+      { "id": 2, "team": 2, "hp": 0, "alive": false, "hand": 2 },
+      { "id": 3, "team": 1, "hp": 4, "alive": true, "hand": 2 },
+      { "id": 4, "team": 2, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 5, "team": 1, "hp": 4, "alive": true, "hand": 4 },
+      { "id": 6, "team": 2, "hp": 4, "alive": true, "hand": 4 }
+    ],
+    "effects": [],
+    "window": null,
+    "pendingDying": [],
+    "winner": null
+  }
+}
