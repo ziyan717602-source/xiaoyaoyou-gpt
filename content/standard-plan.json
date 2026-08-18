@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 41,
-    "verified": 4,
+    "verified": 5,
     "deferred": 0,
-    "unstarted": 160
+    "unstarted": 159
   },
   "executionQueue": [
     {
@@ -1688,8 +1688,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN50501 elemental immunity are verified; JN50502 remains pending",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn50501.md"
+      ],
       "dependencies": {
         "contentIds": ["xyy.skill.jn50501", "xyy.skill.jn50502"],
         "primitives": ["hero-state"],
@@ -4558,9 +4561,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ405 water/fire damage immunity with IMMUNE_INVAO bypass is verified per item through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn50501.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

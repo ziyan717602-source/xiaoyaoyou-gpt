@@ -177,6 +177,77 @@ function passAllRescue(state: MatchState, now: number): MatchState {
 }
 
 describe("M05 damage and dying core", () => {
+  it("applies JN50501 water/fire immunity with IMMUNE_INVAO bypass", () => {
+    const initial = playing("jn50501-elements");
+    const actor = initial.activePlayerId!;
+    const target = initial.turnOrder.find((playerId) => playerId !== actor)!;
+    const state: MatchState = {
+      ...initial,
+      players: {
+        ...initial.players,
+        [target]: {
+          ...initial.players[target]!,
+          heroId: "xyy.hero.xj405",
+        },
+      },
+    };
+    const intent = (
+      element: string,
+      hpEvoMask = [] as const,
+    ): DamageIntent => ({
+      itemId: `jn50501-${element}`,
+      sourcePlayerId: actor,
+      targetPlayerId: target,
+      amount: 2,
+      element,
+      hpEvoMask,
+    });
+
+    expect(planDamageBatch(state, [intent("water")])).toEqual([]);
+    expect(planDamageBatch(state, [intent("fire")])).toEqual([]);
+    expect(planDamageBatch(state, [intent("thunder")])).toMatchObject([
+      { amount: 2, element: "thunder", targetPlayerId: target },
+    ]);
+    expect(
+      planDamageBatch(state, [intent("fire", ["immune-inavo"])]),
+    ).toMatchObject([
+      {
+        amount: 2,
+        element: "fire",
+        hpEvoMask: ["immune-inavo"],
+        targetPlayerId: target,
+      },
+    ]);
+
+    const ordinaryId = state.turnOrder.find(
+      (playerId) => playerId !== actor && playerId !== target,
+    )!;
+    expect(
+      planDamageBatch(state, [
+        intent("water"),
+        {
+          ...intent("fire"),
+          itemId: "ordinary-fire",
+          targetPlayerId: ordinaryId,
+        },
+      ]),
+    ).toMatchObject([
+      { itemId: "ordinary-fire", amount: 2, targetPlayerId: ordinaryId },
+    ]);
+    expect(
+      planDamageBatch(state, [{ ...intent("fire"), amount: 0 }]),
+    ).toHaveLength(1);
+    expect(
+      planDamageBatch(state, [
+        intent("fire"),
+        { ...intent("water"), itemId: "jn50501-zero-water", amount: 0 },
+      ]),
+    ).toEqual([]);
+
+    const checkpoint = JSON.parse(JSON.stringify(state)) as MatchState;
+    expect(planDamageBatch(checkpoint, [intent("water")])).toEqual([]);
+  });
+
   it("orders replacement/addition/reduction deterministically and floors damage at zero", () => {
     const state = playing("modifier-order");
     const target = state.turnOrder[0]!;

@@ -21,6 +21,14 @@
       "status": "verified",
       "verifiedBoundary": "native ownership graph, setup application, authoritative discard decisions at five and six cards, JSON replay, SQLite restart and six-socket public projection",
       "linkedPending": []
+    },
+    "xyy.skill.jn50501": {
+      "name": "凝冰焚炎",
+      "owner": "xyy.hero.xj405",
+      "rule": "when a batch contains at least one positive water or fire item targeting the owner, remove every water or fire owner item without IMMUNE_INVAO from that batch, including zero-value siblings",
+      "status": "verified",
+      "verifiedBoundary": "per-item water/fire immunity, thunder non-match, IMMUNE_INVAO bypass, mixed targets, JSON replay, SQLite restart, six-socket response isolation and resumed damage",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -47,6 +55,12 @@
     "CS02-06": "ordinary-heroes-retain-hand-limit-three",
     "CS02-07": "JN50402-outcome-replays-identically-after-JSON-checkpoint",
     "CS02-08": "JN50402-persists-through-SQLite-server-restart-and-six-WebSockets",
-    "CS02-09": "content-plan-verifies-only-JN50402-and-keeps-XJ404-partial-for-JN50401"
+    "CS02-09": "content-plan-verifies-JN50402-and-keeps-XJ404-partial-for-JN50401",
+    "CS02-10": "JN50501-positive-match-removes-all-non-bypass-water-and-fire-owner-items-in-the-batch",
+    "CS02-11": "JN50501-does-not-remove-thunder-or-other-element-items",
+    "CS02-12": "IMMUNE_INVAO-bypasses-JN50501-and-damage-resumes-normally",
+    "CS02-13": "JN50501-removes-only-matching-owner-items-from-mixed-batches",
+    "CS02-14": "JN50501-bypass-replays-identically-after-JSON-checkpoint",
+    "CS02-15": "JN50501-immunity-and-bypass-persist-through-SQLite-restart-and-six-WebSockets"
   }
 }

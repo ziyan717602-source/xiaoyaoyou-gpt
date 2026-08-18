@@ -18,7 +18,11 @@ import {
   hasHpEvolutionFlag,
   type HpEvolutionFlag,
 } from "./hp-evolution.js";
-import { cardDefinition, type CardInstanceId } from "./setup-content.js";
+import {
+  cardDefinition,
+  heroHasSkill,
+  type CardInstanceId,
+} from "./setup-content.js";
 import { reduceTurnEvent } from "./turn.js";
 
 export const RESCUE_DEADLINE_MS = 15_000;
@@ -129,7 +133,7 @@ export function planDamageBatch(
       modifierSeat(state, left) - modifierSeat(state, right) ||
       left.effectId.localeCompare(right.effectId),
   );
-  return intents.flatMap((intent) => {
+  const planned = intents.map((intent) => {
     if (!Number.isSafeInteger(intent.amount) || intent.amount < 0) {
       throw new Error("Damage amount must be a nonnegative safe integer.");
     }
@@ -158,6 +162,43 @@ export function planDamageBatch(
       throw new Error(`Unknown damage target ${targetPlayerId}.`);
     }
     amount = Math.max(0, amount);
+    return {
+      intent,
+      target,
+      targetPlayerId,
+      amount,
+      hpEvoMask,
+      appliedReplacementEffectIds: [...replacements],
+    };
+  });
+  const jn50501TriggeredOwners = new Set(
+    planned
+      .filter(
+        ({ intent, target, amount, hpEvoMask }) =>
+          amount > 0 &&
+          target.heroId !== null &&
+          heroHasSkill(target.heroId, "xyy.skill.jn50501") &&
+          (intent.element === "water" || intent.element === "fire") &&
+          !hasHpEvolutionFlag(hpEvoMask, "immune-inavo"),
+      )
+      .map(({ targetPlayerId }) => targetPlayerId),
+  );
+  return planned.flatMap((item) => {
+    const {
+      intent,
+      target,
+      targetPlayerId,
+      hpEvoMask,
+      appliedReplacementEffectIds,
+    } = item;
+    let { amount } = item;
+    if (
+      jn50501TriggeredOwners.has(targetPlayerId) &&
+      (intent.element === "water" || intent.element === "fire") &&
+      !hasHpEvolutionFlag(hpEvoMask, "immune-inavo")
+    ) {
+      return [];
+    }
     const appliedModifierCardInstanceIds: CardInstanceId[] = [];
     const armor = target.equipment.armor;
     if (
@@ -186,7 +227,7 @@ export function planDamageBatch(
         targetPlayerId,
         amount,
         hpEvoMask,
-        appliedReplacementEffectIds: [...replacements],
+        appliedReplacementEffectIds,
         appliedModifierCardInstanceIds,
       },
     ];

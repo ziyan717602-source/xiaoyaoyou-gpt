@@ -106,6 +106,87 @@ function fixture(): {
 }
 
 describe("M05 damage/dying event replay", () => {
+  it("resumes JN50501 IMMUNE_INVAO fire damage after a JSON checkpoint", () => {
+    const setup = fixture();
+    const initialBase: MatchState = {
+      ...setup.state,
+      players: {
+        ...setup.state.players,
+        [setup.target]: {
+          ...setup.state.players[setup.target]!,
+          heroId: "xyy.hero.xj405",
+          hp: 4,
+          hand: ["xyy.card.tp03@39"],
+          equipment: { weapon: null, armor: null },
+        },
+      },
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.jp05@10" && card !== "xyy.card.tp03@39",
+      ),
+      discardPile: [],
+    };
+    const checkpoint = beginDamageResponse(
+      initialBase,
+      "jn50501-bypass-effect",
+      setup.actor,
+      planDamageBatch(initialBase, [
+        {
+          itemId: "jn50501-bypass-fire",
+          sourcePlayerId: setup.actor,
+          targetPlayerId: setup.target,
+          amount: 2,
+          element: "fire",
+          hpEvoMask: ["immune-inavo"],
+        },
+      ]),
+      1_000,
+    );
+    let uninterrupted = checkpoint;
+    let resumed = JSON.parse(JSON.stringify(checkpoint)) as MatchState;
+    const events: DomainEvent[] = [];
+    let sequence = 0;
+    while (uninterrupted.reactionWindow !== null) {
+      const window = uninterrupted.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const command = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `jn50501-bypass-pass-${sequence}`;
+      const next = apply(
+        uninterrupted,
+        priority,
+        commandId,
+        command,
+        2_000 + sequence,
+      );
+      const recovered = apply(
+        resumed,
+        priority,
+        commandId,
+        command,
+        2_000 + sequence,
+      );
+      expect(recovered).toEqual(next);
+      uninterrupted = next.state;
+      resumed = recovered.state;
+      events.push(...next.events);
+      sequence += 1;
+      if (sequence > 6) throw new Error("JN50501 bypass did not resolve.");
+    }
+    expect(resumed).toEqual(uninterrupted);
+    expect(uninterrupted.players[setup.target]!.hp).toBe(2);
+
+    let replayed = checkpoint;
+    for (const domainEvent of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(domainEvent)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted);
+  });
+
   it("resumes FJ05 damage equipment activation from a JSON checkpoint", () => {
     const setup = fixture();
     const checkpointBase: MatchState = {

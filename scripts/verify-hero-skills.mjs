@@ -12,7 +12,13 @@ const setupSource = read("packages/engine/src/setup.ts");
 const setupUnit = read("packages/engine/src/setup.test.ts");
 const turnUnit = read("packages/engine/src/turn.test.ts");
 const replay = read("packages/engine/src/turn.replay.test.ts");
+const damage = read("packages/engine/src/damage-dying.ts");
+const damageUnit = read("packages/engine/src/damage-dying.test.ts");
+const damageReplay = read("packages/engine/src/damage-dying.replay.test.ts");
 const network = read("tests/integration/setup-lifecycle.integration.test.ts");
+const damageNetwork = read(
+  "tests/integration/damage-dying-lifecycle.integration.test.ts",
+);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -101,6 +107,10 @@ assert(
 
 const skillPlan = plan.items.find((item) => item.id === "xyy.skill.jn50402");
 const heroPlan = plan.items.find((item) => item.id === "xyy.hero.xj404");
+const immunityPlan = plan.items.find((item) => item.id === "xyy.skill.jn50501");
+const immunityHeroPlan = plan.items.find(
+  (item) => item.id === "xyy.hero.xj405",
+);
 assert(skillPlan?.state === "verified", "JN50402 must be verified in plan.");
 assert(heroPlan?.state === "partial", "XJ404 must remain partial.");
 assert(
@@ -108,12 +118,23 @@ assert(
     heroPlan?.boundary.includes("JN50401"),
   "XJ404 boundary must name completed and pending skills.",
 );
+assert(immunityPlan?.state === "verified", "JN50501 must be verified in plan.");
+assert(immunityHeroPlan?.state === "partial", "XJ405 must remain partial.");
+assert(
+  immunityHeroPlan?.boundary.includes("JN50501") &&
+    immunityHeroPlan?.boundary.includes("JN50502"),
+  "XJ405 boundary must name completed and pending skills.",
+);
 for (const [source, token] of [
   [setupSource, "handLimit: handLimitForHero(heroId)"],
   [setupUnit, "loads the complete hero-skill graph"],
   [turnUnit, "uses 剑匣 limit five"],
   [replay, "replays 剑匣 discard bypass identically"],
   [network, "network-jn50402-end-action"],
+  [damage, 'heroHasSkill(target.heroId, "xyy.skill.jn50501")'],
+  [damageUnit, "applies JN50501 water/fire immunity"],
+  [damageReplay, "resumes JN50501 IMMUNE_INVAO fire damage"],
+  [damageNetwork, "network-jn50501-bypass-fire"],
 ]) {
   assert(
     source.includes(token),
@@ -123,14 +144,15 @@ for (const [source, token] of [
 for (const path of [
   "docs/content-standard/cs02-hero-skills.md",
   "docs/verification/receipts/cs02-jn50402.md",
+  "docs/verification/receipts/cs02-jn50501.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 9,
-  "Expected nine CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 15,
+  "Expected 15 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50402 complete`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50402/JN50501 complete`,
 );

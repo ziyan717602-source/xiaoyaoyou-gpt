@@ -5,6 +5,8 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  beginDamageResponse,
+  planDamageBatch,
   SETUP_CARD_INSTANCES,
   type MatchState,
   type PlayerView,
@@ -374,6 +376,52 @@ function injectCards(
   };
 }
 
+function injectJn50501Damage(
+  state: MatchState,
+  input: {
+    actor: PlayerId;
+    target: PlayerId;
+    immuneInvao: boolean;
+  },
+): MatchState {
+  const arranged = injectCards(state, {
+    actor: input.actor,
+    target: input.target,
+  });
+  const prepared: MatchState = {
+    ...arranged,
+    players: {
+      ...arranged.players,
+      [input.target]: {
+        ...arranged.players[input.target]!,
+        heroId: "xyy.hero.xj405",
+        hp: 4,
+        maxHp: 6,
+        hand: ["xyy.card.tp03@39"],
+      },
+    },
+    drawPile: arranged.drawPile.filter((card) => card !== "xyy.card.tp03@39"),
+  };
+  return beginDamageResponse(
+    prepared,
+    input.immuneInvao ? "network-jn50501-bypass" : "network-jn50501-immune",
+    input.actor,
+    planDamageBatch(prepared, [
+      {
+        itemId: input.immuneInvao
+          ? "network-jn50501-bypass-fire"
+          : "network-jn50501-fire",
+        sourcePlayerId: input.actor,
+        targetPlayerId: input.target,
+        amount: 2,
+        element: "fire",
+        hpEvoMask: input.immuneInvao ? ["immune-inavo"] : [],
+      },
+    ]),
+    Date.now(),
+  );
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -564,6 +612,77 @@ describe("M05 damage/dying over six real WebSockets", () => {
       equipment: { weapon: null, armor: "xyy.card.fj03@54" },
     });
     expect(clients[0]!.latestView.dyingBatch).toBeNull();
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn50501Damage(state, {
+        actor,
+        target,
+        immuneInvao: false,
+      }),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === target),
+    ).toMatchObject({
+      heroId: "xyy.hero.xj405",
+      hp: 4,
+      handCount: 1,
+    });
+    expect(clients[0]!.latestView.reactionWindow).toBeNull();
+    expect(
+      clients.every((client) =>
+        client.latestView.availableActions.every(
+          (action) => action.type !== "play-reaction-card",
+        ),
+      ),
+    ).toBe(true);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn50501Damage(state, {
+        actor,
+        target,
+        immuneInvao: true,
+      }),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(
+      clients[indexOf(target)]!.latestView.availableActions,
+    ).toContainEqual({
+      type: "play-reaction-card",
+      cardInstanceId: "xyy.card.tp03@39",
+      targetEffectId: "network-jn50501-bypass:damage-batch",
+    });
+    expect(
+      clients
+        .filter((_, index) => index !== indexOf(target))
+        .every((client) =>
+          client.latestView.availableActions.every(
+            (action) => action.type !== "play-reaction-card",
+          ),
+        ),
+    ).toBe(true);
+    version = await passReactions(
+      clients,
+      sessions,
+      version,
+      "jn50501-bypass-pass",
+    );
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === target),
+    ).toMatchObject({ heroId: "xyy.hero.xj405", hp: 2 });
+    expect(clients[0]!.latestView.reactionWindow).toBeNull();
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
