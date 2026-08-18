@@ -17,14 +17,17 @@ export type CoreCardAction =
   | { readonly type: "equip"; readonly slot: EquipmentSlot }
   | { readonly type: "draw-two" }
   | { readonly type: "damage-two"; readonly element: "thunder" }
+  | { readonly type: "heal-two" }
   | { readonly type: "cancel-effect" }
-  | { readonly type: "rescue-two" }
   | null;
+
+export type RescueCardAction = { readonly type: "rescue-two" } | null;
 
 export interface CardDefinition {
   readonly id: CardId;
   readonly name: string;
   readonly coreAction: CoreCardAction;
+  readonly rescueAction?: RescueCardAction;
 }
 
 // Values are the scoped Hero rows for legacy level 4 (packages 1 + 2).
@@ -387,7 +390,8 @@ export const SETUP_CARDS: readonly CardDefinition[] = [
   {
     id: "xyy.card.tp02",
     name: "灵葫仙丹",
-    coreAction: { type: "rescue-two" },
+    coreAction: { type: "heal-two" },
+    rescueAction: { type: "rescue-two" },
   },
   { id: "xyy.card.tp03", name: "隐蛊", coreAction: null },
   { id: "xyy.card.tp04", name: "洞冥宝镜", coreAction: null },

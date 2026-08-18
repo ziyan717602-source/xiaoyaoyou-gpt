@@ -481,10 +481,7 @@ export function applyTurnCommand(
         currentVersion: input.version,
       };
     }
-    if (
-      definition.coreAction.type === "cancel-effect" ||
-      definition.coreAction.type === "rescue-two"
-    ) {
+    if (definition.coreAction.type === "cancel-effect") {
       return {
         accepted: false,
         reason: "not-available",
@@ -507,7 +504,9 @@ export function applyTurnCommand(
       if (
         command.targetPlayerIds.length !== 1 ||
         target === undefined ||
-        !target.alive
+        !target.alive ||
+        (definition.coreAction.type === "heal-two" &&
+          target.id !== envelope.playerId)
       ) {
         return {
           accepted: false,

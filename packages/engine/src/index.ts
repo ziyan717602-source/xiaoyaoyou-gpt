@@ -600,7 +600,7 @@ function rescueActions(
   const player = state.players[viewerId];
   if (player === undefined || !player.alive) return [];
   const rescueCards = player.hand.flatMap((cardInstanceId) =>
-    cardDefinition(cardInstanceId).coreAction?.type === "rescue-two"
+    cardDefinition(cardInstanceId).rescueAction?.type === "rescue-two"
       ? [
           {
             type: "play-rescue-card" as const,
@@ -674,6 +674,15 @@ function turnActions(
         },
       ];
     }
+    if (definition.coreAction?.type === "heal-two") {
+      return [
+        {
+          type: "play-card" as const,
+          cardInstanceId: instanceId,
+          targetPlayerIds: [viewerId],
+        },
+      ];
+    }
     return [];
   });
   return [...playable, { type: "end-action" }];
@@ -742,6 +751,7 @@ export {
   type CardId,
   type CardInstanceId,
   type CoreCardAction,
+  type RescueCardAction,
   type EquipmentSlot,
   type HeroDefinition,
   type HeroId,

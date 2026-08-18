@@ -35,8 +35,8 @@
         "evidence": ["M04-REACTION-CORE"]
       },
       "xyy.card.tp02": {
-        "boundary": "dying rescue-two mode only; normal self-heal mode pending",
-        "evidence": ["M05-DAMAGE-DYING"]
+        "boundary": "normal cancellable self-heal-two and dying rescue-two are implemented; linked cleanse/locust interaction pending",
+        "evidence": ["M05-DAMAGE-DYING", "CS01A-CORE-CARD-AUDIT"]
       },
       "xyy.card.wq01": {
         "boundary": "weapon slot equip and replacement only; unique modifier pending",
@@ -89,7 +89,7 @@
         "xyy.card.tp01",
         "xyy.card.tp02"
       ],
-      "completion": "legacy evidence frozen and all modes verified; first implementation closes TP02 normal self-heal"
+      "completion": "legacy modes and cross-slice dependencies frozen; standalone modes verified; items remain partial until linked content closes"
     },
     {
       "id": "CS01B-ACTION-TRICKS",

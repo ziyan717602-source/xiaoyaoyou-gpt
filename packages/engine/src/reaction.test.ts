@@ -179,6 +179,133 @@ function passAll(
 }
 
 describe("M04 serializable reaction core", () => {
+  it("uses TP02 on self in the action phase, caps healing, allows a full-HP play, and remains cancellable", () => {
+    const initial = playing("tp02-normal-heal");
+    const actor = initial.activePlayerId!;
+    const [responder, foreignTarget] = clockwiseAfter(initial, actor);
+    const claimed = new Set<CardInstanceId>([
+      "xyy.card.tp02@36",
+      "xyy.card.tp01@33",
+    ]);
+    const prepared: MatchState = {
+      ...initial,
+      players: Object.fromEntries(
+        Object.values(initial.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hp: player.id === actor ? player.maxHp - 1 : player.hp,
+            hand:
+              player.id === actor
+                ? ["xyy.card.tp02@36"]
+                : player.id === responder
+                  ? ["xyy.card.tp01@33"]
+                  : [],
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+
+    expect(createPlayerView(prepared, actor).availableActions).toContainEqual({
+      type: "play-card",
+      cardInstanceId: "xyy.card.tp02@36",
+      targetPlayerIds: [actor],
+    });
+    expect(
+      applyPlayer(
+        prepared,
+        actor,
+        "tp02-foreign-target",
+        {
+          type: "play-card",
+          cardInstanceId: "xyy.card.tp02@36",
+          targetPlayerIds: [foreignTarget!],
+        },
+        1_000,
+      ),
+    ).toEqual({
+      accepted: false,
+      reason: "forbidden",
+      currentVersion: prepared.version,
+    });
+
+    let healed = accepted(
+      prepared,
+      actor,
+      "tp02-heal",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        targetPlayerIds: [actor],
+      },
+      1_000,
+    );
+    expect(healed.effectStack[0]).toMatchObject({
+      kind: "card:xyy.card.tp02",
+      sourcePlayerId: actor,
+      targetIds: [actor],
+      status: "waiting",
+    });
+    healed = passAll(healed, "tp02-heal-pass", 2_000);
+    expect(healed.players[actor]!.hp).toBe(healed.players[actor]!.maxHp);
+    expect(healed.discardPile).toContain("xyy.card.tp02@36");
+
+    const fullHp = {
+      ...prepared,
+      players: {
+        ...prepared.players,
+        [actor]: {
+          ...prepared.players[actor]!,
+          hp: prepared.players[actor]!.maxHp,
+        },
+      },
+    };
+    let wasted = accepted(
+      fullHp,
+      actor,
+      "tp02-full-hp",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        targetPlayerIds: [actor],
+      },
+      1_000,
+    );
+    wasted = passAll(wasted, "tp02-full-pass", 2_000);
+    expect(wasted.players[actor]!.hp).toBe(wasted.players[actor]!.maxHp);
+    expect(wasted.discardPile).toContain("xyy.card.tp02@36");
+
+    let cancelled = accepted(
+      prepared,
+      actor,
+      "tp02-cancelled",
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        targetPlayerIds: [actor],
+      },
+      1_000,
+    );
+    cancelled = accepted(
+      cancelled,
+      responder!,
+      "tp02-bingxin",
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: cancelled.effectStack[0]!.effectId,
+      },
+      2_000,
+    );
+    cancelled = passAll(cancelled, "tp02-cancel-pass", 3_000);
+    expect(cancelled.players[actor]!.hp).toBe(
+      prepared.players[actor]!.maxHp - 1,
+    );
+    expect(cancelled.effectStack).toEqual([]);
+  });
+
   it("pays JP04, opens an absolute-deadline window, hides response ability, and resolves after all pass", () => {
     const arranged = arrangeForCounters(playing());
     let state = begin(arranged.state, arranged.actor, 12_000);

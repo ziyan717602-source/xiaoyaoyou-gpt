@@ -1,7 +1,7 @@
 # 当前目标检查点
 
 - 分支：`codex/goal-mvp`
-- 当前节点：`CONTENT-STANDARD / CS01A-CORE-CARD-AUDIT`
+- 当前节点：`CONTENT-STANDARD / CS01B-ACTION-TRICKS`
 - 最近验证完成：`M06-TIME-RECOVERY`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
@@ -20,8 +20,9 @@
 - M05 伤害/濒死证据：`contracts/damage-dying.contract.json`、`docs/damage-dying/m05-damage-dying.md`、`docs/verification/receipts/m05-damage-dying.md`
 - M06 时间/恢复证据：`contracts/time-recovery.contract.json`、`docs/time-recovery/m06-time-recovery.md`、`docs/verification/receipts/m06-time-recovery.md`
 - CS00 内容图证据：`contracts/content-standard.contract.json`、`content/standard-plan.json`、`docs/content-standard/plan.md`、`docs/verification/receipts/cs00-content-graph.md`
-- 当前工作：冻结鼠儿果、天雷破、冰心诀和灵葫仙丹的逐模式 C# 证据；先实现并验证灵葫仙丹普通自疗，再逐项提升为 verified。
-- 下一 ready 节点：`CS01A-CORE-CARD-AUDIT`。
+- CS01A 核心四牌证据：`contracts/core-card-audit.contract.json`、`docs/content-standard/cs01a-core-cards.md`、`docs/verification/receipts/cs01a-core-card-audit.md`
+- 当前工作：从 C# 冻结偷盗、窥测天机、五气朝元、铜钱镖的目标、隐藏信息、卡区转移和响应模式，按依赖原语选择首个端到端实现。
+- 下一 ready 节点：`CS01B-ACTION-TRICKS`。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-007`，见 `docs/rules-semantics/decisions.md`。
 

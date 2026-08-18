@@ -351,7 +351,7 @@ export function reduceDyingEvent(
       !target.alive ||
       target.hp !== 0 ||
       !player.hand.includes(cardInstanceId) ||
-      cardDefinition(cardInstanceId).coreAction?.type !== "rescue-two"
+      cardDefinition(cardInstanceId).rescueAction?.type !== "rescue-two"
     ) {
       throw new Error("Rescue card event is not applicable.");
     }
@@ -580,7 +580,7 @@ export function applyDyingCommand(
     let rescueCard = false;
     try {
       rescueCard =
-        cardDefinition(cardInstanceId).coreAction?.type === "rescue-two";
+        cardDefinition(cardInstanceId).rescueAction?.type === "rescue-two";
     } catch {
       rescueCard = false;
     }

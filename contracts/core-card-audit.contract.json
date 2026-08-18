@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-core-card-audit-v1",
+  "scope": "CONTENT-STANDARD/CS01A-CORE-CARD-AUDIT",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "items": {
+    "xyy.card.jp04": {
+      "name": "鼠儿果",
+      "standalone": "action-phase choose one living target including self; pay card, open response, then target draws two if not cancelled",
+      "linkedPending": ["CS02-HERO-SKILLS:cleanse-retarget-interaction"]
+    },
+    "xyy.card.jp05": {
+      "name": "天雷破",
+      "standalone": "action-phase choose one living target including self; pay card, open response, then deal two thunder damage if not cancelled",
+      "linkedPending": ["CS04-EVENTS:event-supplied-target-mode"]
+    },
+    "xyy.card.tp01": {
+      "name": "冰心诀",
+      "standalone": "current priority may cancel a waiting card effect; another counter restores the parent by parity; timeout passes only current priority",
+      "linkedPending": [
+        "CS01B-ACTION-TRICKS:remaining-trick-targets",
+        "CS01C-DEFENSE-AND-BUFFS:remaining-technique-and-battle-targets",
+        "CS02-HERO-SKILLS:skill-and-cleanse-targets",
+        "CS05-SPECIAL:special-card-targets"
+      ]
+    },
+    "xyy.card.tp02": {
+      "name": "灵葫仙丹",
+      "normal": "own action phase only; target must be self; heal two capped at max; legal at full HP; pay card and open the normal response chain",
+      "rescue": "during a zero-HP rescue window current priority may target the current dying player; heal two capped at max and continue the dying batch",
+      "linkedPending": ["CS02-HERO-SKILLS:cleanse-and-locust-interaction"]
+    }
+  },
+  "legacyEvidence": [
+    "psd.db3:Tux:JP04-JP05-TP01-TP02 description-target-priors-termhind",
+    "PSDGamepkg/JNS/JP06.cs:338-345 JP04Action",
+    "PSDGamepkg/JNS/JP06.cs:346-363 JP05Action normal-and-event-modes",
+    "PSDGamepkg/JNS/JP06.cs:416-450 TP01Action-and-validity",
+    "PSDGamepkg/JNS/JP06.cs:453-519 TP02 normal-rescue-and-linked-modes",
+    "PSDGamepkg/Artiad/ContentRule.cs:171-186 linked-mode-routing"
+  ],
+  "decisions": {
+    "tp02AtFullHp": "allowed-and-card-is-paid",
+    "tp02NormalTarget": "self-only",
+    "tp02NormalResponse": "cancellable-card-effect",
+    "tp02RescueResponse": "existing-serialized-rescue-window-no-nested-card-response",
+    "itemCompletion": "mode-level-evidence-does-not-upgrade-item-to-verified-while-linkedPending-is-nonempty"
+  },
+  "acceptanceMap": {
+    "CS01A-01": "four-catalog-items-have-frozen-legacy-mode-and-cross-slice-evidence",
+    "CS01A-02": "jp04-one-living-target-draws-two-only-after-response-resolution",
+    "CS01A-03": "jp05-action-mode-deals-two-thunder-damage-only-after-response-resolution",
+    "CS01A-04": "tp01-counter-chain-resolves-by-parity-without-depth-two-special-case",
+    "CS01A-05": "tp02-normal-mode-is-offered-only-to-the-active-owner-with-self-target",
+    "CS01A-06": "tp02-normal-mode-heals-two-capped-at-max-and-is-legal-at-full-hp",
+    "CS01A-07": "tp02-normal-mode-pays-before-response-and-bingxin-cancellation-prevents-healing",
+    "CS01A-08": "tp02-rescue-mode-remains-available-only-at-current-dying-priority",
+    "CS01A-09": "tp02-normal-and-rescue-events-replay-without-private-card-leakage",
+    "CS01A-10": "json-restart-inside-tp02-normal-response-produces-identical-state",
+    "CS01A-11": "all-four-items-remain-partial-until-every-linked-content-dependency-closes",
+    "CS01A-12": "full-fast-and-specialty-verification-pass-with-56-card-conservation"
+  }
+}

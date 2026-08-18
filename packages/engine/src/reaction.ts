@@ -200,7 +200,7 @@ export function reduceReactionEvent(
       target === undefined ||
       !target.alive ||
       !player.hand.includes(cardInstanceId) ||
-      !["draw-two", "damage-two"].includes(
+      !["draw-two", "damage-two", "heal-two"].includes(
         cardDefinition(cardInstanceId).coreAction?.type ?? "",
       ) ||
       effectById(state, effectId) !== undefined
@@ -461,6 +461,36 @@ export function reduceReactionEvent(
         reactionWindow: null,
       };
       next = applyPlannedDamage(resolved, effectId, expected, resolvedAt);
+    } else if (effect.kind === "card:xyy.card.tp02") {
+      const targetPlayerId = effect.targetIds[0];
+      const target =
+        targetPlayerId === undefined
+          ? undefined
+          : state.players[targetPlayerId];
+      const amount = numberPayload(event, "amount");
+      const hpBefore = numberPayload(event, "hpBefore");
+      const hpAfter = numberPayload(event, "hpAfter");
+      if (
+        target === undefined ||
+        !target.alive ||
+        target.id !== effect.sourcePlayerId ||
+        amount !== 2 ||
+        hpBefore !== target.hp ||
+        hpAfter !== Math.min(target.maxHp, target.hp + amount)
+      ) {
+        throw new Error("Resolved heal-two disagrees with current HP.");
+      }
+      next = {
+        ...state,
+        players: {
+          ...state.players,
+          [target.id]: { ...target, hp: hpAfter },
+        },
+        effectStack: pruneTerminalTail(
+          updateEffects(state, { [effectId]: "resolved" }),
+        ),
+        reactionWindow: null,
+      };
     } else {
       throw new Error(`Unsupported resolvable effect ${effect.kind}.`);
     }
@@ -538,6 +568,15 @@ class EventBuilder {
           effectId,
           resolvedAt: this.serverReceivedAt,
           damageItems: planned,
+        });
+      } else if (effect.kind === "card:xyy.card.tp02") {
+        const target = this.state.players[effect.targetIds[0]!]!;
+        this.append("effect.resolved", {
+          effectId,
+          resolvedAt: this.serverReceivedAt,
+          amount: 2,
+          hpBefore: target.hp,
+          hpAfter: Math.min(target.maxHp, target.hp + 2),
         });
       } else {
         this.append("effect.resolved", {

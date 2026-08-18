@@ -251,6 +251,70 @@ function injectReactionFixture(
   }
 }
 
+function injectTp02Fixture(
+  databasePath: string,
+  matchId: string,
+  actor: PlayerId,
+  first: PlayerId,
+): void {
+  const database = new Database(databasePath);
+  try {
+    const row = database
+      .prepare(
+        `SELECT rowid, state_json FROM snapshots
+         WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1`,
+      )
+      .get(matchId) as { rowid: number; state_json: string } | undefined;
+    if (row === undefined) throw new Error("Missing TP02 fixture snapshot.");
+    const state = JSON.parse(row.state_json) as MatchState;
+    const hands: Readonly<Record<PlayerId, readonly string[]>> = {
+      [actor]: ["xyy.card.tp02@36", "xyy.card.tp02@37"],
+      [first]: ["xyy.card.tp01@33"],
+    };
+    const claimed = new Set(Object.values(hands).flat());
+    const now = Date.now();
+    const fixture: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            hp: player.id === actor ? player.maxHp - 1 : player.hp,
+            hand: hands[player.id] ?? [],
+          },
+        ]),
+      ),
+      turn:
+        state.turn === null
+          ? null
+          : {
+              ...state.turn,
+              phase: "action",
+              openedAt: now,
+              deadlineAt: now + 15_000,
+            },
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+      effectStack: [],
+      reactionWindow: null,
+      pendingChoice: null,
+      dyingBatch: null,
+    };
+    const stateJson = JSON.stringify(fixture);
+    const stateHash = createHash("sha256")
+      .update(stateJson, "utf8")
+      .digest("hex");
+    database
+      .prepare(
+        "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE rowid = ?",
+      )
+      .run(stateJson, stateHash, row.rowid);
+  } finally {
+    database.close();
+  }
+}
+
 describe("M04 reaction lifecycle over six real WebSockets", () => {
   it("persists a child window across restart and completes a counter-chain", async () => {
     const root = mkdtempSync(
@@ -490,6 +554,119 @@ describe("M04 reaction lifecycle over six real WebSockets", () => {
         .get(actor)!
         .latestView.players.find((player) => player.id === actor)!.hand,
     ).toHaveLength(2);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    injectTp02Fixture(databasePath, room.roomId, actor, first);
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    const tp02ClientByPlayer = new Map(
+      sessions.map((session, index) => [session.playerId, clients[index]!]),
+    );
+    const actorClient = tp02ClientByPlayer.get(actor)!;
+    expect(actorClient.latestView.availableActions).toContainEqual({
+      type: "play-card",
+      cardInstanceId: "xyy.card.tp02@36",
+      targetPlayerIds: [actor],
+    });
+    expect(
+      clients
+        .filter((client) => client !== actorClient)
+        .every(
+          (client) =>
+            !JSON.stringify(client.latestView).includes("xyy.card.tp02@36"),
+        ),
+    ).toBe(true);
+    const hpBefore = actorClient.latestView.players.find(
+      (player) => player.id === actor,
+    )!.hp;
+
+    const cancelledHeal = await sendCommand(
+      actorClient,
+      sessionByPlayer.get(actor)!,
+      "network-tp02-cancelled",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.tp02@36",
+        targetPlayerIds: [actor],
+      },
+    );
+    expect(cancelledHeal.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    const tp02EffectId = clients[0]!.latestView.effectStack[0]!.effectId;
+    const cancel = await sendCommand(
+      tp02ClientByPlayer.get(first)!,
+      sessionByPlayer.get(first)!,
+      "network-tp02-bingxin",
+      version,
+      {
+        type: "play-reaction-card",
+        cardInstanceId: "xyy.card.tp01@33",
+        targetEffectId: tp02EffectId,
+      },
+    );
+    expect(cancel.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    let tp02Pass = 0;
+    while (clients[0]!.latestView.reactionWindow !== null) {
+      const window = clients[0]!.latestView.reactionWindow!;
+      const response = await sendCommand(
+        tp02ClientByPlayer.get(window.priorityPlayerId)!,
+        sessionByPlayer.get(window.priorityPlayerId)!,
+        `network-tp02-cancel-pass-${tp02Pass}`,
+        version,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitForVersion(clients, version);
+      tp02Pass += 1;
+      if (tp02Pass > 6) throw new Error("TP02 cancellation did not close.");
+    }
+    expect(
+      actorClient.latestView.players.find((player) => player.id === actor)!.hp,
+    ).toBe(hpBefore);
+
+    const successfulHeal = await sendCommand(
+      actorClient,
+      sessionByPlayer.get(actor)!,
+      "network-tp02-heal",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.tp02@37",
+        targetPlayerIds: [actor],
+      },
+    );
+    expect(successfulHeal.type).toBe("command-accepted");
+    version += 1;
+    await waitForVersion(clients, version);
+    tp02Pass = 0;
+    while (clients[0]!.latestView.reactionWindow !== null) {
+      const window = clients[0]!.latestView.reactionWindow!;
+      const response = await sendCommand(
+        tp02ClientByPlayer.get(window.priorityPlayerId)!,
+        sessionByPlayer.get(window.priorityPlayerId)!,
+        `network-tp02-heal-pass-${tp02Pass}`,
+        version,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitForVersion(clients, version);
+      tp02Pass += 1;
+      if (tp02Pass > 6) throw new Error("TP02 healing did not close.");
+    }
+    const actorAfterHeal = actorClient.latestView.players.find(
+      (player) => player.id === actor,
+    )!;
+    expect(actorAfterHeal.hp).toBe(actorAfterHeal.maxHp);
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
   });
