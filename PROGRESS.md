@@ -1,8 +1,8 @@
 # 当前目标检查点
 
 - 分支：`codex/goal-mvp`
-- 当前节点：`M01-ROOM-LIFECYCLE`
-- 最近验证完成：`P10-GO-NO-GO`
+- 当前节点：`M02-SETUP-AND-TEAMS`
+- 最近验证完成：`M01-ROOM-LIFECYCLE`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -13,8 +13,9 @@
 - P07 验证证据：`contracts/verification-system.contract.json`、`docs/verification/p07-system.md`、`docs/verification/receipts/p07-verification-system.md`
 - P08 架构证据：`contracts/architecture.contract.json`、`docs/architecture/`、`docs/adr/0004-production-runtime-stack.md`、`docs/verification/receipts/p08-production-architecture.md`
 - P10 准备证据：`docs/preparation-report.md`、`docs/verification/receipts/p10-go-no-go.md`、`pre-goal-20260819`
-- 当前工作：实现匿名建房、邀请码、固定六座位、准备、开始、重连令牌和结束状态的真实持久化房间生命周期。
-- 下一 ready 节点：`M01-ROOM-LIFECYCLE`。
+- M01 房间证据：`contracts/room-lifecycle.contract.json`、`docs/room-lifecycle/m01-room-lifecycle.md`、`docs/verification/receipts/m01-room-lifecycle.md`
+- 当前工作：实现六人确定性选角、队伍、初始牌堆/手牌和先手初始化，并从 M01 的持久 `matchId` 衔接到规则引擎。
+- 下一 ready 节点：`M02-SETUP-AND-TEAMS`。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-006`，见 `docs/rules-semantics/decisions.md`。
 

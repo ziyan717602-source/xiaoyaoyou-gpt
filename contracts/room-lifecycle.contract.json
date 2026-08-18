@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-room-lifecycle-v1",
+  "scope": "M01-ROOM-LIFECYCLE",
+  "room": {
+    "capacity": 6,
+    "statuses": ["open", "started", "ended"],
+    "transitions": ["create->open", "open->started", "started->ended"],
+    "startRequires": ["host", "six-seats", "all-ready", "current-version"],
+    "joinAllowedOnlyIn": "open",
+    "spectator": false
+  },
+  "identity": {
+    "accountRequired": false,
+    "roomId": "server-random-uuid",
+    "playerId": "server-random-uuid",
+    "inviteCode": "server-random-eight-symbol-human-safe-code",
+    "reconnectToken": "server-random-256-bit-base64url-bearer",
+    "storedToken": "sha256-only",
+    "tokenTransport": ["authorization-bearer", "websocket-first-frame"],
+    "tokenInUrl": false
+  },
+  "http": {
+    "routes": [
+      "POST /api/rooms",
+      "POST /api/rooms/join",
+      "GET /api/rooms/:roomId",
+      "POST /api/rooms/:roomId/ready",
+      "POST /api/rooms/:roomId/start",
+      "POST /api/rooms/:roomId/end"
+    ],
+    "bodyLimitBytes": 65536,
+    "sessionCache": "no-store",
+    "mutationAuth": "player-id-plus-bearer-token",
+    "optimisticConcurrency": "expected-version"
+  },
+  "websocket": {
+    "path": "/ws",
+    "viewIsolation": "one-authenticated-seat-one-room-view",
+    "origin": "configured-allowlist-requires-present-match",
+    "replacement": "newest-authenticated-socket-wins",
+    "replacementCloseCode": 4000,
+    "wrongTokenCloseCode": 4401,
+    "serviceRestartCloseCode": 1012
+  },
+  "persistence": {
+    "databaseSchemaVersion": 2,
+    "tables": ["rooms", "room_seats", "room_commands"],
+    "durability": "sqlite-wal-full",
+    "idempotencyKey": "room-id-plus-command-id",
+    "sameCommandRetry": "stored-result-with-duplicate-true",
+    "commandIdReuse": "reject-different-player-or-command-type",
+    "restart": "preserve-room-seat-ready-match-and-token-hash-reset-connected"
+  },
+  "limits": {
+    "createJoinPerIpPerMinute": 12,
+    "roomHttpPerIpPerSecond": 40,
+    "websocketMessagesPerSecond": 20,
+    "websocketBurst": 40,
+    "unauthenticatedConnections": 100
+  },
+  "failureMatrix": {
+    "invalidRequest": 400,
+    "wrongTokenOrSeat": 403,
+    "roomNotFound": 404,
+    "roomFullClosedStaleOrInvalidTransition": 409,
+    "rateLimited": 429
+  },
+  "acceptanceMap": {
+    "M01-01": "anonymous-create-and-eight-symbol-invite",
+    "M01-02": "exactly-six-stable-seats-no-spectator",
+    "M01-03": "ready-host-start-and-ended-state-machine",
+    "M01-04": "random-reconnect-token-hash-only",
+    "M01-05": "idempotent-versioned-mutations",
+    "M01-06": "real-http-and-six-websocket-views",
+    "M01-07": "restart-reconnect-and-newest-socket-replacement",
+    "M01-08": "origin-token-rate-and-payload-boundaries"
+  }
+}

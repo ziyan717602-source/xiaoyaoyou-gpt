@@ -7,7 +7,7 @@ import type {
   PlayerId,
 } from "@xiaoyaoyou/protocol";
 
-export const DATABASE_SCHEMA_VERSION = 1 as const;
+export const DATABASE_SCHEMA_VERSION = 2 as const;
 export const SNAPSHOT_INTERVAL_COMMANDS = 25 as const;
 
 export interface PersistedEvent {
@@ -156,6 +156,75 @@ CREATE TABLE snapshots (
 );
 `;
 
+const migration2 = `
+CREATE TABLE rooms (
+  room_id TEXT PRIMARY KEY,
+  invite_code TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL CHECK (status IN ('open', 'started', 'ended')),
+  version INTEGER NOT NULL,
+  host_player_id TEXT NOT NULL,
+  match_id TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  started_at INTEGER,
+  ended_at INTEGER
+);
+CREATE TABLE room_seats (
+  room_id TEXT NOT NULL,
+  seat_index INTEGER NOT NULL CHECK (seat_index >= 0 AND seat_index < 6),
+  player_id TEXT NOT NULL UNIQUE,
+  nickname TEXT NOT NULL,
+  reconnect_token_hash TEXT NOT NULL,
+  ready INTEGER NOT NULL CHECK (ready IN (0, 1)),
+  connected INTEGER NOT NULL CHECK (connected IN (0, 1)),
+  joined_at INTEGER NOT NULL,
+  last_connected_at INTEGER,
+  disconnected_at INTEGER,
+  PRIMARY KEY (room_id, seat_index),
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE CASCADE
+);
+CREATE INDEX room_seats_room_idx ON room_seats(room_id);
+CREATE TABLE room_commands (
+  room_id TEXT NOT NULL,
+  command_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  command_type TEXT NOT NULL,
+  result_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (room_id, command_id),
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE CASCADE
+);
+`;
+
+export function openSqliteDatabase(filename: string): Database.Database {
+  const database = new Database(filename);
+  database.pragma("foreign_keys = ON");
+  database.pragma("journal_mode = WAL");
+  database.pragma("synchronous = FULL");
+  database.pragma("busy_timeout = 5000");
+  let version = database.pragma("user_version", { simple: true }) as number;
+  if (version > DATABASE_SCHEMA_VERSION) {
+    database.close();
+    throw new Error(
+      `Database schema ${version} is newer than supported ${DATABASE_SCHEMA_VERSION}.`,
+    );
+  }
+  if (version === 0) {
+    database.transaction(() => {
+      database.exec(migration1);
+      database.pragma("user_version = 1");
+    })();
+    version = 1;
+  }
+  if (version === 1) {
+    database.transaction(() => {
+      database.exec(migration2);
+      database.pragma("user_version = 2");
+    })();
+  }
+  return database;
+}
+
 function hashText(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
@@ -190,29 +259,7 @@ export class SqliteEventStore {
 
   constructor(filename: string, supportedPersistenceVersion = 1) {
     this.#supportedPersistenceVersion = supportedPersistenceVersion;
-    this.#database = new Database(filename);
-    this.#database.pragma("foreign_keys = ON");
-    this.#database.pragma("journal_mode = WAL");
-    this.#database.pragma("synchronous = FULL");
-    this.#database.pragma("busy_timeout = 5000");
-    this.#migrate();
-  }
-
-  #migrate(): void {
-    const version = this.#database.pragma("user_version", {
-      simple: true,
-    }) as number;
-    if (version > DATABASE_SCHEMA_VERSION) {
-      throw new Error(
-        `Database schema ${version} is newer than supported ${DATABASE_SCHEMA_VERSION}.`,
-      );
-    }
-    if (version === 0) {
-      this.#database.transaction(() => {
-        this.#database.exec(migration1);
-        this.#database.pragma(`user_version = ${DATABASE_SCHEMA_VERSION}`);
-      })();
-    }
+    this.#database = openSqliteDatabase(filename);
   }
 
   close(): void {

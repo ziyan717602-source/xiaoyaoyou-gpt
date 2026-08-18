@@ -4,6 +4,7 @@ export const PROTOCOL_VERSION = 1 as const;
 export const SUPPORTED_PROTOCOL_VERSIONS = [PROTOCOL_VERSION] as const;
 
 export type MatchId = string;
+export type RoomId = string;
 export type PlayerId = string;
 export type CommandId = string;
 export type EffectId = string;
@@ -12,6 +13,33 @@ export type ChoiceId = string;
 export type EventId = string;
 export type ContinuationId = string;
 export type ConnectionId = string;
+
+export type RoomStatus = "open" | "started" | "ended";
+
+export interface RoomSeatView {
+  readonly seatIndex: number;
+  readonly playerId: PlayerId;
+  readonly nickname: string;
+  readonly ready: boolean;
+  readonly connected: boolean;
+  readonly host: boolean;
+}
+
+export interface RoomView {
+  readonly roomId: RoomId;
+  readonly inviteCode: string;
+  readonly status: RoomStatus;
+  readonly version: number;
+  readonly matchId: MatchId | null;
+  readonly seats: readonly RoomSeatView[];
+}
+
+export interface RoomSession {
+  readonly room: RoomView;
+  readonly playerId: PlayerId;
+  readonly seatIndex: number;
+  readonly reconnectToken: string;
+}
 
 export type ClientCommand =
   | {

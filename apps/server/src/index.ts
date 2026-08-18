@@ -48,12 +48,28 @@ export interface BuildServerOptions {
     readonly reconnectToken: string;
   }[];
   readonly exposeMetrics?: boolean;
+  readonly allowedOrigins?: readonly string[];
+  readonly maxUnauthenticatedConnections?: number;
+  readonly onAuthenticated?: (
+    seat: AuthenticatedSeat,
+    reconnectToken: string,
+  ) => Promise<void> | void;
+  readonly onDisconnected?: (seat: AuthenticatedSeat) => Promise<void> | void;
 }
 
 export interface AppServer {
   readonly app: FastifyInstance;
   readonly listen: (port: number, host?: string) => Promise<string>;
   readonly closeGracefully: () => Promise<void>;
+  readonly publishPlayerViews: (
+    matchId: MatchId,
+    viewFor: (playerId: PlayerId) =>
+      | Promise<{ readonly version: number; readonly view: unknown }>
+      | {
+          readonly version: number;
+          readonly view: unknown;
+        },
+  ) => Promise<void>;
 }
 
 function send(socket: WebSocket, message: ServerMessage): void {
@@ -79,6 +95,11 @@ export async function buildServer(
   options: BuildServerOptions = {},
 ): Promise<AppServer> {
   const registry = new Registry();
+  const authenticatedSockets = new Map<
+    string,
+    { readonly socket: WebSocket; readonly seat: AuthenticatedSeat }
+  >();
+  let unauthenticatedConnections = 0;
   collectDefaultMetrics({ register: registry, prefix: "xiaoyaoyou_" });
   const app = Fastify({
     logger:
@@ -138,159 +159,257 @@ export async function buildServer(
     }));
   }
 
-  app.get("/ws", { websocket: true }, (socket) => {
-    const connectionId = randomUUID();
-    let authenticatedSeat: AuthenticatedSeat | null = null;
-    const authenticationTimer = setTimeout(() => {
-      if (authenticatedSeat === null) {
-        socket.close(4408, "authentication-timeout");
-      }
-    }, AUTHENTICATION_DEADLINE_MS);
-    authenticationTimer.unref?.();
-
-    send(socket, {
-      type: "hello",
-      protocolVersion: PROTOCOL_VERSION,
-      connectionId,
-      heartbeatMs: HEARTBEAT_MS,
-      authenticationDeadlineMs: AUTHENTICATION_DEADLINE_MS,
-    });
-
-    socket.on("message", (raw) => {
-      void (async () => {
-        const bytes = Array.isArray(raw)
-          ? Buffer.concat(raw)
-          : raw instanceof ArrayBuffer
-            ? Buffer.from(raw)
-            : Buffer.from(raw);
-        const message = decodeMessage(bytes);
-        if (message === null) {
-          send(socket, {
-            type: "error",
-            category: "invalid",
-            code: "invalid-message",
-            retryable: false,
-          });
+  app.get(
+    "/ws",
+    {
+      websocket: true,
+      preValidation: (request, reply, done) => {
+        const origin = request.headers.origin;
+        if (
+          options.allowedOrigins !== undefined &&
+          (origin === undefined || !options.allowedOrigins.includes(origin))
+        ) {
+          reply.code(403).send({ error: "origin-not-allowed" });
           return;
         }
-
+        done();
+      },
+    },
+    (socket) => {
+      unauthenticatedConnections += 1;
+      if (
+        unauthenticatedConnections >
+        (options.maxUnauthenticatedConnections ?? 100)
+      ) {
+        unauthenticatedConnections -= 1;
+        socket.close(1013, "connection-capacity");
+        return;
+      }
+      const connectionId = randomUUID();
+      let authenticatedSeat: AuthenticatedSeat | null = null;
+      let rateTokens = 40;
+      let rateUpdatedAt = Date.now();
+      const authenticationTimer = setTimeout(() => {
         if (authenticatedSeat === null) {
-          if (message.type !== "authenticate") {
+          socket.close(4408, "authentication-timeout");
+        }
+      }, AUTHENTICATION_DEADLINE_MS);
+      authenticationTimer.unref?.();
+
+      send(socket, {
+        type: "hello",
+        protocolVersion: PROTOCOL_VERSION,
+        connectionId,
+        heartbeatMs: HEARTBEAT_MS,
+        authenticationDeadlineMs: AUTHENTICATION_DEADLINE_MS,
+      });
+
+      socket.on("message", (raw) => {
+        void (async () => {
+          const rateNow = Date.now();
+          rateTokens = Math.min(
+            40,
+            rateTokens + ((rateNow - rateUpdatedAt) / 1_000) * 20,
+          );
+          rateUpdatedAt = rateNow;
+          if (rateTokens < 1) {
             send(socket, {
               type: "error",
-              category: "unauthenticated",
-              code: "authenticate-first",
-              retryable: false,
+              category: "rate-limited",
+              code: "message-rate-exceeded",
+              retryable: true,
             });
             return;
           }
-          if (message.protocolVersion !== PROTOCOL_VERSION) {
+          rateTokens -= 1;
+          const bytes = Array.isArray(raw)
+            ? Buffer.concat(raw)
+            : raw instanceof ArrayBuffer
+              ? Buffer.from(raw)
+              : Buffer.from(raw);
+          const message = decodeMessage(bytes);
+          if (message === null) {
             send(socket, {
               type: "error",
               category: "invalid",
-              code: "unsupported-protocol-version",
+              code: "invalid-message",
               retryable: false,
             });
-            socket.close(4406, "unsupported-protocol-version");
             return;
           }
-          const verified =
-            (await options.verifyReconnectToken?.(
-              message.matchId,
-              message.playerId,
+
+          if (authenticatedSeat === null) {
+            if (message.type !== "authenticate") {
+              send(socket, {
+                type: "error",
+                category: "unauthenticated",
+                code: "authenticate-first",
+                retryable: false,
+              });
+              return;
+            }
+            if (message.protocolVersion !== PROTOCOL_VERSION) {
+              send(socket, {
+                type: "error",
+                category: "invalid",
+                code: "unsupported-protocol-version",
+                retryable: false,
+              });
+              socket.close(4406, "unsupported-protocol-version");
+              return;
+            }
+            const verified =
+              (await options.verifyReconnectToken?.(
+                message.matchId,
+                message.playerId,
+                message.reconnectToken,
+              )) ?? false;
+            if (!verified) {
+              send(socket, {
+                type: "error",
+                category: "unauthenticated",
+                code: "authentication-failed",
+                retryable: false,
+              });
+              socket.close(4401, "authentication-failed");
+              return;
+            }
+            authenticatedSeat = {
+              matchId: message.matchId,
+              playerId: message.playerId,
+            };
+            unauthenticatedConnections -= 1;
+            clearTimeout(authenticationTimer);
+            const seatKey = `${message.matchId}\0${message.playerId}`;
+            const previous = authenticatedSockets.get(seatKey);
+            authenticatedSockets.set(seatKey, {
+              socket,
+              seat: authenticatedSeat,
+            });
+            if (previous !== undefined && previous.socket !== socket) {
+              previous.socket.close(4000, "connection-replaced");
+            }
+            await options.onAuthenticated?.(
+              authenticatedSeat,
               message.reconnectToken,
-            )) ?? false;
-          if (!verified) {
+            );
+            send(socket, {
+              type: "authenticated",
+              matchId: message.matchId,
+              playerId: message.playerId,
+              connectionId,
+            });
+            const current =
+              await options.currentPlayerView?.(authenticatedSeat);
+            if (current !== undefined && current !== null) {
+              send(socket, {
+                type: "player-view",
+                matchId: message.matchId,
+                version: current.version,
+                view: current.view,
+              });
+            }
+            return;
+          }
+
+          if (message.type === "ping") {
+            send(socket, { type: "pong", nonce: message.nonce });
+            return;
+          }
+          if (message.type !== "command") {
             send(socket, {
               type: "error",
-              category: "unauthenticated",
-              code: "authentication-failed",
+              category: "invalid",
+              code: "already-authenticated",
               retryable: false,
             });
-            socket.close(4401, "authentication-failed");
             return;
           }
-          authenticatedSeat = {
-            matchId: message.matchId,
-            playerId: message.playerId,
-          };
-          clearTimeout(authenticationTimer);
-          send(socket, {
-            type: "authenticated",
-            matchId: message.matchId,
-            playerId: message.playerId,
-            connectionId,
-          });
-          const current = await options.currentPlayerView?.(authenticatedSeat);
-          if (current !== undefined && current !== null) {
+          if (
+            message.envelope.matchId !== authenticatedSeat.matchId ||
+            message.envelope.playerId !== authenticatedSeat.playerId
+          ) {
             send(socket, {
-              type: "player-view",
-              matchId: message.matchId,
-              version: current.version,
-              view: current.view,
+              type: "command-rejected",
+              commandId: message.envelope.commandId,
+              category: "forbidden",
+              reason: "forbidden",
+              currentVersion: message.envelope.expectedVersion,
+              retryable: false,
             });
+            return;
           }
-          return;
-        }
-
-        if (message.type === "ping") {
-          send(socket, { type: "pong", nonce: message.nonce });
-          return;
-        }
-        if (message.type !== "command") {
-          send(socket, {
-            type: "error",
-            category: "invalid",
-            code: "already-authenticated",
-            retryable: false,
-          });
-          return;
-        }
-        if (
-          message.envelope.matchId !== authenticatedSeat.matchId ||
-          message.envelope.playerId !== authenticatedSeat.playerId
-        ) {
-          send(socket, {
+          const response = (await options.handleCommand?.(
+            authenticatedSeat,
+            message.envelope,
+          )) ?? {
             type: "command-rejected",
             commandId: message.envelope.commandId,
-            category: "forbidden",
-            reason: "forbidden",
+            category: "unavailable",
+            reason: "not-available",
             currentVersion: message.envelope.expectedVersion,
-            retryable: false,
+            retryable: true,
+          };
+          send(socket, response);
+        })().catch((error: unknown) => {
+          app.log.error(
+            { err: error, connectionId },
+            "websocket-message-failed",
+          );
+          send(socket, {
+            type: "error",
+            category: "internal",
+            code: "internal-error",
+            retryable: true,
           });
-          return;
-        }
-        const response = (await options.handleCommand?.(
-          authenticatedSeat,
-          message.envelope,
-        )) ?? {
-          type: "command-rejected",
-          commandId: message.envelope.commandId,
-          category: "unavailable",
-          reason: "not-available",
-          currentVersion: message.envelope.expectedVersion,
-          retryable: true,
-        };
-        send(socket, response);
-      })().catch((error: unknown) => {
-        app.log.error({ err: error, connectionId }, "websocket-message-failed");
-        send(socket, {
-          type: "error",
-          category: "internal",
-          code: "internal-error",
-          retryable: true,
         });
       });
-    });
 
-    socket.on("close", () => {
-      clearTimeout(authenticationTimer);
-    });
-  });
+      socket.on("close", () => {
+        clearTimeout(authenticationTimer);
+        if (authenticatedSeat === null) {
+          unauthenticatedConnections = Math.max(
+            0,
+            unauthenticatedConnections - 1,
+          );
+          return;
+        }
+        const seatKey = `${authenticatedSeat.matchId}\0${authenticatedSeat.playerId}`;
+        if (authenticatedSockets.get(seatKey)?.socket === socket) {
+          authenticatedSockets.delete(seatKey);
+          const disconnectedSeat = authenticatedSeat;
+          void Promise.resolve()
+            .then(() => options.onDisconnected?.(disconnectedSeat))
+            .catch((error: unknown) => {
+              app.log.error(
+                { err: error, connectionId },
+                "websocket-disconnect-hook-failed",
+              );
+            });
+        }
+      });
+    },
+  );
 
   return {
     app,
     listen: (port, host = "127.0.0.1") => app.listen({ port, host }),
+    publishPlayerViews: async (matchId, viewFor) => {
+      const recipients = [...authenticatedSockets.values()].filter(
+        ({ seat }) => seat.matchId === matchId,
+      );
+      await Promise.all(
+        recipients.map(async ({ seat, socket }) => {
+          const projected = await viewFor(seat.playerId);
+          send(socket, {
+            type: "player-view",
+            matchId,
+            version: projected.version,
+            view: projected.view,
+          });
+        }),
+      );
+    },
     closeGracefully: async () => {
       for (const client of app.websocketServer.clients) {
         send(client, { type: "server-draining", retryAfterMs: 1_000 });

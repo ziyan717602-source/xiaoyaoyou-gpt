@@ -36,6 +36,8 @@ node scripts/bootstrap-local.mjs --smoke
 
 已安装依赖的日常开发可直接运行 `npm run dev:local`；服务端健康检查为 `http://127.0.0.1:3000/health`。当前本地六人入口是 P08 架构 fixture，不是已经可完整游玩的 M01 房间。
 
+M01 无界面房间服务使用 `npm run dev:rooms` 启动，默认监听 `127.0.0.1:3001` 并写入 `.local/rooms.sqlite`。可通过 `PORT`、`HOST`、`DATABASE_PATH` 和逗号分隔的 `ALLOWED_ORIGINS` 覆盖；接口和状态语义见 [M01 房间生命周期](docs/room-lifecycle/m01-room-lifecycle.md)。它是后续 Web 客户端的真实房间 API，目前不代表完整牌局可玩。
+
 常用分层验证命令：`npm run check:fast`、`npm run check:full`、`npm run test:replay`、`npm run test:bots`、`npm run test:e2e`。
 
 ## 当前边界
