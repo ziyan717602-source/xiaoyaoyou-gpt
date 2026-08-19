@@ -153,6 +153,180 @@ function expectConserved(state: MatchState): void {
 }
 
 describe("M03 deterministic turn core", () => {
+  it("uses JN10501 repeatedly to give any nonempty hand subset to living teammates", () => {
+    let state = playing("jn10501-give-hand");
+    const actor = state.activePlayerId!;
+    const actorTeam = state.players[actor]!.team;
+    const teammates = Object.values(state.players)
+      .filter((player) => player.id !== actor && player.team === actorTeam)
+      .sort((left, right) => left.seat - right.seat)
+      .map((player) => player.id);
+    const opponent = Object.values(state.players).find(
+      (player) => player.team !== actorTeam,
+    )!.id;
+    state = arrange(state, {
+      [actor]: ["xyy.card.jp01@1", "xyy.card.jp02@3", "xyy.card.zp01@16"],
+      [opponent]: ["xyy.card.jp03@5"],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj105" },
+      },
+    };
+    expect(createPlayerView(state, actor).availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: [
+        "xyy.card.jp01@1",
+        "xyy.card.jp02@3",
+        "xyy.card.zp01@16",
+      ],
+      minCardCount: 1,
+      maxCardCount: 3,
+      skillId: "xyy.skill.jn10501",
+      targetPlayerIds: teammates,
+      requiredTargetCount: 1,
+    });
+    for (const player of Object.values(state.players)) {
+      if (player.id === actor) continue;
+      const view = createPlayerView(state, player.id);
+      expect(view.availableActions).not.toContainEqual(
+        expect.objectContaining({
+          type: "activate-hero-skill",
+          skillId: "xyy.skill.jn10501",
+        }),
+      );
+      expect(JSON.stringify(view)).not.toContain("xyy.card.jp01@1");
+    }
+
+    const timeoutStart = JSON.parse(JSON.stringify(state)) as MatchState;
+    const deadline = collectSystemDeadlines(timeoutStart).find((candidate) =>
+      candidate.targetId.startsWith("turn:"),
+    )!;
+    const timedOut = applyCommand(timeoutStart, {
+      origin: "system-timeout",
+      commandId: "jn10501-timeout",
+      matchId: timeoutStart.matchId,
+      expectedVersion: timeoutStart.version,
+      deadlineAt: deadline.deadlineAt,
+      targetId: deadline.targetId,
+    });
+    expect(timedOut.accepted).toBe(true);
+    if (!timedOut.accepted) throw new Error(timedOut.reason);
+    for (const card of timeoutStart.players[actor]!.hand) {
+      expect(timedOut.state.players[actor]!.hand).toContain(card);
+    }
+    expect(timedOut.state.players[teammates[0]!]!.hand).toEqual([]);
+    expect(timedOut.state.players[teammates[1]!]!.hand).toEqual([]);
+
+    for (const [commandId, cardInstanceIds, targetPlayerId] of [
+      ["jn10501-empty", [], teammates[0]],
+      [
+        "jn10501-duplicate",
+        ["xyy.card.jp01@1", "xyy.card.jp01@1"],
+        teammates[0],
+      ],
+      ["jn10501-forged", ["xyy.card.jp03@5"], teammates[0]],
+      ["jn10501-unknown", ["xyy.card.unknown@99"], teammates[0]],
+      ["jn10501-opponent", ["xyy.card.jp01@1"], opponent],
+      ["jn10501-self", ["xyy.card.jp01@1"], actor],
+    ] as const) {
+      expect(
+        applyCommand(state, {
+          origin: "player",
+          serverReceivedAt: 0,
+          envelope: envelope(state, actor, commandId, {
+            type: "activate-hero-skill",
+            cardInstanceIds,
+            skillId: "xyy.skill.jn10501",
+            targetPlayerIds: [targetPlayerId!],
+          }),
+        }),
+      ).toMatchObject({ accepted: false, reason: "forbidden" });
+    }
+    const deadTargetState: MatchState = {
+      ...state,
+      players: {
+        ...state.players,
+        [teammates[0]!]: {
+          ...state.players[teammates[0]!]!,
+          alive: false,
+          hp: 0,
+        },
+      },
+    };
+    expect(
+      applyCommand(deadTargetState, {
+        origin: "player",
+        serverReceivedAt: 0,
+        envelope: envelope(deadTargetState, actor, "jn10501-dead-target", {
+          type: "activate-hero-skill",
+          cardInstanceIds: ["xyy.card.jp01@1"],
+          skillId: "xyy.skill.jn10501",
+          targetPlayerIds: [teammates[0]!],
+        }),
+      }),
+    ).toMatchObject({ accepted: false, reason: "forbidden" });
+    expect(
+      applyCommand(state, {
+        origin: "player",
+        serverReceivedAt: 0,
+        envelope: envelope(state, actor, "jn10501-multiple-targets", {
+          type: "activate-hero-skill",
+          cardInstanceIds: ["xyy.card.jp01@1"],
+          skillId: "xyy.skill.jn10501",
+          targetPlayerIds: teammates,
+        }),
+      }),
+    ).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    state = dispatch(state, actor, "jn10501-give-two", {
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.jp02@3"],
+      skillId: "xyy.skill.jn10501",
+      targetPlayerIds: [teammates[0]!],
+    });
+    expect(state.players[actor]!.hand).toEqual(["xyy.card.zp01@16"]);
+    expect(state.players[teammates[0]!]!.hand).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.jp02@3",
+    ]);
+    expect(state.reactionWindow).toBeNull();
+    expect(createPlayerView(state, actor).availableActions).toContainEqual(
+      expect.objectContaining({
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.zp01@16"],
+        maxCardCount: 1,
+        skillId: "xyy.skill.jn10501",
+      }),
+    );
+    for (const player of Object.values(state.players)) {
+      if (player.id === teammates[0]) continue;
+      const serialized = JSON.stringify(createPlayerView(state, player.id));
+      expect(serialized).not.toContain("xyy.card.jp01@1");
+      expect(serialized).not.toContain("xyy.card.jp02@3");
+    }
+
+    state = dispatch(state, actor, "jn10501-give-last", {
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      skillId: "xyy.skill.jn10501",
+      targetPlayerIds: [teammates[1]!],
+    });
+    expect(state.players[actor]!.hand).toEqual([]);
+    expect(state.players[teammates[1]!]!.hand).toEqual(["xyy.card.zp01@16"]);
+    expect(
+      createPlayerView(state, actor).availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn10501",
+      ),
+    ).toBe(false);
+    expect(state.players[opponent]!.hand).toEqual(["xyy.card.jp03@5"]);
+    expectConserved(state);
+  });
+
   it("uses JN40302 once to collect teammate hands and optionally redistribute the whole hand", () => {
     let state = playing("jn40302-brothers");
     const actor = state.activePlayerId!;

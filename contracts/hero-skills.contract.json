@@ -124,7 +124,10 @@
     "PSDGamepkg/XIG.cs:1015+ G0HQ type 1 transfers dead hand and equipment into the recipient hand",
     "psd.db3:Skill:JN40302 OCCURS R#GR ONCE 1 and description collect all teammate hands then distribute the whole hand arbitrarily",
     "PSDGamepkg/JNS/XJ405.cs:1063-1100 JN40302 collects every other living teammate hand and loops optional subset transfers to other living teammates",
-    "PSDGamepkg/XIG.cs:1015+ G0HQ type 0 moves the requested hand-card count and hides transferred identities from uninvolved players"
+    "PSDGamepkg/XIG.cs:1015+ G0HQ type 0 moves the requested hand-card count and hides transferred identities from uninvolved players",
+    "psd.db3:Skill:JN10501 OCCURS R#GR ONCE 0 and description give any number of hand cards to one or more players during own action phase",
+    "PSDGamepkg/JNS/XJ405.cs:201-236 JN10501 requires own hand and another living teammate, selects one-to-all own cards plus exactly one teammate per activation and encrypts identities for uninvolved players",
+    "PSDGamepkg/XIG.cs:1015-1042 G0HQ type 0 subtype 1 explicitly moves selected instances and exposes identities only to source and recipient"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -164,7 +167,11 @@
     "jn40302CollectionAndOrdering": "activation consumes the once-per-action marker and atomically appends every other living teammate hand in seat order and each source hand order to the owner's existing hand; legacy G0HQ shuffled full-hand transfer order with unstable process randomness, so the scoped engine uses deterministic order without changing ownership",
     "jn40302Distribution": "only the owner sees the collected identities and may repeatedly transfer any nonempty subset to another living teammate; legacy 0 or empty input exits early, so finish may retain every unassigned card despite the descriptive text saying distribute all",
     "jn40302Timeout": "each optional distribution step has a fresh 15-second deadline; timeout or disconnected auto-decision finishes immediately and retains the remaining owner hand",
-    "jn40302ProtectedCardsScope": "legacy G0HQ excludes Board.ProtectedTux, but the scoped standard plus Fengmingyushi runtime has no protected-card producer; all scoped teammate hand instances are collected without claiming compatibility with out-of-scope special heroes"
+    "jn40302ProtectedCardsScope": "legacy G0HQ excludes Board.ProtectedTux, but the scoped standard plus Fengmingyushi runtime has no protected-card producer; all scoped teammate hand instances are collected without claiming compatibility with out-of-scope special heroes",
+    "jn10501TransferRepresentation": "each repeatable activation records one explicit nonempty subset of current own hand instances and exactly one other living teammate, matching the C# input/action even though the prose describes one or more recipients across repeated uses",
+    "jn10501OrderingAndZones": "selected instances are removed from the source hand and appended to the recipient hand in command order; no discard, equipment, effect-stack or reaction step is created",
+    "jn10501Timeout": "the skill is optional and ONCE 0, so the shared 15-second action timeout activates nothing and pays no cards; successful use leaves it available while hand cards and a living teammate remain",
+    "jn10501Visibility": "the available action and source hand identities are owner-only, received identities become visible only in the recipient own-hand projection, and all other seats see public hand counts without instance ids"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -253,6 +260,13 @@
     "CS02-84": "JN40302-optional-choice-timeout-and-disconnected-auto-decision-finish-without-further-transfer",
     "CS02-85": "JN40302-collected-card-identities-choice-and-actions-are-visible-only-to-the-owner-while-public-hand-counts-update",
     "CS02-86": "JN40302-opens-no-reaction-window-and-rejects-opponent-targets-external-cards-and-repeat-activation",
-    "CS02-87": "JN40302-replays-through-JSON-and-persists-choice-partial-distribution-timeout-and-privacy-through-SQLite-restarts-with-six-WebSockets"
+    "CS02-87": "JN40302-replays-through-JSON-and-persists-choice-partial-distribution-timeout-and-privacy-through-SQLite-restarts-with-six-WebSockets",
+    "CS02-88": "JN10501-is-offered-only-to-its-native-owner-during-own-action-with-a-hand-card-and-another-living-teammate",
+    "CS02-89": "JN10501-projects-every-own-hand-instance-with-one-to-all-selection-and-only-other-living-teammate-targets",
+    "CS02-90": "JN10501-rejects-empty-duplicate-external-and-unknown-cards-plus-self-opponent-dead-and-multiple-targets",
+    "CS02-91": "JN10501-moves-the-exact-selected-subset-in-command-order-from-source-hand-to-one-recipient-hand-without-touching-other-zones",
+    "CS02-92": "JN10501-is-repeatable-without-a-once-marker-and-disappears-only-when-no-hand-card-or-living-teammate-remains",
+    "CS02-93": "JN10501-opens-no-reaction-window-and-optional-action-timeout-transfers-no-card",
+    "CS02-94": "JN10501-replays-through-JSON-and-persists-repeated-transfers-final-zones-and-private-identities-through-SQLite-restarts-with-six-WebSockets"
   }
 }

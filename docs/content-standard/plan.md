@@ -6,9 +6,9 @@
 - 共享核心前置：28
 - 总跟踪：205
 - 当前 partial：38
-- 当前 verified：17
+- 当前 verified：18
 - 当前 deferred：0
-- 当前 unstarted：150
+- 当前 unstarted：149
 
 ## 执行切片
 
@@ -36,6 +36,7 @@
 | `xyy.hero.x3w03`    | 星璇       | setup identity, base stats and both native skills JN40301/JN40302 are fully verified                                                                                                                                   | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn40301.md, receipt:docs/verification/receipts/cs02-jn40302.md                                                     |
 | `xyy.hero.xj402`    | 韩菱纱     | setup identity, base stats and all three native skills JN50201/JN50202/JN50203 are fully verified                                                                                                                      | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn50201.md, receipt:docs/verification/receipts/cs02-jn50202.md, receipt:docs/verification/receipts/cs02-jn50203.md |
 | `xyy.hero.xj404`    | 慕容紫英   | setup identity, base stats and both native skills JN50401/JN50402 are fully verified                                                                                                                                   | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn50401.md, receipt:docs/verification/receipts/cs02-jn50402.md                                                     |
+| `xyy.skill.jn10501` | 鬼灵精     | native XJ105 repeatable transfer of any nonempty own hand subset to one other living teammate is verified through replay and six-socket restart                                                                        | receipt:docs/verification/receipts/cs02-jn10501.md                                                                                                                              |
 | `xyy.skill.jn20202` | 拒绝       | native XJ202 TP-category hand-card conversion into the canonical TP01 counter-chain is verified through replay and six-socket restart                                                                                  | receipt:docs/verification/receipts/cs02-jn20202.md                                                                                                                              |
 | `xyy.skill.jn20302` | 元灵归心术 | native XJ203 repeatable technique-card discard to direct cure any living player is verified through replay and six-socket restart                                                                                      | receipt:docs/verification/receipts/cs02-jn20302.md                                                                                                                              |
 | `xyy.skill.jn40301` | 烹饪       | native X3W03 two-hand-card conversion into TP02 action healing and dying rescue is verified through replay and six-socket restart                                                                                      | receipt:docs/verification/receipts/cs02-jn40301.md                                                                                                                              |
@@ -74,7 +75,7 @@
 | `xyy.hero.xj102` | 赵灵儿      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj103` | 赵灵儿·梦蛇 | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj104` | 林月如      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
-| `xyy.hero.xj105` | 阿奴        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
+| `xyy.hero.xj105` | 阿奴        | setup identity and base stats plus JN10501 repeatable private teammate hand transfer are verified; JN10502 remains pending                                                     | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn10501.md |
 | `xyy.hero.xj106` | 酒剑仙      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj107` | 拜月教主    | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj201` | 王小虎      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |

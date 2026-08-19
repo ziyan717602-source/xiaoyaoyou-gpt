@@ -653,6 +653,58 @@ function injectJn40302(
   };
 }
 
+function injectJn10501(
+  state: MatchState,
+  owner: PlayerId,
+  opponent: PlayerId,
+): MatchState {
+  const claimed = new Set([
+    "xyy.card.jp01@1",
+    "xyy.card.jp02@2",
+    "xyy.card.zp01@16",
+    "xyy.card.jp03@3",
+  ]);
+  return {
+    ...state,
+    phase: "playing",
+    activePlayerId: owner,
+    turn: {
+      ...(state.turn ?? {
+        number: 1,
+        openedAt: 0,
+        deadlineAt: 15_000,
+      }),
+      number: state.turn?.number ?? 1,
+      phase: "action",
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          heroId: player.id === owner ? "xyy.hero.xj105" : player.heroId,
+          alive: true,
+          hp: player.maxHp,
+          hand:
+            player.id === owner
+              ? ["xyy.card.jp01@1", "xyy.card.jp02@2", "xyy.card.zp01@16"]
+              : player.id === opponent
+                ? ["xyy.card.jp03@3"]
+                : [],
+          equipment: { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -1577,6 +1629,193 @@ describe("M05 damage/dying over six real WebSockets", () => {
       handCount: 0,
       equipment: { weapon: null, armor: null },
     });
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+  });
+
+  it("persists repeated JN10501 teammate transfers with six-socket privacy", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn10501-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn10501.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const owner = ordered[0]!.id;
+    const ownerTeam = ordered[0]!.team;
+    const teammates = ordered
+      .filter((player) => player.id !== owner && player.team === ownerTeam)
+      .map((player) => player.id);
+    const opponent = ordered.find((player) => player.team !== ownerTeam)!.id;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn10501(state, owner, opponent),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    let version = clients[0]!.latestView.version;
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.find(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn10501",
+      ),
+    ).toEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: [
+        "xyy.card.jp01@1",
+        "xyy.card.jp02@2",
+        "xyy.card.zp01@16",
+      ],
+      minCardCount: 1,
+      maxCardCount: 3,
+      skillId: "xyy.skill.jn10501",
+      targetPlayerIds: teammates,
+      requiredTargetCount: 1,
+    });
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      expect(
+        clients[indexOf(player.id)]!.latestView.availableActions,
+      ).not.toContainEqual(
+        expect.objectContaining({
+          type: "activate-hero-skill",
+          skillId: "xyy.skill.jn10501",
+        }),
+      );
+    }
+
+    let response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn10501-give-two",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.jp02@2"],
+        skillId: "xyy.skill.jn10501",
+        targetPlayerIds: [teammates[0]!],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[indexOf(teammates[0]!)]!.latestView.players.find(
+        (player) => player.id === teammates[0],
+      )?.hand,
+    ).toEqual(["xyy.card.jp01@1", "xyy.card.jp02@2"]);
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(["xyy.card.zp01@16"]);
+    for (const player of ordered) {
+      if (player.id === teammates[0]) continue;
+      const serialized = JSON.stringify(
+        clients[indexOf(player.id)]!.latestView,
+      );
+      expect(serialized).not.toContain("xyy.card.jp01@1");
+      expect(serialized).not.toContain("xyy.card.jp02@2");
+    }
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.find(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn10501",
+      ),
+    ).toMatchObject({
+      cardInstanceIds: ["xyy.card.zp01@16"],
+      minCardCount: 1,
+      maxCardCount: 1,
+      targetPlayerIds: teammates,
+    });
+
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn10501-opponent-rejected",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn10501",
+        targetPlayerIds: [opponent],
+      },
+    );
+    expect(response).toMatchObject({
+      type: "command-rejected",
+      reason: "forbidden",
+      currentVersion: version,
+    });
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn10501-give-last",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.zp01@16"],
+        skillId: "xyy.skill.jn10501",
+        targetPlayerIds: [teammates[1]!],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[indexOf(teammates[1]!)]!.latestView.players.find(
+        (player) => player.id === teammates[1],
+      )?.hand,
+    ).toEqual(["xyy.card.zp01@16"]);
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn10501",
+      ),
+    ).toBe(false);
+    expect(
+      clients[indexOf(opponent)]!.latestView.players.find(
+        (player) => player.id === opponent,
+      )?.hand,
+    ).toEqual(["xyy.card.jp03@3"]);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual([]);
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn10501",
+      ),
+    ).toBe(false);
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

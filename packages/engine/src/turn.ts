@@ -170,7 +170,37 @@ export function reduceTurnEvent(
       throw new Error("Hero-skill event is not applicable.");
     }
     const cardInstanceId = cardInstanceIds[0];
-    if (skillId === "xyy.skill.jn20302") {
+    if (skillId === "xyy.skill.jn10501") {
+      const selected = new Set<CardInstanceId>(cardInstanceIds);
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn10501") ||
+        player.team === null ||
+        cardInstanceIds.length === 0 ||
+        selected.size !== cardInstanceIds.length ||
+        cardInstanceIds.some((card) => !player.hand.includes(card)) ||
+        targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive ||
+        target.id === playerId ||
+        target.team !== player.team
+      ) {
+        throw new Error("JN10501 event is not applicable.");
+      }
+      next = {
+        ...state,
+        players: {
+          ...state.players,
+          [playerId]: {
+            ...player,
+            hand: player.hand.filter((card) => !selected.has(card)),
+          },
+          [target.id]: {
+            ...target,
+            hand: [...target.hand, ...cardInstanceIds],
+          },
+        },
+      };
+    } else if (skillId === "xyy.skill.jn20302") {
       if (
         !heroHasSkill(player.heroId, "xyy.skill.jn20302") ||
         cardInstanceIds.length !== 1 ||
@@ -1148,7 +1178,33 @@ export function applyTurnCommand(
       };
     }
     const nextEventId = `${input.matchId}:event:${input.eventSequence + 1}`;
-    if (command.skillId === "xyy.skill.jn20302") {
+    if (command.skillId === "xyy.skill.jn10501") {
+      const selected = new Set<CardInstanceId>(cardInstanceIds);
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn10501") ||
+        player.team === null ||
+        cardInstanceIds.length === 0 ||
+        selected.size !== cardInstanceIds.length ||
+        cardInstanceIds.some((card) => !player.hand.includes(card)) ||
+        command.targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive ||
+        target.id === envelope.playerId ||
+        target.team !== player.team
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      builder.append("turn.hero-skill-activated", {
+        playerId: envelope.playerId,
+        cardInstanceIds,
+        skillId: "xyy.skill.jn10501",
+        targetPlayerIds: [target.id],
+      });
+    } else if (command.skillId === "xyy.skill.jn20302") {
       let techniqueCard = false;
       try {
         techniqueCard =

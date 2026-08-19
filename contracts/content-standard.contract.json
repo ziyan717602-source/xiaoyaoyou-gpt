@@ -75,6 +75,10 @@
         "receipt:docs/verification/receipts/cs02-jn40302.md"
       ]
     },
+    "xyy.skill.jn10501": {
+      "boundary": "native XJ105 repeatable transfer of any nonempty own hand subset to one other living teammate is verified through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn10501.md"]
+    },
     "xyy.skill.jn20302": {
       "boundary": "native XJ203 repeatable technique-card discard to direct cure any living player is verified through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn20302.md"]
@@ -123,6 +127,13 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn20202.md"
+        ]
+      },
+      "xyy.hero.xj105": {
+        "boundary": "setup identity and base stats plus JN10501 repeatable private teammate hand transfer are verified; JN10502 remains pending",
+        "evidence": [
+          "M02-SETUP-AND-TEAMS",
+          "receipt:docs/verification/receipts/cs02-jn10501.md"
         ]
       },
       "xyy.hero.xj203": {
