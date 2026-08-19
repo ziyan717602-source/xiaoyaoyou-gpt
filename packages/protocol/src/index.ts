@@ -114,6 +114,16 @@ export type ClientCommand =
       readonly choiceId: ChoiceId;
     }
   | {
+      readonly type: "distribute-brother-hand";
+      readonly choiceId: ChoiceId;
+      readonly cardInstanceIds: readonly string[];
+      readonly targetPlayerId: PlayerId;
+    }
+  | {
+      readonly type: "finish-brother-hand";
+      readonly choiceId: ChoiceId;
+    }
+  | {
       readonly type: "discard-cards";
       readonly cardInstanceIds: readonly string[];
     }
@@ -465,6 +475,36 @@ export const clientMessageSchema = {
                   required: ["type", "choiceId"],
                   properties: {
                     type: { const: "finish-death-loot" },
+                    choiceId: identifierSchema,
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: [
+                    "type",
+                    "choiceId",
+                    "cardInstanceIds",
+                    "targetPlayerId",
+                  ],
+                  properties: {
+                    type: { const: "distribute-brother-hand" },
+                    choiceId: identifierSchema,
+                    cardInstanceIds: {
+                      type: "array",
+                      minItems: 1,
+                      maxItems: 56,
+                      items: identifierSchema,
+                    },
+                    targetPlayerId: identifierSchema,
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "choiceId"],
+                  properties: {
+                    type: { const: "finish-brother-hand" },
                     choiceId: identifierSchema,
                   },
                 },

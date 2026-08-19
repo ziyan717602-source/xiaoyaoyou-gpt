@@ -268,6 +268,99 @@ export function reduceTurnEvent(
         ...paymentState,
         players: playersAfterCures(paymentState, expectedCures),
       };
+    } else if (skillId === "xyy.skill.jn40302") {
+      const sourcePlayerIds = stringsPayload(
+        event,
+        "sourcePlayerIds",
+      ) as readonly PlayerId[];
+      const collectedCardInstanceIds = stringsPayload(
+        event,
+        "collectedCardInstanceIds",
+      ) as readonly CardInstanceId[];
+      const choiceId = stringPayload(event, "choiceId");
+      const openedAt = numberPayload(event, "openedAt");
+      const expectedSources = Object.values(state.players)
+        .filter(
+          (candidate) =>
+            candidate.id !== playerId &&
+            candidate.alive &&
+            candidate.team === player.team &&
+            candidate.hand.length > 0,
+        )
+        .sort((left, right) => left.seat - right.seat);
+      const expectedCards = expectedSources.flatMap(
+        (candidate) => candidate.hand,
+      );
+      const hasTeamHand = Object.values(state.players).some(
+        (candidate) =>
+          candidate.alive &&
+          candidate.team === player.team &&
+          candidate.hand.length > 0,
+      );
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn40302") ||
+        (state.turn.usedSkillIds ?? []).includes("xyy.skill.jn40302") ||
+        player.team === null ||
+        !hasTeamHand ||
+        cardInstanceIds.length !== 0 ||
+        targetPlayerIds.length !== 0 ||
+        !sameValues(
+          sourcePlayerIds,
+          expectedSources.map((candidate) => candidate.id),
+        ) ||
+        !sameValues(collectedCardInstanceIds, expectedCards) ||
+        choiceId !== `${state.matchId}:choice:${event.causationCommandId}` ||
+        state.pendingChoice !== null ||
+        state.reactionWindow !== null
+      ) {
+        throw new Error("JN40302 event is not applicable.");
+      }
+      const players = { ...state.players };
+      for (const source of expectedSources) {
+        players[source.id] = { ...source, hand: [] };
+      }
+      const hand = [...player.hand, ...collectedCardInstanceIds];
+      players[playerId] = { ...player, hand };
+      const hasTarget = Object.values(players).some(
+        (candidate) =>
+          candidate.alive &&
+          candidate.id !== playerId &&
+          candidate.team === player.team,
+      );
+      next = {
+        ...state,
+        players,
+        turn: {
+          ...state.turn,
+          usedSkillIds: [
+            ...(state.turn.usedSkillIds ?? []),
+            "xyy.skill.jn40302",
+          ],
+        },
+        pendingChoice:
+          hand.length === 0 || !hasTarget
+            ? null
+            : {
+                choiceId,
+                playerIds: [playerId],
+                prompt: "jn40302-distribute-hand",
+                minSelections: 0,
+                maxSelections: hand.length,
+                optionIds: hand,
+                optional: true,
+                status: "open",
+                openedAt,
+                deadlineAt: openedAt + ACTION_DEADLINE_MS,
+                fallback: "pass",
+                continuation: {
+                  continuationId: `${choiceId}:continuation`,
+                  effectId: `${state.matchId}:effect:${event.causationCommandId}`,
+                  step: "distribute-jn40302-hand",
+                  locals: { ownerPlayerId: playerId },
+                  resumeWith: "finish-jn40302-hand",
+                },
+              },
+      };
     } else if (skillId === "xyy.skill.jn50202") {
       const drawnCardInstanceIds = stringsPayload(
         event,
@@ -409,6 +502,90 @@ export function reduceTurnEvent(
     } else {
       throw new Error("Unsupported active hero skill event.");
     }
+  } else if (event.type === "turn.brother-hand-distributed") {
+    const ownerPlayerId = stringPayload(event, "ownerPlayerId");
+    const targetPlayerId = stringPayload(event, "targetPlayerId");
+    const choiceId = stringPayload(event, "choiceId");
+    const cardInstanceIds = stringsPayload(
+      event,
+      "cardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const remainingCardInstanceIds = stringsPayload(
+      event,
+      "remainingCardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const distributedAt = numberPayload(event, "distributedAt");
+    const choice = state.pendingChoice;
+    const owner = state.players[ownerPlayerId];
+    const target = state.players[targetPlayerId];
+    const selected = new Set<string>(cardInstanceIds);
+    const expectedRemaining =
+      choice?.optionIds.filter((card) => !selected.has(card)) ?? [];
+    if (
+      choice === null ||
+      choice.status !== "open" ||
+      choice.prompt !== "jn40302-distribute-hand" ||
+      choice.choiceId !== choiceId ||
+      choice.playerIds[0] !== ownerPlayerId ||
+      owner === undefined ||
+      !owner.alive ||
+      target === undefined ||
+      !target.alive ||
+      target.id === owner.id ||
+      target.team !== owner.team ||
+      cardInstanceIds.length === 0 ||
+      selected.size !== cardInstanceIds.length ||
+      cardInstanceIds.some(
+        (card) =>
+          !choice.optionIds.includes(card) || !owner.hand.includes(card),
+      ) ||
+      !sameValues(remainingCardInstanceIds, expectedRemaining)
+    ) {
+      throw new Error("JN40302 distribution event is not applicable.");
+    }
+    next = {
+      ...state,
+      players: {
+        ...state.players,
+        [owner.id]: {
+          ...owner,
+          hand: owner.hand.filter((card) => !selected.has(card)),
+        },
+        [target.id]: {
+          ...target,
+          hand: [...target.hand, ...cardInstanceIds],
+        },
+      },
+      pendingChoice:
+        remainingCardInstanceIds.length === 0
+          ? null
+          : {
+              ...choice,
+              optionIds: remainingCardInstanceIds,
+              maxSelections: remainingCardInstanceIds.length,
+              openedAt: distributedAt,
+              deadlineAt: distributedAt + ACTION_DEADLINE_MS,
+            },
+    };
+  } else if (event.type === "turn.brother-hand-finished") {
+    const ownerPlayerId = stringPayload(event, "ownerPlayerId");
+    const choiceId = stringPayload(event, "choiceId");
+    const remainingCardInstanceIds = stringsPayload(
+      event,
+      "remainingCardInstanceIds",
+    );
+    const choice = state.pendingChoice;
+    if (
+      choice === null ||
+      choice.status !== "open" ||
+      choice.prompt !== "jn40302-distribute-hand" ||
+      choice.choiceId !== choiceId ||
+      choice.playerIds[0] !== ownerPlayerId ||
+      !sameValues(remainingCardInstanceIds, choice.optionIds)
+    ) {
+      throw new Error("JN40302 finish event is not applicable.");
+    }
+    next = { ...state, pendingChoice: null };
   } else if (event.type === "turn.card-pawned") {
     const playerId = stringPayload(event, "playerId");
     const cardInstanceId = stringPayload(
@@ -1154,6 +1331,48 @@ export function applyTurnCommand(
         replacedCardInstanceId: target.equipment[slot!],
       });
       appendDraw(builder, envelope.playerId, 2, "card-effect");
+    } else if (command.skillId === "xyy.skill.jn40302") {
+      const sourcePlayers = Object.values(input.players)
+        .filter(
+          (candidate) =>
+            candidate.id !== envelope.playerId &&
+            candidate.alive &&
+            candidate.team === player.team &&
+            candidate.hand.length > 0,
+        )
+        .sort((left, right) => left.seat - right.seat);
+      const hasTeamHand = Object.values(input.players).some(
+        (candidate) =>
+          candidate.alive &&
+          candidate.team === player.team &&
+          candidate.hand.length > 0,
+      );
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn40302") ||
+        (input.turn.usedSkillIds ?? []).includes("xyy.skill.jn40302") ||
+        player.team === null ||
+        !hasTeamHand ||
+        cardInstanceIds.length !== 0 ||
+        command.targetPlayerIds.length !== 0
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      builder.append("turn.hero-skill-activated", {
+        playerId: envelope.playerId,
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn40302",
+        targetPlayerIds: [],
+        sourcePlayerIds: sourcePlayers.map((candidate) => candidate.id),
+        collectedCardInstanceIds: sourcePlayers.flatMap(
+          (candidate) => candidate.hand,
+        ),
+        choiceId: `${input.matchId}:choice:${envelope.commandId}`,
+        openedAt: serverReceivedAt,
+      });
     } else {
       return {
         accepted: false,
@@ -1297,6 +1516,139 @@ export function applyTurnCommand(
     };
   }
 
+  return { accepted: true, state: builder.state, events: builder.events };
+}
+
+export function applyBrotherHandCommand(
+  input: Readonly<MatchState>,
+  envelope: Readonly<CommandEnvelope>,
+  serverReceivedAt: number,
+): ApplyCommandResult {
+  const choice = input.pendingChoice;
+  if (
+    choice === null ||
+    choice.status !== "open" ||
+    choice.prompt !== "jn40302-distribute-hand" ||
+    !choice.playerIds.includes(envelope.playerId)
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  if (
+    !Number.isSafeInteger(serverReceivedAt) ||
+    serverReceivedAt < 0 ||
+    serverReceivedAt > choice.deadlineAt
+  ) {
+    return {
+      accepted: false,
+      reason:
+        serverReceivedAt > choice.deadlineAt ? "expired-window" : "invalid",
+      currentVersion: input.version,
+    };
+  }
+  const builder = new EventBuilder(
+    input,
+    envelope.commandId,
+    input.version + 1,
+    serverReceivedAt,
+  );
+  const command = envelope.command;
+  if (command.type === "distribute-brother-hand") {
+    const owner = input.players[envelope.playerId]!;
+    const target = input.players[command.targetPlayerId];
+    const cardInstanceIds = command.cardInstanceIds as CardInstanceId[];
+    if (
+      command.choiceId !== choice.choiceId ||
+      target === undefined ||
+      !target.alive ||
+      target.id === owner.id ||
+      target.team !== owner.team ||
+      cardInstanceIds.length === 0 ||
+      new Set(cardInstanceIds).size !== cardInstanceIds.length ||
+      cardInstanceIds.some(
+        (card) =>
+          !choice.optionIds.includes(card) || !owner.hand.includes(card),
+      )
+    ) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    const selected = new Set<string>(cardInstanceIds);
+    builder.append("turn.brother-hand-distributed", {
+      ownerPlayerId: owner.id,
+      targetPlayerId: target.id,
+      choiceId: choice.choiceId,
+      cardInstanceIds,
+      remainingCardInstanceIds: choice.optionIds.filter(
+        (card) => !selected.has(card),
+      ),
+      distributedAt: serverReceivedAt,
+    });
+  } else if (command.type === "finish-brother-hand") {
+    if (command.choiceId !== choice.choiceId) {
+      return {
+        accepted: false,
+        reason: "forbidden",
+        currentVersion: input.version,
+      };
+    }
+    builder.append("turn.brother-hand-finished", {
+      ownerPlayerId: envelope.playerId,
+      choiceId: choice.choiceId,
+      remainingCardInstanceIds: choice.optionIds,
+      finishedAt: serverReceivedAt,
+      timeout: false,
+    });
+  } else {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  return { accepted: true, state: builder.state, events: builder.events };
+}
+
+export function applyBrotherHandTimeout(
+  input: Readonly<MatchState>,
+  command: Readonly<Extract<EngineCommand, { origin: "system-timeout" }>>,
+  playerId: PlayerId,
+): ApplyCommandResult {
+  const choice = input.pendingChoice;
+  if (
+    choice === null ||
+    choice.status !== "open" ||
+    choice.prompt !== "jn40302-distribute-hand" ||
+    choice.fallback !== "pass" ||
+    command.deadlineAt < choice.openedAt ||
+    command.deadlineAt > choice.deadlineAt ||
+    !choice.playerIds.includes(playerId)
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  const builder = new EventBuilder(
+    input,
+    command.commandId,
+    input.version + 1,
+    command.deadlineAt,
+  );
+  builder.append("turn.brother-hand-finished", {
+    ownerPlayerId: playerId,
+    choiceId: choice.choiceId,
+    remainingCardInstanceIds: choice.optionIds,
+    finishedAt: command.deadlineAt,
+    timeout: true,
+  });
   return { accepted: true, state: builder.state, events: builder.events };
 }
 

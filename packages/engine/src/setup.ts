@@ -38,8 +38,13 @@ import {
   heroDefinition,
   type HeroId,
 } from "./setup-content.js";
-import { applyTurnCommand, reduceTurnEvent } from "./turn.js";
-import { applyTurnTimeout } from "./turn.js";
+import {
+  applyBrotherHandCommand,
+  applyBrotherHandTimeout,
+  applyTurnCommand,
+  applyTurnTimeout,
+  reduceTurnEvent,
+} from "./turn.js";
 import {
   ACTION_DEADLINE_MS,
   applySystemCommand as applySystemEngineCommand,
@@ -371,6 +376,9 @@ export function applyCommand(
       return applyDyingCommand(input, envelope, serverReceivedAt);
     }
     if (input.pendingChoice !== null) {
+      if (input.pendingChoice.prompt === "jn40302-distribute-hand") {
+        return applyBrotherHandCommand(input, envelope, serverReceivedAt);
+      }
       return applyPendingChoiceCommand(input, envelope, serverReceivedAt);
     }
     return input.reactionWindow === null
@@ -604,6 +612,9 @@ function resolveTimeout(
     return applyDeathLootTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("choice:")) {
+    if (state.pendingChoice?.prompt === "jn40302-distribute-hand") {
+      return applyBrotherHandTimeout(state, command, deadline.playerId);
+    }
     return applyPendingChoiceTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("turn:")) {

@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS02-HERO-SKILLS`
-- 最近验证完成：`CS02 / JN50401 赠剑装备转移、阶段内目标去重与确定性补牌`
+- 最近验证完成：`CS02 / JN40302 兄弟整手收取、私密分配、超时保留与确定性恢复`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -24,10 +24,10 @@
 - CS01B 行动技牌证据：`contracts/action-tricks.contract.json`、`docs/content-standard/cs01b-action-tricks.md`、`docs/verification/receipts/cs01b-jp01.md`、`docs/verification/receipts/cs01b-jp03.md`、`docs/verification/receipts/cs01b-jp06.md`
 - CS01C 防御/战力牌证据：`contracts/defense-buffs.contract.json`、`docs/content-standard/cs01c-defense-buffs.md`、`docs/verification/receipts/cs01c-tp03.md`
 - CS01D 装备证据：`contracts/equipment-effects.contract.json`、`docs/content-standard/cs01d-equipment-effects.md`、`docs/verification/receipts/cs01d-wq04.md`、`docs/verification/receipts/cs01d-wq02.md`、`docs/verification/receipts/cs01d-fj03-fj04.md`、`docs/verification/receipts/cs01d-fj01.md`、`docs/verification/receipts/cs01d-fj05.md`、`docs/verification/receipts/cs01d-fj02.md`、`docs/verification/receipts/cs01d-dependency-audit.md`
-- CS02 英雄技能证据：`contracts/hero-skills.contract.json`、`docs/content-standard/cs02-hero-skills.md`、`docs/verification/receipts/cs02-jn50401.md`、`docs/verification/receipts/cs02-jn50402.md`、`docs/verification/receipts/cs02-jn50501.md`、`docs/verification/receipts/cs02-jn20202.md`、`docs/verification/receipts/cs02-jn40301.md`、`docs/verification/receipts/cs02-jn20302.md`、`docs/verification/receipts/cs02-jn40401.md`、`docs/verification/receipts/cs02-jn50201.md`、`docs/verification/receipts/cs02-jn50202.md`、`docs/verification/receipts/cs02-jn50203.md`
+- CS02 英雄技能证据：`contracts/hero-skills.contract.json`、`docs/content-standard/cs02-hero-skills.md`、`docs/verification/receipts/cs02-jn50401.md`、`docs/verification/receipts/cs02-jn50402.md`、`docs/verification/receipts/cs02-jn50501.md`、`docs/verification/receipts/cs02-jn20202.md`、`docs/verification/receipts/cs02-jn40301.md`、`docs/verification/receipts/cs02-jn40302.md`、`docs/verification/receipts/cs02-jn20302.md`、`docs/verification/receipts/cs02-jn40401.md`、`docs/verification/receipts/cs02-jn50201.md`、`docs/verification/receipts/cs02-jn50202.md`、`docs/verification/receipts/cs02-jn50203.md`
 - 当前工作：从已冻结的 34 英雄、77 条技能归属边继续选择不依赖 CS03 战斗的最高优先级真实技能，按触发、选择、隐藏信息、重放和六连接逐项闭环。
 - 下一 ready 节点：`CS02-HERO-SKILLS`。
 - 阻塞：无。
-- 临时规则决定：`SEM-001` 至 `SEM-007`，见 `docs/rules-semantics/decisions.md`。
+- 临时规则决定：`SEM-001` 至 `SEM-008`，见 `docs/rules-semantics/decisions.md`。
 
 详细历史只查 Git 提交和 `docs/verification/receipts/`；本文件完成节点后覆盖更新。

@@ -7,10 +7,10 @@
     "standard": 177,
     "sharedCore": 28,
     "total": 205,
-    "partial": 39,
-    "verified": 15,
+    "partial": 38,
+    "verified": 17,
     "deferred": 0,
-    "unstarted": 151
+    "unstarted": 150
   },
   "executionQueue": [
     {
@@ -1271,11 +1271,12 @@
       "kind": "hero",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "partial",
-      "boundary": "setup identity and base stats plus JN40301 two-card TP02 conversion are verified; JN40302 remains pending",
+      "state": "verified",
+      "boundary": "setup identity, base stats and both native skills JN40301/JN40302 are fully verified",
       "evidence": [
         "M02-SETUP-AND-TEAMS",
-        "receipt:docs/verification/receipts/cs02-jn40301.md"
+        "receipt:docs/verification/receipts/cs02-jn40301.md",
+        "receipt:docs/verification/receipts/cs02-jn40302.md"
       ],
       "dependencies": {
         "contentIds": [
@@ -4248,9 +4249,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native X3W03 once-per-action collection of all living teammate hands and optional private subset redistribution is verified through timeout, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn40302.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

@@ -121,7 +121,10 @@
     "psd.db3:Skill:JN50203 OCCURS !G0ZW PRIORS 190 ONCE 1 TERMINI 1 and description collect every fallen character card, distribute arbitrarily, then lose one HP",
     "PSDGamepkg/JNS/XJ405.cs:1362-1425 JN50203 rejects a batch containing its owner, collects every other dead player's hand/equipment, loops optional distribution, then calls Harm(self,self,1)",
     "PSDGamepkg/XIG.cs:295-430 G0ZW marks all deaths and victory at priority 100, runs JN50203 at 190, then generic dead-card cleanup at 200",
-    "PSDGamepkg/XIG.cs:1015+ G0HQ type 1 transfers dead hand and equipment into the recipient hand"
+    "PSDGamepkg/XIG.cs:1015+ G0HQ type 1 transfers dead hand and equipment into the recipient hand",
+    "psd.db3:Skill:JN40302 OCCURS R#GR ONCE 1 and description collect all teammate hands then distribute the whole hand arbitrarily",
+    "PSDGamepkg/JNS/XJ405.cs:1063-1100 JN40302 collects every other living teammate hand and loops optional subset transfers to other living teammates",
+    "PSDGamepkg/XIG.cs:1015+ G0HQ type 0 moves the requested hand-card count and hides transferred identities from uninvolved players"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -157,7 +160,11 @@
     "jn50203Timeout": "distribution is optional, so each 15-second deadline and the disconnected auto-decision finish immediately without transferring another card; each completed transfer opens a fresh 15-second choice deadline",
     "jn50203SelfDamage": "finishing or exhausting the captured set creates one ordinary neutral self-damage through the canonical response pipeline, so TP03/FJ05 and a subsequent dying batch remain available exactly as for other damage",
     "jn50203Visibility": "captured instance ids exist only in the owner's hand, pending choice and availableActions; all other views expose public counts and empty dead zones without revealing the captured identities",
-    "jn50203ProtectedCardsScope": "legacy G0HQ type 1 excludes Board.ProtectedTux, but the scoped standard plus Fengmingyushi runtime has no protected-card producer; every scoped dead hand/equipment instance is therefore collectible, without claiming compatibility with out-of-scope special heroes"
+    "jn50203ProtectedCardsScope": "legacy G0HQ type 1 excludes Board.ProtectedTux, but the scoped standard plus Fengmingyushi runtime has no protected-card producer; every scoped dead hand/equipment instance is therefore collectible, without claiming compatibility with out-of-scope special heroes",
+    "jn40302CollectionAndOrdering": "activation consumes the once-per-action marker and atomically appends every other living teammate hand in seat order and each source hand order to the owner's existing hand; legacy G0HQ shuffled full-hand transfer order with unstable process randomness, so the scoped engine uses deterministic order without changing ownership",
+    "jn40302Distribution": "only the owner sees the collected identities and may repeatedly transfer any nonempty subset to another living teammate; legacy 0 or empty input exits early, so finish may retain every unassigned card despite the descriptive text saying distribute all",
+    "jn40302Timeout": "each optional distribution step has a fresh 15-second deadline; timeout or disconnected auto-decision finishes immediately and retains the remaining owner hand",
+    "jn40302ProtectedCardsScope": "legacy G0HQ excludes Board.ProtectedTux, but the scoped standard plus Fengmingyushi runtime has no protected-card producer; all scoped teammate hand instances are collected without claiming compatibility with out-of-scope special heroes"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -237,6 +244,15 @@
     "CS02-75": "JN50401-can-repeat-on-different-targets-but-never-the-same-target-in-one-action-phase-and-resets-next-turn",
     "CS02-76": "JN50401-opens-no-reaction-window-and-optional-action-timeout-moves-no-card",
     "CS02-77": "JN50401-projects-public-equipment-and-hand-count-changes-with-drawn-identities-visible-only-to-the-owner",
-    "CS02-78": "JN50401-replays-through-JSON-and-persists-target-memory-private-draws-and-final-zones-through-SQLite-restarts-with-six-WebSockets"
+    "CS02-78": "JN50401-replays-through-JSON-and-persists-target-memory-private-draws-and-final-zones-through-SQLite-restarts-with-six-WebSockets",
+    "CS02-79": "JN40302-is-offered-once-only-to-its-native-owner-during-own-action-when-any-living-teammate-including-self-has-a-hand-card",
+    "CS02-80": "JN40302-requires-zero-inputs-and-atomically-collects-every-other-living-teammate-hand-without-moving-equipment-or-opponent-cards",
+    "CS02-81": "JN40302-preserves-the-owner-existing-hand-and-uses-deterministic-seat-and-hand-order-for-collected-instances",
+    "CS02-82": "JN40302-allows-repeated-arbitrary-nonempty-subset-transfers-only-to-other-living-teammates",
+    "CS02-83": "JN40302-allows-early-finish-and-retains-every-unassigned-card-matching-the-legacy-zero-input-exit",
+    "CS02-84": "JN40302-optional-choice-timeout-and-disconnected-auto-decision-finish-without-further-transfer",
+    "CS02-85": "JN40302-collected-card-identities-choice-and-actions-are-visible-only-to-the-owner-while-public-hand-counts-update",
+    "CS02-86": "JN40302-opens-no-reaction-window-and-rejects-opponent-targets-external-cards-and-repeat-activation",
+    "CS02-87": "JN40302-replays-through-JSON-and-persists-choice-partial-distribution-timeout-and-privacy-through-SQLite-restarts-with-six-WebSockets"
   }
 }

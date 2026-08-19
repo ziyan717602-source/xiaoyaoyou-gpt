@@ -112,6 +112,13 @@ describe("protocol runtime schema", () => {
       },
       { type: "finish-death-loot", choiceId: "choice-1" },
       {
+        type: "distribute-brother-hand",
+        choiceId: "choice-1",
+        cardInstanceIds: ["xyy.card.jp01@1"],
+        targetPlayerId: "player-2",
+      },
+      { type: "finish-brother-hand", choiceId: "choice-1" },
+      {
         type: "discard-cards",
         cardInstanceIds: ["xyy.card.jp01@1"],
       },

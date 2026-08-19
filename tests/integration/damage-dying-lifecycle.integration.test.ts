@@ -587,6 +587,72 @@ function injectJn50401(
   };
 }
 
+function injectJn40302(
+  state: MatchState,
+  owner: PlayerId,
+  firstTeammate: PlayerId,
+  secondTeammate: PlayerId,
+  opponent: PlayerId,
+): MatchState {
+  const claimed = new Set([
+    "xyy.card.jp01@1",
+    "xyy.card.jp02@2",
+    "xyy.card.zp01@16",
+    "xyy.card.jp03@3",
+    "xyy.card.jp04@7",
+  ]);
+  return {
+    ...state,
+    phase: "playing",
+    activePlayerId: owner,
+    turn: {
+      ...(state.turn ?? {
+        number: 1,
+        openedAt: 0,
+        deadlineAt: 15_000,
+      }),
+      number: state.turn?.number ?? 1,
+      phase: "action",
+      usedSkillIds: [],
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          heroId: player.id === owner ? "xyy.hero.x3w03" : player.heroId,
+          team:
+            player.id === owner ||
+            player.id === firstTeammate ||
+            player.id === secondTeammate
+              ? 1
+              : 2,
+          alive: true,
+          hp: player.maxHp,
+          hand:
+            player.id === owner
+              ? ["xyy.card.jp01@1"]
+              : player.id === firstTeammate
+                ? ["xyy.card.jp02@2", "xyy.card.zp01@16"]
+                : player.id === secondTeammate
+                  ? ["xyy.card.jp03@3"]
+                  : player.id === opponent
+                    ? ["xyy.card.jp04@7"]
+                    : [],
+          equipment: { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -1511,6 +1577,218 @@ describe("M05 damage/dying over six real WebSockets", () => {
       handCount: 0,
       equipment: { weapon: null, armor: null },
     });
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+  });
+
+  it("keeps JN40302 hand distribution private and times it out after restart", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn40302-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn40302.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const owner = ordered[0]!.id;
+    const firstTeammate = ordered[1]!.id;
+    const secondTeammate = ordered[2]!.id;
+    const opponent = ordered[3]!.id;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn40302(state, owner, firstTeammate, secondTeammate, opponent),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    let version = clients[0]!.latestView.version;
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.find(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn40302",
+      ),
+    ).toEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      requiredCardCount: 0,
+      skillId: "xyy.skill.jn40302",
+      targetPlayerIds: [],
+      requiredTargetCount: 0,
+    });
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      expect(
+        clients[indexOf(player.id)]!.latestView.availableActions,
+      ).not.toContainEqual(
+        expect.objectContaining({
+          type: "activate-hero-skill",
+          skillId: "xyy.skill.jn40302",
+        }),
+      );
+    }
+
+    let response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn40302-collect",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn40302",
+        targetPlayerIds: [],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    const collectedCards = [
+      "xyy.card.jp01@1",
+      "xyy.card.jp02@2",
+      "xyy.card.zp01@16",
+      "xyy.card.jp03@3",
+    ];
+    const ownerView = clients[indexOf(owner)]!.latestView;
+    expect(
+      ownerView.players.find((player) => player.id === owner)?.hand,
+    ).toEqual(collectedCards);
+    expect(ownerView.pendingChoice?.optionIds).toEqual(collectedCards);
+    expect(ownerView.availableActions).toContainEqual({
+      type: "distribute-brother-hand",
+      choiceId: ownerView.pendingChoice!.choiceId,
+      cardInstanceIds: collectedCards,
+      minCardCount: 1,
+      maxCardCount: 4,
+      targetPlayerIds: [firstTeammate, secondTeammate],
+    });
+    expect(ownerView.availableActions).toContainEqual({
+      type: "finish-brother-hand",
+      choiceId: ownerView.pendingChoice!.choiceId,
+    });
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      const view = clients[indexOf(player.id)]!.latestView;
+      expect(view.pendingChoice).toBeNull();
+      expect(view.availableActions).not.toContainEqual(
+        expect.objectContaining({ type: "distribute-brother-hand" }),
+      );
+      const serialized = JSON.stringify(view);
+      for (const card of collectedCards) expect(serialized).not.toContain(card);
+    }
+    expect(
+      clients[indexOf(opponent)]!.latestView.players.find(
+        (player) => player.id === opponent,
+      )?.hand,
+    ).toEqual(["xyy.card.jp04@7"]);
+
+    const persistedChoice = JSON.parse(JSON.stringify(ownerView.pendingChoice));
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(clients[indexOf(owner)]!.latestView.pendingChoice).toEqual(
+      persistedChoice,
+    );
+
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn40302-distribute-two",
+      version,
+      {
+        type: "distribute-brother-hand",
+        choiceId: persistedChoice.choiceId,
+        cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.jp02@2"],
+        targetPlayerId: secondTeammate,
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[indexOf(secondTeammate)]!.latestView.players.find(
+        (player) => player.id === secondTeammate,
+      )?.hand,
+    ).toEqual(["xyy.card.jp01@1", "xyy.card.jp02@2"]);
+    expect(
+      clients[indexOf(owner)]!.latestView.pendingChoice?.optionIds,
+    ).toEqual(["xyy.card.zp01@16", "xyy.card.jp03@3"]);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) => {
+      if (state.pendingChoice === null)
+        throw new Error("Missing JN40302 choice before timeout restart.");
+      return {
+        ...state,
+        pendingChoice: {
+          ...state.pendingChoice,
+          openedAt: Date.now() - 15_001,
+          deadlineAt: Date.now() - 1,
+        },
+      };
+    });
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    await waitVersion(clients, version + 1);
+    version = clients[0]!.latestView.version;
+    expect(clients[indexOf(owner)]!.latestView.pendingChoice).toBeNull();
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(["xyy.card.zp01@16", "xyy.card.jp03@3"]);
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn40302",
+      ),
+    ).toBe(false);
+
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn40302-repeat",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn40302",
+        targetPlayerIds: [],
+      },
+    );
+    expect(response).toMatchObject({
+      type: "command-rejected",
+      reason: "forbidden",
+      currentVersion: version,
+    });
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    expect(clients[indexOf(owner)]!.latestView.pendingChoice).toBeNull();
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(["xyy.card.zp01@16", "xyy.card.jp03@3"]);
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

@@ -153,6 +153,221 @@ function expectConserved(state: MatchState): void {
 }
 
 describe("M03 deterministic turn core", () => {
+  it("uses JN40302 once to collect teammate hands and optionally redistribute the whole hand", () => {
+    let state = playing("jn40302-brothers");
+    const actor = state.activePlayerId!;
+    const actorTeam = state.players[actor]!.team;
+    const teammates = Object.values(state.players)
+      .filter((player) => player.id !== actor && player.team === actorTeam)
+      .sort((left, right) => left.seat - right.seat)
+      .map((player) => player.id);
+    const opponent = Object.values(state.players).find(
+      (player) => player.team !== actorTeam,
+    )!.id;
+    state = arrange(state, {
+      [actor]: ["xyy.card.jp01@1"],
+      [teammates[0]!]: ["xyy.card.jp02@3", "xyy.card.zp01@16"],
+      [teammates[1]!]: ["xyy.card.tp01@33"],
+      [opponent]: ["xyy.card.jp03@5"],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.x3w03" },
+      },
+    };
+    expect(createPlayerView(state, actor).availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      requiredCardCount: 0,
+      skillId: "xyy.skill.jn40302",
+      targetPlayerIds: [],
+      requiredTargetCount: 0,
+    });
+    const selfOnly: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          player.id === actor ? player : { ...player, hand: [] },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.jp01@1",
+      ),
+      discardPile: [],
+    };
+    expect(
+      createPlayerView(selfOnly, actor).availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn40302",
+      ),
+    ).toBe(true);
+    const selfOnlyActivated = dispatch(selfOnly, actor, "jn40302-self-only", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn40302",
+      targetPlayerIds: [],
+    });
+    expect(selfOnlyActivated.pendingChoice?.optionIds).toEqual([
+      "xyy.card.jp01@1",
+    ]);
+    const noTarget: MatchState = {
+      ...selfOnly,
+      players: Object.fromEntries(
+        Object.values(selfOnly.players).map((player) => [
+          player.id,
+          player.id !== actor && player.team === actorTeam
+            ? { ...player, alive: false, hp: 0 }
+            : player,
+        ]),
+      ),
+    };
+    const noTargetResolved = dispatch(
+      noTarget,
+      actor,
+      "jn40302-self-only-no-target",
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn40302",
+        targetPlayerIds: [],
+      },
+    );
+    expect(noTargetResolved.pendingChoice).toBeNull();
+    expect(noTargetResolved.turn?.usedSkillIds).toContain("xyy.skill.jn40302");
+
+    state = dispatch(state, actor, "jn40302-collect", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn40302",
+      targetPlayerIds: [],
+    });
+    const collected = [
+      "xyy.card.jp01@1",
+      "xyy.card.jp02@3",
+      "xyy.card.zp01@16",
+      "xyy.card.tp01@33",
+    ];
+    expect(state.players[actor]!.hand).toEqual(collected);
+    expect(state.players[teammates[0]!]!.hand).toEqual([]);
+    expect(state.players[teammates[1]!]!.hand).toEqual([]);
+    expect(state.players[opponent]!.hand).toEqual(["xyy.card.jp03@5"]);
+    expect(state.turn?.usedSkillIds).toContain("xyy.skill.jn40302");
+    expect(state.pendingChoice).toMatchObject({
+      playerIds: [actor],
+      prompt: "jn40302-distribute-hand",
+      optionIds: collected,
+      minSelections: 0,
+      maxSelections: 4,
+      optional: true,
+      fallback: "pass",
+    });
+    expect(createPlayerView(state, actor).availableActions).toEqual([
+      {
+        type: "distribute-brother-hand",
+        choiceId: state.pendingChoice!.choiceId,
+        cardInstanceIds: collected,
+        minCardCount: 1,
+        maxCardCount: 4,
+        targetPlayerIds: teammates,
+      },
+      {
+        type: "finish-brother-hand",
+        choiceId: state.pendingChoice!.choiceId,
+      },
+    ]);
+    for (const player of Object.values(state.players)) {
+      if (player.id === actor) continue;
+      const view = createPlayerView(state, player.id);
+      expect(view.pendingChoice).toBeNull();
+      expect(view.availableActions).toEqual([]);
+      const serialized = JSON.stringify(view);
+      for (const card of collected) expect(serialized).not.toContain(card);
+    }
+
+    const timeoutStart = JSON.parse(JSON.stringify(state)) as MatchState;
+    const deadline = collectSystemDeadlines(timeoutStart).find((candidate) =>
+      candidate.targetId.startsWith("choice:"),
+    )!;
+    const timedOut = applyCommand(timeoutStart, {
+      origin: "system-timeout",
+      commandId: "jn40302-timeout",
+      matchId: timeoutStart.matchId,
+      expectedVersion: timeoutStart.version,
+      deadlineAt: deadline.deadlineAt,
+      targetId: deadline.targetId,
+    });
+    expect(timedOut.accepted).toBe(true);
+    if (!timedOut.accepted) throw new Error(timedOut.reason);
+    expect(timedOut.state.pendingChoice).toBeNull();
+    expect(timedOut.state.players[actor]!.hand).toEqual(collected);
+
+    const forbiddenTarget = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn40302-opponent-target", {
+        type: "distribute-brother-hand",
+        choiceId: state.pendingChoice!.choiceId,
+        cardInstanceIds: ["xyy.card.jp01@1"],
+        targetPlayerId: opponent,
+      }),
+    });
+    expect(forbiddenTarget).toMatchObject({
+      accepted: false,
+      reason: "forbidden",
+    });
+    const forgedCard = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn40302-forged-card", {
+        type: "distribute-brother-hand",
+        choiceId: state.pendingChoice!.choiceId,
+        cardInstanceIds: ["xyy.card.jp03@5"],
+        targetPlayerId: teammates[0]!,
+      }),
+    });
+    expect(forgedCard).toMatchObject({
+      accepted: false,
+      reason: "forbidden",
+    });
+
+    state = dispatch(state, actor, "jn40302-distribute", {
+      type: "distribute-brother-hand",
+      choiceId: state.pendingChoice!.choiceId,
+      cardInstanceIds: ["xyy.card.jp01@1", "xyy.card.jp02@3"],
+      targetPlayerId: teammates[0]!,
+    });
+    expect(state.players[teammates[0]!]!.hand).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.jp02@3",
+    ]);
+    expect(state.pendingChoice?.optionIds).toEqual([
+      "xyy.card.zp01@16",
+      "xyy.card.tp01@33",
+    ]);
+    state = dispatch(state, actor, "jn40302-finish", {
+      type: "finish-brother-hand",
+      choiceId: state.pendingChoice!.choiceId,
+    });
+    expect(state.players[actor]!.hand).toEqual([
+      "xyy.card.zp01@16",
+      "xyy.card.tp01@33",
+    ]);
+    expect(state.pendingChoice).toBeNull();
+    expect(state.reactionWindow).toBeNull();
+    expect(
+      createPlayerView(state, actor).availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn40302",
+      ),
+    ).toBe(false);
+    expectConserved(state);
+  });
+
   it("uses JN50202 once to draw before a mandatory private discard", () => {
     let emptyHand = playing("jn50202-empty-hand");
     const actor = emptyHand.activePlayerId!;

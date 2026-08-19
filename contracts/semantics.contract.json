@@ -292,6 +292,11 @@
       "id": "SEM-007",
       "status": "provisional-autonomous",
       "decision": "Room seats remain stable; seeded turn order alternates 3v3 teams and its first position starts."
+    },
+    {
+      "id": "SEM-008",
+      "status": "provisional-autonomous",
+      "decision": "JN40302 whole-hand collection appends sources by seat and existing hand order instead of reproducing legacy process-random ordering."
     }
   ],
   "scenarios": [

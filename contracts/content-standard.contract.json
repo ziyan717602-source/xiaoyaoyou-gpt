@@ -63,6 +63,18 @@
       "boundary": "native X3W03 two-hand-card conversion into TP02 action healing and dying rescue is verified through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn40301.md"]
     },
+    "xyy.skill.jn40302": {
+      "boundary": "native X3W03 once-per-action collection of all living teammate hands and optional private subset redistribution is verified through timeout, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn40302.md"]
+    },
+    "xyy.hero.x3w03": {
+      "boundary": "setup identity, base stats and both native skills JN40301/JN40302 are fully verified",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn40301.md",
+        "receipt:docs/verification/receipts/cs02-jn40302.md"
+      ]
+    },
     "xyy.skill.jn20302": {
       "boundary": "native XJ203 repeatable technique-card discard to direct cure any living player is verified through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn20302.md"]
@@ -111,13 +123,6 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn20202.md"
-        ]
-      },
-      "xyy.hero.x3w03": {
-        "boundary": "setup identity and base stats plus JN40301 two-card TP02 conversion are verified; JN40302 remains pending",
-        "evidence": [
-          "M02-SETUP-AND-TEAMS",
-          "receipt:docs/verification/receipts/cs02-jn40301.md"
         ]
       },
       "xyy.hero.xj203": {

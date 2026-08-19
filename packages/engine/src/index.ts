@@ -273,6 +273,14 @@ export type AvailableAction =
       readonly type: "activate-hero-skill";
       readonly cardInstanceIds: readonly CardInstanceId[];
       readonly requiredCardCount: 0;
+      readonly skillId: "xyy.skill.jn40302";
+      readonly targetPlayerIds: readonly PlayerId[];
+      readonly requiredTargetCount: 0;
+    }
+  | {
+      readonly type: "activate-hero-skill";
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly requiredCardCount: 0;
       readonly skillId: "xyy.skill.jn50202";
       readonly targetPlayerIds: readonly PlayerId[];
       readonly requiredTargetCount: 0;
@@ -322,6 +330,18 @@ export type AvailableAction =
     }
   | {
       readonly type: "finish-death-loot";
+      readonly choiceId: ChoiceId;
+    }
+  | {
+      readonly type: "distribute-brother-hand";
+      readonly choiceId: ChoiceId;
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly minCardCount: 1;
+      readonly maxCardCount: number;
+      readonly targetPlayerIds: readonly PlayerId[];
+    }
+  | {
+      readonly type: "finish-brother-hand";
       readonly choiceId: ChoiceId;
     }
   | {
@@ -618,7 +638,9 @@ export function createPlayerView(
       : state.dyingBatch !== null
         ? rescueActions(state, viewerId)
         : state.pendingChoice !== null
-          ? pendingChoiceActions(state, viewerId)
+          ? state.pendingChoice.prompt === "jn40302-distribute-hand"
+            ? brotherHandActions(state, viewerId)
+            : pendingChoiceActions(state, viewerId)
           : state.reactionWindow === null
             ? turnActions(state, viewerId)
             : reactionActions(state, viewerId);
@@ -719,6 +741,46 @@ function pendingChoiceActions(
       minSelections: choice.minSelections,
       maxSelections: choice.maxSelections,
     },
+  ];
+}
+
+function brotherHandActions(
+  state: Readonly<MatchState>,
+  viewerId: PlayerId,
+): AvailableAction[] {
+  const choice = state.pendingChoice;
+  const owner = state.players[viewerId];
+  if (
+    state.phase !== "playing" ||
+    choice === null ||
+    choice.status !== "open" ||
+    choice.prompt !== "jn40302-distribute-hand" ||
+    !choice.playerIds.includes(viewerId) ||
+    owner?.alive !== true
+  ) {
+    return [];
+  }
+  const targets = Object.values(state.players)
+    .filter(
+      (player) =>
+        player.alive && player.id !== viewerId && player.team === owner.team,
+    )
+    .sort((left, right) => left.seat - right.seat)
+    .map((player) => player.id);
+  return [
+    ...(targets.length === 0 || choice.optionIds.length === 0
+      ? []
+      : [
+          {
+            type: "distribute-brother-hand" as const,
+            choiceId: choice.choiceId,
+            cardInstanceIds: choice.optionIds as readonly CardInstanceId[],
+            minCardCount: 1 as const,
+            maxCardCount: choice.optionIds.length,
+            targetPlayerIds: targets,
+          },
+        ]),
+    { type: "finish-brother-hand", choiceId: choice.choiceId },
   ];
 }
 
@@ -1256,6 +1318,27 @@ function turnActions(
           },
         ]
       : [];
+  const brothersActions =
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn40302") &&
+    !(state.turn.usedSkillIds ?? []).includes("xyy.skill.jn40302") &&
+    Object.values(state.players).some(
+      (candidate) =>
+        candidate.alive &&
+        candidate.team === player.team &&
+        candidate.hand.length > 0,
+    )
+      ? [
+          {
+            type: "activate-hero-skill" as const,
+            cardInstanceIds: [],
+            requiredCardCount: 0 as const,
+            skillId: "xyy.skill.jn40302" as const,
+            targetPlayerIds: [],
+            requiredTargetCount: 0 as const,
+          },
+        ]
+      : [];
   return [
     ...playable,
     ...equippedPawn,
@@ -1265,6 +1348,7 @@ function turnActions(
     ...selfHealingActions,
     ...drawDiscardActions,
     ...presentSwordActions,
+    ...brothersActions,
     { type: "end-action" },
   ];
 }
