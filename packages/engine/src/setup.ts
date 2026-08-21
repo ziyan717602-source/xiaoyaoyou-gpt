@@ -44,6 +44,7 @@ import {
   applyTurnCommand,
   applyTurnTimeout,
   continueRewardAfterJN10502,
+  continueTurnAfterJN20702,
   reduceTurnEvent,
 } from "./turn.js";
 import {
@@ -497,19 +498,32 @@ export function applyCommand(
       : command.origin === "system-presence"
         ? command.occurredAt
         : command.deadlineAt;
-  const continuation = continueRewardAfterJN10502(
+  const rewardContinuation = continueRewardAfterJN10502(
     result.state,
     commandId,
     input.version + 1,
     resolvedAt,
     result.events.at(-1)?.eventId ?? null,
   );
-  return continuation.events.length === 0
+  const turnEndContinuation = continueTurnAfterJN20702(
+    rewardContinuation.state,
+    commandId,
+    input.version + 1,
+    resolvedAt,
+    rewardContinuation.events.at(-1)?.eventId ??
+      result.events.at(-1)?.eventId ??
+      null,
+  );
+  const continuationEvents = [
+    ...rewardContinuation.events,
+    ...turnEndContinuation.events,
+  ];
+  return continuationEvents.length === 0
     ? result
     : {
         accepted: true,
-        state: continuation.state,
-        events: [...result.events, ...continuation.events],
+        state: turnEndContinuation.state,
+        events: [...result.events, ...continuationEvents],
       };
 }
 

@@ -985,6 +985,102 @@ describe("M03 turn event replay", () => {
     expect(replayed).toEqual(uninterrupted.state);
   });
 
+  it("replays JN20702 turn-end self-damage through its response continuation", () => {
+    const base = started("jn20702-replay");
+    const actor = base.activePlayerId!;
+    const nextPlayer =
+      base.turnOrder[
+        (base.turnOrder.indexOf(actor) + 1) % base.turnOrder.length
+      ]!;
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === actor ? "xyy.hero.xj207" : player.heroId,
+            hp: player.id === actor ? 5 : player.hp,
+            maxHp: player.id === actor ? 5 : player.maxHp,
+            strength: player.id === actor ? 8 : player.strength,
+            dexterity: player.id === actor ? 2 : player.dexterity,
+            handLimit: 3,
+            hand: [],
+            equipment: { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES,
+      discardPile: [],
+    };
+    const command = { type: "end-action" as const };
+    const uninterrupted = apply(initial, actor, "jn20702-replay-end", command);
+    const recovered = apply(
+      JSON.parse(JSON.stringify(initial)) as MatchState,
+      actor,
+      "jn20702-replay-end",
+      command,
+    );
+    expect(recovered).toEqual(uninterrupted);
+    expect(uninterrupted.state.turn).toMatchObject({
+      number: 1,
+      phase: "turn-end",
+      turnEndContinuation: { kind: "jn20702-damage" },
+    });
+    expect(uninterrupted.state.reactionWindow).not.toBeNull();
+
+    let state = JSON.parse(JSON.stringify(uninterrupted.state)) as MatchState;
+    const allEvents: DomainEvent[] = [...uninterrupted.events];
+    let pass = 0;
+    while (state.reactionWindow !== null) {
+      const window = state.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const passed = apply(
+        JSON.parse(JSON.stringify(state)) as MatchState,
+        priority,
+        `jn20702-replay-pass-${pass}`,
+        { type: "pass-reaction", windowId: window.windowId },
+      );
+      allEvents.push(...passed.events);
+      state = passed.state;
+      pass += 1;
+      if (pass > 12)
+        throw new Error("JN20702 replay response did not converge.");
+    }
+    expect(state.players[actor]!.hp).toBe(4);
+    expect(state.activePlayerId).toBe(nextPlayer);
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(state.turn?.turnEndContinuation).toBeUndefined();
+    const triggerIndex = allEvents.findIndex(
+      (event) =>
+        event.type === "turn.hero-skill-triggered" &&
+        event.payload.skillId === "xyy.skill.jn20702",
+    );
+    const damageIndex = allEvents.findIndex(
+      (event) =>
+        event.type === "turn.damage-started" &&
+        event.payload.skillId === "xyy.skill.jn20702",
+    );
+    const resumedIndex = allEvents.findIndex(
+      (event) => event.type === "turn.turn-end-resumed",
+    );
+    const advancedIndex = allEvents.findIndex(
+      (event) => event.type === "turn.advanced",
+    );
+    expect(triggerIndex).toBeGreaterThan(-1);
+    expect(damageIndex).toBeGreaterThan(triggerIndex);
+    expect(resumedIndex).toBeGreaterThan(damageIndex);
+    expect(advancedIndex).toBeGreaterThan(resumedIndex);
+    let replayed = initial;
+    for (const event of allEvents) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(state);
+  });
+
   it("replays JN10502 through a restarted damage window and delayed reward", () => {
     const base = started("jn10502-replay");
     const actor = base.activePlayerId!;

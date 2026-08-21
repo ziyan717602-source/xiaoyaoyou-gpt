@@ -170,6 +170,9 @@ const transformedHeroPlan = plan.items.find(
 const turnStartDrawPlan = plan.items.find(
   (item) => item.id === "xyy.skill.jn20701",
 );
+const turnEndDamagePlan = plan.items.find(
+  (item) => item.id === "xyy.skill.jn20702",
+);
 assert(skillPlan?.state === "verified", "JN50402 must be verified in plan.");
 assert(
   giftSwordPlan?.state === "verified",
@@ -280,11 +283,15 @@ assert(
   "JN20701 must be verified in plan.",
 );
 assert(
+  turnEndDamagePlan?.state === "verified",
+  "JN20702 must be verified in plan.",
+);
+assert(
   transformedHeroPlan?.boundary.includes("nonselectable") &&
     transformedHeroPlan?.boundary.includes("JN20701") &&
     transformedHeroPlan?.boundary.includes("JN20702") &&
     transformedHeroPlan?.boundary.includes("pet"),
-  "XJ207 boundary must name verified JN20701 and pending JN20702/pets.",
+  "XJ207 boundary must name both verified native skills and pending pets.",
 );
 for (const [source, token] of [
   [setupSource, "handLimit: handLimitForHero(heroId)"],
@@ -404,6 +411,16 @@ for (const [source, token] of [
   [turnUnit, "triggers JN20701 at XJ207 turn-start before event and action"],
   [replay, "replays JN20701 automatic turn-start draw before entering action"],
   [damageNetwork, "persists JN20701 private turn-start draw"],
+  [turn, 'heroHasSkill(player.heroId, "xyy.skill.jn20702")'],
+  [turn, 'kind: "jn20702-damage"'],
+  [turn, "continueTurnAfterJN20702"],
+  [reaction, 'state.turn?.phase !== "turn-end"'],
+  [damage, 'state.turn?.phase !== "turn-end"'],
+  [turnUnit, "triggers JN20702 after discard"],
+  [turnUnit, "rejects forged JN20702 damage sources and targets"],
+  [turnUnit, "settles JN20702 owner death before advancing"],
+  [replay, "replays JN20702 turn-end self-damage"],
+  [damageNetwork, "restarts JN20702 turn-end response"],
 ]) {
   assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
@@ -425,14 +442,15 @@ for (const path of [
   "docs/verification/receipts/cs02-jn20601.md",
   "docs/verification/receipts/cs02-jn20602-core.md",
   "docs/verification/receipts/cs02-jn20701.md",
+  "docs/verification/receipts/cs02-jn20702.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 124,
-  "Expected 124 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 132,
+  "Expected 132 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20701/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20602 core partial pending CS03 pets`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20701/JN20702/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20602 core partial pending CS03 pets`,
 );

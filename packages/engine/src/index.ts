@@ -45,6 +45,11 @@ export interface TurnState {
     readonly step: "drawing-team" | "resolving-damage";
     readonly pendingTeamDrawPlayerIds: readonly PlayerId[];
   };
+  /** Serialized turn-end continuation while mandatory JN20702 damage resolves. */
+  readonly turnEndContinuation?: {
+    readonly kind: "jn20702-damage";
+    readonly step: "resolving-damage";
+  };
 }
 
 export interface HeroOffer {

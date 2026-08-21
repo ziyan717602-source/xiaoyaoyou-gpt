@@ -127,6 +127,10 @@
     "xyy.skill.jn20701": {
       "boundary": "native transformed XJ207 automatically draws one at each own turn-start before event and action, using canonical deterministic draw/refill with private identity, replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn20701.md"]
+    },
+    "xyy.skill.jn20702": {
+      "boundary": "native transformed XJ207 automatically takes one ordinary neutral self-damage after discard at own turn-end, fully settling response, prevention, dying, rescue or death before the next turn through replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn20702.md"]
     }
   },
   "baselinePartial": {
@@ -164,7 +168,7 @@
         ]
       },
       "xyy.hero.xj206": {
-        "boundary": "setup identity and base stats plus JN20601 and JN20602 death-before-cleanup transformation are verified for current hand/equipment state; pet preservation awaits CS03 and transformed XJ207 still has JN20702 pending",
+        "boundary": "setup identity and base stats plus JN20601 and JN20602 death-before-cleanup transformation are verified for current hand/equipment state; pet preservation awaits CS03 while both transformed XJ207 native skills are verified",
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn20601.md",
@@ -172,11 +176,12 @@
         ]
       },
       "xyy.hero.xj207": {
-        "boundary": "nonselectable transformation identity, full 5 HP and 8/2 base stats plus automatic JN20701 own-turn-start draw are verified; JN20702 and source JN20602 pet preservation remain pending",
+        "boundary": "nonselectable transformation identity, full 5 HP and 8/2 base stats plus automatic JN20701 own-turn-start draw and JN20702 post-discard turn-end self-damage are verified; source JN20602 pet preservation remains pending",
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn20602-core.md",
-          "receipt:docs/verification/receipts/cs02-jn20701.md"
+          "receipt:docs/verification/receipts/cs02-jn20701.md",
+          "receipt:docs/verification/receipts/cs02-jn20702.md"
         ]
       }
     },

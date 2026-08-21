@@ -432,7 +432,9 @@ export function reduceDyingEvent(
   }
   if (
     state.phase !== "playing" ||
-    (state.turn?.phase !== "action" && state.turn?.phase !== "reward")
+    (state.turn?.phase !== "action" &&
+      state.turn?.phase !== "reward" &&
+      state.turn?.phase !== "turn-end")
   ) {
     throw new Error("Dying events require an interactive turn phase.");
   }

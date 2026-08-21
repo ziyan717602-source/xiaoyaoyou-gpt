@@ -423,7 +423,9 @@ export function reduceReactionEvent(
   }
   if (
     state.phase !== "playing" ||
-    (state.turn?.phase !== "action" && state.turn?.phase !== "reward")
+    (state.turn?.phase !== "action" &&
+      state.turn?.phase !== "reward" &&
+      state.turn?.phase !== "turn-end")
   ) {
     throw new Error("Reaction events require an interactive turn phase.");
   }

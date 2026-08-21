@@ -116,7 +116,7 @@
       "rule": "after all rescue opportunities fail for the dying native owner, replace XJ206 with full-health XJ207 before ordinary death, card cleanup or victory; keep hand, equipment and pets, then continue the same simultaneous death batch without the owner",
       "status": "partial",
       "implementedBoundary": "automatic post-rescue pre-death replacement, full XJ207 HP/base stats, hand and base-equipment preservation, rescued-owner skip, simultaneous death continuation, victory ordering, tamper rejection, JSON replay, SQLite rescue restart and six-socket hand privacy",
-      "linkedPending": ["CS03 pet-state preservation", "xyy.skill.jn20702"]
+      "linkedPending": ["CS03 pet-state preservation"]
     },
     "xyy.skill.jn20701": {
       "name": "蓄势待发",
@@ -124,6 +124,14 @@
       "rule": "at the start of each own turn, after turn ownership advances and before event or action, the living native owner automatically draws one card",
       "status": "verified",
       "verifiedBoundary": "transformation-only native ownership, alive own-turn-start timing, canonical deterministic draw and refill, exact pre-event/action ordering, no input window or timeout, owner-only drawn identity, card conservation, JSON replay, forged trigger rejection, SQLite restart and six-socket projection",
+      "linkedPending": []
+    },
+    "xyy.skill.jn20702": {
+      "name": "崩坏",
+      "owner": "xyy.hero.xj207",
+      "rule": "after the native owner's discard step at the end of each own turn, the owner automatically takes one ordinary neutral self-damage; all response, prevention, dying, rescue, death and victory consequences settle before turn advance",
+      "status": "verified",
+      "verifiedBoundary": "transformation-only native ownership, post-discard turn-end timing, canonical neutral self-damage, TP03 prevention, dying rescue and owner death, exact-once serialized continuation, no direct input or skill timeout, tamper rejection, JSON replay, SQLite response restart and six-socket projection",
       "linkedPending": []
     }
   },
@@ -176,7 +184,10 @@
     "psd.db3:Hero:XJ207 HP 5 STR 8 DEX 2 gender M, skills JN20701/JN20702 and ISO XJ206",
     "psd.db3:Skill:JN20701 OCCURS !R#ST PRIORS 0 ONCE 1 TERMINI 0 and description draw one at the start of the owner's turn",
     "PSDGamepkg/JNS/XJ405.cs:616-619 JN20701 directly emits G0DH owner draw one without Valid, Input or a player choice",
-    "PSDGamepkg/XIR.cs:139-147 runs R<rounder>ST turn-start skills before entering the event phase"
+    "PSDGamepkg/XIR.cs:139-147 runs R<rounder>ST turn-start skills before entering the event phase",
+    "psd.db3:Skill:JN20702 OCCURS !R#TM PRIORS 0 ONCE 1 TERMINI 0 and description owner HP minus one during own turn-end stage",
+    "PSDGamepkg/JNS/XJ405.cs:620-623 JN20702 directly calls Harm(owner, owner, 1) without Valid, Input or a player choice",
+    "PSDGamepkg/XIR.cs:631-642 runs R<rounder>TM after QR discard processing and before IC end cleanup or the next round"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -237,7 +248,11 @@
     "jn20701Timing": "turn.advanced creates the serialized XJ207 turn-start state; the automatic trigger and canonical draw are appended before event and action phase changes, matching legacy R#ST ordering",
     "jn20701DrawAndTimeout": "JN20701 uses the shared deterministic draw/refill planner for exactly one requested card and creates no command, choice, reaction window or timeout; one turn advance can therefore trigger it only once",
     "jn20701Visibility": "the trigger and public hand-count increase are visible to all seats, while the drawn instance id is present only in the XJ207 owner's player projection",
-    "jn20701Reachability": "XJ207 remains excluded from setup offers and obtains the passive only after the verified JN20602 transformation changes authoritative heroId; no initial setup-turn special case is needed"
+    "jn20701Reachability": "XJ207 remains excluded from setup offers and obtains the passive only after the verified JN20602 transformation changes authoritative heroId; no initial setup-turn special case is needed",
+    "jn20702Timing": "after reward and any mandatory discard complete, the serialized turn enters turn-end and automatically triggers JN20702 before turn advance, matching legacy QR then TM ordering",
+    "jn20702Damage": "one canonical ordinary neutral item targets and is sourced by the native XJ207 owner, retaining TP03, FJ03, FJ05, dying, rescue, death and victory semantics rather than applying a direct HP mutation",
+    "jn20702Continuation": "turn.turnEndContinuation records the resolving-damage step through reaction, nested counters, dying and SQLite restart; only a quiescent continuation emits turn-end-resumed and advances once, while owner death or match finish settles first",
+    "jn20702TimeoutAndVisibility": "the passive itself has no input or timeout; optional response and rescue windows retain their ordinary 15-second pass behavior, and no private identity changes beyond cards voluntarily spent in those existing windows"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -363,6 +378,14 @@
     "CS02-121": "JN20701-is-automatic-exactly-once-per-turn-and-opens-no-choice-reaction-or-timeout",
     "CS02-122": "JN20701-exposes-only-public-hand-count-while-the-drawn-instance-remains-owner-private",
     "CS02-123": "JN20701-replays-identically-from-JSON-and-rejects-a-forged-trigger-payload",
-    "CS02-124": "JN20701-private-draw-and-final-action-state-survive-SQLite-restart-over-six-WebSockets"
+    "CS02-124": "JN20701-private-draw-and-final-action-state-survive-SQLite-restart-over-six-WebSockets",
+    "CS02-125": "JN20702-triggers-only-for-a-living-native-XJ207-after-that-owners-discard-step-at-turn-end",
+    "CS02-126": "JN20702-trigger-and-damage-precede-turn-advance-and-occur-exactly-once-per-turn",
+    "CS02-127": "JN20702-plans-one-canonical-ordinary-neutral-self-damage-item-with-authoritative-source-and-target",
+    "CS02-128": "TP03-and-standard-equipment-modifiers-apply-to-JN20702-through-the-normal-response-pipeline",
+    "CS02-129": "JN20702-dying-rescue-owner-death-and-victory-settle-before-the-next-living-player-advances",
+    "CS02-130": "JN20702-serialized-continuation-replays-after-JSON-and-rejects-forged-effect-or-target-payloads",
+    "CS02-131": "JN20702-opens-no-direct-choice-or-timeout-while-existing-response-and-rescue-windows-keep-standard-timeouts",
+    "CS02-132": "JN20702-private-TP03-response-and-final-turn-state-survive-SQLite-restart-over-six-WebSockets"
   }
 }

@@ -873,6 +873,33 @@ export function reduceTurnEvent(
           usedSkillIds: [...(state.turn.usedSkillIds ?? []), skillId],
         },
       };
+    } else if (skillId === "xyy.skill.jn20702") {
+      if (
+        state.turn.phase !== "turn-end" ||
+        state.turn.turnEndContinuation !== undefined ||
+        state.activePlayerId !== playerId ||
+        player === undefined ||
+        !player.alive ||
+        player.heroId === null ||
+        !heroHasSkill(player.heroId, skillId) ||
+        (state.turn.usedSkillIds ?? []).includes(skillId) ||
+        state.pendingChoice !== null ||
+        state.reactionWindow !== null ||
+        state.dyingBatch !== null
+      ) {
+        throw new Error("JN20702 trigger event is not applicable.");
+      }
+      next = {
+        ...state,
+        turn: {
+          ...state.turn,
+          usedSkillIds: [...(state.turn.usedSkillIds ?? []), skillId],
+          turnEndContinuation: {
+            kind: "jn20702-damage",
+            step: "resolving-damage",
+          },
+        },
+      };
     } else {
       if (
         skillId !== "xyy.skill.jn10502" ||
@@ -915,56 +942,93 @@ export function reduceTurnEvent(
     const sourceEffectId = stringPayload(event, "sourceEffectId");
     const openedAt = numberPayload(event, "openedAt");
     const player = state.players[playerId];
-    const targets = Object.values(state.players)
-      .filter((candidate) => candidate.alive && candidate.id !== playerId)
-      .sort((left, right) => left.seat - right.seat);
-    const expected = planDamageBatch(
-      state,
-      targets.map((target, index) => ({
-        itemId: `${sourceEffectId}:damage:${index}`,
-        sourcePlayerId: playerId,
-        targetPlayerId: target.id,
-        amount: 1,
-        element: "neutral" as const,
-      })),
-    );
-    if (
-      skillId !== "xyy.skill.jn10502" ||
-      state.turn.phase !== "reward" ||
-      state.turn.rewardContinuation?.kind !== "jn10502-damage" ||
-      state.turn.rewardContinuation.step !== "drawing-team" ||
-      state.turn.rewardContinuation.pendingTeamDrawPlayerIds.length !== 0 ||
-      state.activePlayerId !== playerId ||
-      player === undefined ||
-      !player.alive ||
-      player.heroId === null ||
-      !heroHasSkill(player.heroId, skillId) ||
-      sourceEffectId !==
-        `${state.matchId}:effect:jn10502:turn:${state.turn.number}` ||
-      state.pendingChoice !== null ||
-      state.reactionWindow !== null ||
-      state.dyingBatch !== null ||
-      JSON.stringify(event.payload.damageItems) !== JSON.stringify(expected)
-    ) {
-      throw new Error("JN10502 damage event is not applicable.");
-    }
-    const resolvingState: MatchState = {
-      ...state,
-      turn: {
-        ...state.turn,
-        rewardContinuation: {
-          ...state.turn.rewardContinuation,
-          step: "resolving-damage",
+    if (skillId === "xyy.skill.jn20702") {
+      const expected = planDamageBatch(state, [
+        {
+          itemId: `${sourceEffectId}:damage:0`,
+          sourcePlayerId: playerId,
+          targetPlayerId: playerId,
+          amount: 1,
+          element: "neutral",
         },
-      },
-    };
-    next = beginDamageResponse(
-      resolvingState,
-      sourceEffectId,
-      playerId,
-      expected,
-      openedAt,
-    );
+      ]);
+      if (
+        state.turn.phase !== "turn-end" ||
+        state.turn.turnEndContinuation?.kind !== "jn20702-damage" ||
+        state.turn.turnEndContinuation.step !== "resolving-damage" ||
+        state.activePlayerId !== playerId ||
+        player === undefined ||
+        !player.alive ||
+        player.heroId === null ||
+        !heroHasSkill(player.heroId, skillId) ||
+        sourceEffectId !==
+          `${state.matchId}:effect:jn20702:turn:${state.turn.number}` ||
+        state.pendingChoice !== null ||
+        state.reactionWindow !== null ||
+        state.dyingBatch !== null ||
+        JSON.stringify(event.payload.damageItems) !== JSON.stringify(expected)
+      ) {
+        throw new Error("JN20702 damage event is not applicable.");
+      }
+      next = beginDamageResponse(
+        state,
+        sourceEffectId,
+        playerId,
+        expected,
+        openedAt,
+      );
+    } else {
+      const targets = Object.values(state.players)
+        .filter((candidate) => candidate.alive && candidate.id !== playerId)
+        .sort((left, right) => left.seat - right.seat);
+      const expected = planDamageBatch(
+        state,
+        targets.map((target, index) => ({
+          itemId: `${sourceEffectId}:damage:${index}`,
+          sourcePlayerId: playerId,
+          targetPlayerId: target.id,
+          amount: 1,
+          element: "neutral" as const,
+        })),
+      );
+      if (
+        skillId !== "xyy.skill.jn10502" ||
+        state.turn.phase !== "reward" ||
+        state.turn.rewardContinuation?.kind !== "jn10502-damage" ||
+        state.turn.rewardContinuation.step !== "drawing-team" ||
+        state.turn.rewardContinuation.pendingTeamDrawPlayerIds.length !== 0 ||
+        state.activePlayerId !== playerId ||
+        player === undefined ||
+        !player.alive ||
+        player.heroId === null ||
+        !heroHasSkill(player.heroId, skillId) ||
+        sourceEffectId !==
+          `${state.matchId}:effect:jn10502:turn:${state.turn.number}` ||
+        state.pendingChoice !== null ||
+        state.reactionWindow !== null ||
+        state.dyingBatch !== null ||
+        JSON.stringify(event.payload.damageItems) !== JSON.stringify(expected)
+      ) {
+        throw new Error("JN10502 damage event is not applicable.");
+      }
+      const resolvingState: MatchState = {
+        ...state,
+        turn: {
+          ...state.turn,
+          rewardContinuation: {
+            ...state.turn.rewardContinuation,
+            step: "resolving-damage",
+          },
+        },
+      };
+      next = beginDamageResponse(
+        resolvingState,
+        sourceEffectId,
+        playerId,
+        expected,
+        openedAt,
+      );
+    }
   } else if (event.type === "turn.reward-resumed") {
     const playerId = stringPayload(event, "playerId");
     if (
@@ -980,6 +1044,21 @@ export function reduceTurnEvent(
       throw new Error("Reward continuation event is not applicable.");
     }
     const { rewardContinuation: _completed, ...turn } = state.turn;
+    next = { ...state, turn };
+  } else if (event.type === "turn.turn-end-resumed") {
+    const playerId = stringPayload(event, "playerId");
+    if (
+      state.turn.phase !== "turn-end" ||
+      state.turn.turnEndContinuation?.kind !== "jn20702-damage" ||
+      state.turn.turnEndContinuation.step !== "resolving-damage" ||
+      state.activePlayerId !== playerId ||
+      state.pendingChoice !== null ||
+      state.reactionWindow !== null ||
+      state.dyingBatch !== null
+    ) {
+      throw new Error("Turn-end continuation event is not applicable.");
+    }
+    const { turnEndContinuation: _completed, ...turn } = state.turn;
     next = { ...state, turn };
   } else if (event.type === "turn.cards-discarded") {
     const playerId = stringPayload(event, "playerId");
@@ -1030,6 +1109,7 @@ export function reduceTurnEvent(
     const advancedAt = numberPayload(event, "advancedAt");
     if (
       state.turn.phase !== "turn-end" ||
+      state.turn.turnEndContinuation !== undefined ||
       aliveTeams(state).length !== 2 ||
       nextAlivePlayer(state) !== playerId ||
       turnNumber !== state.turn.number + 1
@@ -1174,6 +1254,43 @@ function finishOrAdvance(builder: EventBuilder): void {
   changePhase(builder, "action");
 }
 
+function triggerTurnEndOrAdvance(builder: EventBuilder): void {
+  const playerId = builder.state.activePlayerId;
+  const player =
+    playerId === null ? undefined : builder.state.players[playerId];
+  if (
+    playerId !== null &&
+    player?.alive === true &&
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn20702") &&
+    !(builder.state.turn?.usedSkillIds ?? []).includes("xyy.skill.jn20702")
+  ) {
+    builder.append("turn.hero-skill-triggered", {
+      playerId,
+      skillId: "xyy.skill.jn20702",
+      triggeredAt: builder.resolvedAt,
+    });
+    const sourceEffectId = `${builder.state.matchId}:effect:jn20702:turn:${builder.state.turn!.number}`;
+    builder.append("turn.damage-started", {
+      playerId,
+      skillId: "xyy.skill.jn20702",
+      sourceEffectId,
+      openedAt: builder.resolvedAt,
+      damageItems: planDamageBatch(builder.state, [
+        {
+          itemId: `${sourceEffectId}:damage:0`,
+          sourcePlayerId: playerId,
+          targetPlayerId: playerId,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+    });
+    return;
+  }
+  finishOrAdvance(builder);
+}
+
 function endAction(builder: EventBuilder, playerId: PlayerId): void {
   changePhase(builder, "encounter");
   changePhase(builder, "battle");
@@ -1227,7 +1344,7 @@ function endAction(builder: EventBuilder, playerId: PlayerId): void {
     return;
   }
   changePhase(builder, "turn-end");
-  finishOrAdvance(builder);
+  triggerTurnEndOrAdvance(builder);
 }
 
 export function continueRewardAfterJN10502(
@@ -1265,8 +1382,42 @@ export function continueRewardAfterJN10502(
     changePhase(builder, "discard");
   } else {
     changePhase(builder, "turn-end");
-    finishOrAdvance(builder);
+    triggerTurnEndOrAdvance(builder);
   }
+  return { state: builder.state, events: builder.events };
+}
+
+export function continueTurnAfterJN20702(
+  input: Readonly<MatchState>,
+  commandId: CommandId,
+  matchVersion: number,
+  resolvedAt: number,
+  causationEventId: string | null,
+): { readonly state: MatchState; readonly events: readonly DomainEvent[] } {
+  if (
+    input.phase !== "playing" ||
+    input.turn?.phase !== "turn-end" ||
+    input.turn.turnEndContinuation?.kind !== "jn20702-damage" ||
+    input.turn.turnEndContinuation.step !== "resolving-damage" ||
+    input.activePlayerId === null ||
+    input.pendingChoice !== null ||
+    input.reactionWindow !== null ||
+    input.dyingBatch !== null
+  ) {
+    return { state: input as MatchState, events: [] };
+  }
+  const builder = new EventBuilder(
+    input,
+    commandId,
+    matchVersion,
+    resolvedAt,
+    causationEventId,
+  );
+  builder.append("turn.turn-end-resumed", {
+    playerId: input.activePlayerId,
+    resumedAt: resolvedAt,
+  });
+  finishOrAdvance(builder);
   return { state: builder.state, events: builder.events };
 }
 
@@ -1939,7 +2090,7 @@ export function applyTurnCommand(
       cardInstanceIds,
     });
     changePhase(builder, "turn-end");
-    finishOrAdvance(builder);
+    triggerTurnEndOrAdvance(builder);
   } else {
     return {
       accepted: false,
@@ -2190,6 +2341,6 @@ export function applyTurnTimeout(
     rngCursorEnd: planned.rng.cursor,
   });
   changePhase(builder, "turn-end");
-  finishOrAdvance(builder);
+  triggerTurnEndOrAdvance(builder);
   return { accepted: true, state: builder.state, events: builder.events };
 }
