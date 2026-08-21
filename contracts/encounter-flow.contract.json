@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-cs03-encounter-flow-v1",
+  "scope": "CONTENT-STANDARD/CS03-BATTLE-DECKS/DECISION-SUBSTRATE",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "authority": {
+    "supportOrGiveUp": "active-player-only",
+    "hinder": "corresponding-living-opponent-only",
+    "teamAdvice": "legacy-non-authoritative-advice-is-not-a-command-or-chat-feature"
+  },
+  "baseOptions": {
+    "support": "all-living-same-team-players-in-turn-index-order-including-active-player",
+    "hinder": "all-living-opposing-team-players-in-turn-index-order",
+    "extensions": ["player", "pet", "special"],
+    "extensionAuthority": "pet-and-special-participants-never-become-decision-owners"
+  },
+  "opposingDecisionPlayer": {
+    "mapping": "same-ordinal-in-opposing-team-by-turn-index",
+    "deadMappedPlayer": "next-living-opponent-then-wrap-to-first-living-opponent",
+    "noLivingOpponent": "no-decision-owner-match-victory-must-resolve-before-encounter"
+  },
+  "timeouts": {
+    "actionMs": 15000,
+    "supportFallback": "give-up",
+    "hinderFallback": "pass"
+  },
+  "reveal": {
+    "top": "encounterDeck-index-zero",
+    "giveUp": "reveal-publicly-then-append-to-encounterDiscard-and-complete",
+    "fight": "remove-from-deck-and-hold-as-revealedCardId-until-monster-or-NPC-resolution",
+    "empty": "explicit-deck-empty-stage"
+  },
+  "serialization": {
+    "state": "plain-JSON-only",
+    "waitFields": [
+      "stage",
+      "decisionOwnerPlayerId",
+      "options",
+      "openedAt",
+      "deadlineAt"
+    ],
+    "projection": "only-current-decision-owner-receives-availableActions"
+  },
+  "integrationBoundary": {
+    "productionTurnFlow": "remains-M03-encounter-and-battle-skip",
+    "reason": "do-not-open-a-fight-path-until-monster-battle-and-NPC-resolution-can-both-terminate",
+    "contentState": "all-55-CS03-items-remain-unstarted"
+  },
+  "legacyEvidence": [
+    "PSDGamepkg/XIR.cs:190-299 active player chooses give-up or support and give-up reveals/discards",
+    "PSDGamepkg/XIR.cs:300-363 corresponding opponent chooses optional hinder",
+    "PSDGamepkg/XIR.cs:368-405 reveal routes NPC or monster",
+    "PSDBase/Board.cs:131-174 corresponding-opponent ordinal and living fallback",
+    "PSDGamepkg/Artiad/Coaching.cs:8-119 support/hinder participant substitution model"
+  ],
+  "acceptanceMap": {
+    "CS03-02-01": "active-player-is-the-only-support-or-give-up-authority",
+    "CS03-02-02": "base-support-options-are-all-living-same-team-players-including-self",
+    "CS03-02-03": "support-timeout-after-15000ms-deterministically-gives-up",
+    "CS03-02-04": "corresponding-opponent-mapping-preserves-team-ordinal-and-living-fallback",
+    "CS03-02-05": "only-the-corresponding-living-opponent-can-decide-hinder",
+    "CS03-02-06": "hinder-timeout-after-15000ms-deterministically-passes",
+    "CS03-02-07": "player-pet-and-special-participants-use-tagged-serializable-identities",
+    "CS03-02-08": "every-wait-has-serialized-owner-options-deadline-and-stage",
+    "CS03-02-09": "non-owners-receive-no-decision-actions",
+    "CS03-02-10": "give-up-reveals-and-discards-exactly-one-top-card",
+    "CS03-02-11": "fight-reveal-holds-exactly-one-card-outside-deck-and-discard",
+    "CS03-02-12": "production-flow-is-not-wired-to-an-incomplete-battle-or-NPC-resolver"
+  }
+}

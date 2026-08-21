@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc -b && npm run build -w @xiaoyaoyou/web",
     "bootstrap:smoke": "node scripts/bootstrap-local.mjs --smoke",
-    "check:fast": "npm run format:check && npm run typecheck && npm run check:public-history && npm run catalog:verify && npm run content:verify && npm run oracle:golden-traces && npm run semantics:verify && npm run ux:verify && npm run probes:verify && npm run verification:verify && npm run architecture:verify && npm run room:contract && npm run setup:contract && npm run turn:contract && npm run reaction:contract && npm run damage:contract && npm run time:contract && npm run core-cards:contract && npm run action-tricks:contract && npm run defense-buffs:contract && npm run equipment:contract && npm run hero-skills:contract && npm run encounter-deck:contract && npm run test:unit",
+    "check:fast": "npm run format:check && npm run typecheck && npm run check:public-history && npm run catalog:verify && npm run content:verify && npm run oracle:golden-traces && npm run semantics:verify && npm run ux:verify && npm run probes:verify && npm run verification:verify && npm run architecture:verify && npm run room:contract && npm run setup:contract && npm run turn:contract && npm run reaction:contract && npm run damage:contract && npm run time:contract && npm run core-cards:contract && npm run action-tricks:contract && npm run defense-buffs:contract && npm run equipment:contract && npm run hero-skills:contract && npm run encounter-deck:contract && npm run encounter-flow:contract && npm run test:unit",
     "check:full": "npm run check:fast && npm run build && npm run test:replay && npm run test:bots && npm run test:integration && npm run test:e2e && npm run local:smoke -w @xiaoyaoyou/server",
     "check:public-history": "node scripts/check-public-history.mjs",
     "catalog:oracle-verify": "node --disable-warning=ExperimentalWarning scripts/catalog.mjs --oracle-verify",
@@ -28,6 +28,8 @@
     "equipment:verify": "npm run equipment:contract && npm run test:equipment",
     "encounter-deck:contract": "node scripts/verify-encounter-deck.mjs",
     "encounter-deck:verify": "npm run encounter-deck:contract && npm run test:encounter-deck",
+    "encounter-flow:contract": "node scripts/verify-encounter-flow.mjs",
+    "encounter-flow:verify": "npm run encounter-flow:contract && vitest run packages/engine/src/encounter.test.ts && npm run typecheck",
     "hero-skills:contract": "node scripts/verify-hero-skills.mjs",
     "hero-skills:verify": "npm run hero-skills:contract && npm run test:hero-skills",
     "action-tricks:contract": "node scripts/verify-action-tricks.mjs",

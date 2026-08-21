@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS03-BATTLE-DECKS`
-- 最近验证完成：`CS03-01 / 20 怪物 + 10 NPC 主遭遇堆、16 NPC 后备堆、schema v7 迁移与六份私密投影已形成确定性基线`
+- 最近验证完成：`CS03-02 / 支援或放弃、对应位敌方妨碍、15 秒默认选择、玩家/宠物/特殊参与者和揭牌守恒已形成可序列化决策内核；尚未接管正式回合`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -25,9 +25,9 @@
 - CS01C 防御/战力牌证据：`contracts/defense-buffs.contract.json`、`docs/content-standard/cs01c-defense-buffs.md`、`docs/verification/receipts/cs01c-tp03.md`
 - CS01D 装备证据：`contracts/equipment-effects.contract.json`、`docs/content-standard/cs01d-equipment-effects.md`、`docs/verification/receipts/cs01d-wq04.md`、`docs/verification/receipts/cs01d-wq02.md`、`docs/verification/receipts/cs01d-fj03-fj04.md`、`docs/verification/receipts/cs01d-fj01.md`、`docs/verification/receipts/cs01d-fj05.md`、`docs/verification/receipts/cs01d-fj02.md`、`docs/verification/receipts/cs01d-dependency-audit.md`
 - CS02 英雄技能证据：`contracts/hero-skills.contract.json`、`docs/content-standard/cs02-hero-skills.md`、`docs/verification/receipts/cs02-jn50401.md`、`docs/verification/receipts/cs02-jn50402.md`、`docs/verification/receipts/cs02-jn50501.md`、`docs/verification/receipts/cs02-jn20202.md`、`docs/verification/receipts/cs02-jn40301.md`、`docs/verification/receipts/cs02-jn40302.md`、`docs/verification/receipts/cs02-jn10501.md`、`docs/verification/receipts/cs02-jn10502.md`、`docs/verification/receipts/cs02-jn20601.md`、`docs/verification/receipts/cs02-jn20602-core.md`、`docs/verification/receipts/cs02-jn20701.md`、`docs/verification/receipts/cs02-jn20702.md`、`docs/verification/receipts/cs02-jn30201.md`、`docs/verification/receipts/cs02-jn10401.md`、`docs/verification/receipts/cs02-jn10601.md`、`docs/verification/receipts/cs02-duel-dice.md`、`docs/verification/receipts/cs02-jn20302.md`、`docs/verification/receipts/cs02-jn40401.md`、`docs/verification/receipts/cs02-jn50201.md`、`docs/verification/receipts/cs02-jn50202.md`、`docs/verification/receipts/cs02-jn50203.md`
-- CS03 遭遇牌堆证据：`contracts/encounter-deck.contract.json`、`docs/content-standard/cs03-encounter-deck.md`、`docs/rules-semantics/cs03-encounter-deck-gap.md`、`docs/verification/receipts/cs03-encounter-deck.md`
-- 当前工作：审定旧版支援/放弃、对应位妨碍与揭牌顺序，先固定不改变当前可玩流程的纯规则证据与状态机边界。
-- 下一 ready 节点：`CS03-BATTLE-DECKS / encounter-support-hinder-reveal`。
+- CS03 遭遇/战斗基线证据：`contracts/encounter-deck.contract.json`、`contracts/encounter-flow.contract.json`、`docs/content-standard/cs03-encounter-deck.md`、`docs/content-standard/cs03-encounter-flow.md`、`docs/rules-semantics/cs03-encounter-deck-gap.md`、`docs/verification/receipts/cs03-encounter-deck.md`、`docs/verification/receipts/cs03-encounter-flow.md`
+- 当前工作：冻结主遭遇牌揭示后的怪物/NPC 路由与两分支可终止条件；在两类结算均闭合前不替换 M03 跳过流程。
+- 下一 ready 节点：`CS03-03 / encounter-reveal-routing-and-termination`。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-009`，见 `docs/rules-semantics/decisions.md`。
 

@@ -1615,6 +1615,23 @@ export {
   type MonsterId,
   type NpcId,
 } from "./encounter-content.js";
+export {
+  applyEncounterHinderChoice,
+  applyEncounterSupportChoice,
+  applyEncounterTimeout,
+  createEncounterDecision,
+  opposingDecisionPlayerId,
+  projectEncounterDecision,
+  revealEncounterCard,
+  type EncounterDecisionStage,
+  type EncounterDecisionState,
+  type EncounterDecisionView,
+  type EncounterHinderChoice,
+  type EncounterParticipant,
+  type EncounterRevealResult,
+  type EncounterSupportChoice,
+  type EncounterZones,
+} from "./encounter.js";
 export { reduceDuelEvent } from "./duel.js";
 export { beginDamageResponse } from "./reaction.js";
 export {
