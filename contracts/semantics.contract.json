@@ -297,6 +297,11 @@
       "id": "SEM-008",
       "status": "provisional-autonomous",
       "decision": "JN40302 whole-hand collection appends sources by seat and existing hand order instead of reproducing legacy process-random ordering."
+    },
+    {
+      "id": "SEM-009",
+      "status": "provisional-autonomous",
+      "decision": "The standard encounter deck uses all twenty monsters and ten randomized NPCs; the other sixteen NPCs enter the reserve instead of reproducing legacy zero-based TakeRange(11) card loss."
     }
   ],
   "scenarios": [

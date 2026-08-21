@@ -1,8 +1,8 @@
 # 当前目标检查点
 
 - 分支：`codex/goal-mvp`
-- 当前节点：`CONTENT-STANDARD / CS02-HERO-SKILLS`
-- 最近验证完成：`CS02 / JN20102 不屈不挠、JN30601 决斗、JN30602 手下留情已形成确定性逐目标骰点、私有重投、ALIVE 伤害与濒死续算闭环`
+- 当前节点：`CONTENT-STANDARD / CS03-BATTLE-DECKS`
+- 最近验证完成：`CS03-01 / 20 怪物 + 10 NPC 主遭遇堆、16 NPC 后备堆、schema v7 迁移与六份私密投影已形成确定性基线`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -25,9 +25,10 @@
 - CS01C 防御/战力牌证据：`contracts/defense-buffs.contract.json`、`docs/content-standard/cs01c-defense-buffs.md`、`docs/verification/receipts/cs01c-tp03.md`
 - CS01D 装备证据：`contracts/equipment-effects.contract.json`、`docs/content-standard/cs01d-equipment-effects.md`、`docs/verification/receipts/cs01d-wq04.md`、`docs/verification/receipts/cs01d-wq02.md`、`docs/verification/receipts/cs01d-fj03-fj04.md`、`docs/verification/receipts/cs01d-fj01.md`、`docs/verification/receipts/cs01d-fj05.md`、`docs/verification/receipts/cs01d-fj02.md`、`docs/verification/receipts/cs01d-dependency-audit.md`
 - CS02 英雄技能证据：`contracts/hero-skills.contract.json`、`docs/content-standard/cs02-hero-skills.md`、`docs/verification/receipts/cs02-jn50401.md`、`docs/verification/receipts/cs02-jn50402.md`、`docs/verification/receipts/cs02-jn50501.md`、`docs/verification/receipts/cs02-jn20202.md`、`docs/verification/receipts/cs02-jn40301.md`、`docs/verification/receipts/cs02-jn40302.md`、`docs/verification/receipts/cs02-jn10501.md`、`docs/verification/receipts/cs02-jn10502.md`、`docs/verification/receipts/cs02-jn20601.md`、`docs/verification/receipts/cs02-jn20602-core.md`、`docs/verification/receipts/cs02-jn20701.md`、`docs/verification/receipts/cs02-jn20702.md`、`docs/verification/receipts/cs02-jn30201.md`、`docs/verification/receipts/cs02-jn10401.md`、`docs/verification/receipts/cs02-jn10601.md`、`docs/verification/receipts/cs02-duel-dice.md`、`docs/verification/receipts/cs02-jn20302.md`、`docs/verification/receipts/cs02-jn40401.md`、`docs/verification/receipts/cs02-jn50201.md`、`docs/verification/receipts/cs02-jn50202.md`、`docs/verification/receipts/cs02-jn50203.md`
-- 当前工作：审计剩余未迁移英雄技能的 C#/SQLite 触发点与跨切片依赖，选择不依赖 CS03 且能复用现有规则原语的最高优先级 ready 节点。
-- 下一 ready 节点：`CS02-HERO-SKILLS`。
+- CS03 遭遇牌堆证据：`contracts/encounter-deck.contract.json`、`docs/content-standard/cs03-encounter-deck.md`、`docs/rules-semantics/cs03-encounter-deck-gap.md`、`docs/verification/receipts/cs03-encounter-deck.md`
+- 当前工作：审定旧版支援/放弃、对应位妨碍与揭牌顺序，先固定不改变当前可玩流程的纯规则证据与状态机边界。
+- 下一 ready 节点：`CS03-BATTLE-DECKS / encounter-support-hinder-reveal`。
 - 阻塞：无。
-- 临时规则决定：`SEM-001` 至 `SEM-008`，见 `docs/rules-semantics/decisions.md`。
+- 临时规则决定：`SEM-001` 至 `SEM-009`，见 `docs/rules-semantics/decisions.md`。
 
 详细历史只查 Git 提交和 `docs/verification/receipts/`；本文件完成节点后覆盖更新。

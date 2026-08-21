@@ -2,7 +2,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
-import type { PlayerView } from "@xiaoyaoyou/engine";
+import {
+  SETUP_MONSTER_IDS,
+  SETUP_NPC_IDS,
+  type PlayerView,
+} from "@xiaoyaoyou/engine";
 import type {
   ClientCommand,
   RoomSession,
@@ -246,6 +250,10 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     const initialViews = clients.map((client) => client.latestView);
     expect(initialViews.every((view) => view.phase === "setup")).toBe(true);
     for (const [viewerIndex, view] of initialViews.entries()) {
+      expect(view.encounter).toEqual({ deckCount: 30, discardPile: [] });
+      for (const hiddenId of [...SETUP_MONSTER_IDS, ...SETUP_NPC_IDS]) {
+        expect(JSON.stringify(view)).not.toContain(hiddenId);
+      }
       expect(view.setup?.ownOffer?.candidateHeroIds).toHaveLength(3);
       for (const [otherIndex, otherView] of initialViews.entries()) {
         if (viewerIndex === otherIndex) continue;
@@ -469,6 +477,18 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     expect(
       clients.every((client) => client.latestView.version === version),
     ).toBe(true);
+    expect(
+      clients.every(
+        (client) =>
+          client.latestView.encounter.deckCount === 30 &&
+          client.latestView.encounter.discardPile.length === 0,
+      ),
+    ).toBe(true);
+    for (const client of clients) {
+      for (const hiddenId of [...SETUP_MONSTER_IDS, ...SETUP_NPC_IDS]) {
+        expect(JSON.stringify(client.latestView)).not.toContain(hiddenId);
+      }
+    }
     expect(
       clients.every(
         (client) => client.latestView.activePlayerId === secondPlayer.id,

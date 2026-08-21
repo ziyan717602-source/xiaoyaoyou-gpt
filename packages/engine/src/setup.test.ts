@@ -8,6 +8,8 @@ import {
   HERO_SKILL_IDS,
   reduceEvent,
   SETUP_CARD_INSTANCES,
+  SETUP_MONSTER_IDS,
+  SETUP_NPC_IDS,
   skillIdsForHero,
   type MatchState,
 } from "./index.js";
@@ -267,6 +269,11 @@ describe("M02 deterministic setup", () => {
         ]);
         expect(new Set(offers).size).toBe(24);
         expect(new Set(state.drawPile)).toEqual(new Set(SETUP_CARD_INSTANCES));
+        expect(state.encounterDeck).toHaveLength(30);
+        expect(state.reserveNpcDeck).toHaveLength(16);
+        expect(
+          new Set([...state.encounterDeck, ...state.reserveNpcDeck]),
+        ).toEqual(new Set([...SETUP_MONSTER_IDS, ...SETUP_NPC_IDS]));
         expect(state.rng.cursor).toBeGreaterThan(0);
       }),
       { numRuns: 200, seed: 20_260_819 },

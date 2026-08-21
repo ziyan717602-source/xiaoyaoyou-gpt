@@ -14,8 +14,10 @@ import {
   heroHasSkill,
 } from "./setup-content.js";
 import type { CardInstanceId, HeroId } from "./setup-content.js";
+import { createEncounterDecks } from "./encounter-content.js";
+import type { EncounterCardId, NpcId } from "./encounter-content.js";
 
-export const MATCH_SCHEMA_VERSION = 6 as const;
+export const MATCH_SCHEMA_VERSION = 7 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -213,6 +215,10 @@ export interface MatchState {
   readonly connections: Readonly<Record<PlayerId, PlayerConnectionState>>;
   readonly drawPile: readonly CardInstanceId[];
   readonly discardPile: readonly CardInstanceId[];
+  readonly encounterDeck: readonly EncounterCardId[];
+  readonly encounterDiscard: readonly EncounterCardId[];
+  readonly reserveNpcDeck: readonly NpcId[];
+  readonly reserveNpcDiscard: readonly NpcId[];
   readonly setup: SetupState | null;
   readonly effectStack: readonly EffectFrame[];
   readonly reactionWindow: ReactionWindow | null;
@@ -435,6 +441,10 @@ export interface PlayerView {
   readonly turn: TurnState | null;
   readonly winner: TeamId | "draw" | null;
   readonly players: readonly PublicPlayerView[];
+  readonly encounter: {
+    readonly deckCount: number;
+    readonly discardPile: readonly EncounterCardId[];
+  };
   readonly setup: SetupView | null;
   readonly availableActions: readonly AvailableAction[];
   readonly effectStack: readonly EffectFrame[];
@@ -481,6 +491,7 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     ]),
   );
 
+  const encounterDecks = createEncounterDecks(input.seed);
   return {
     schemaVersion: MATCH_SCHEMA_VERSION,
     persistenceVersion: PERSISTENCE_VERSION,
@@ -507,6 +518,7 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     ),
     drawPile: [],
     discardPile: [],
+    ...encounterDecks,
     setup: null,
     effectStack: [],
     reactionWindow: null,
@@ -516,13 +528,30 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
   };
 }
 
+type MatchStateV6 = Omit<
+  MatchState,
+  | "schemaVersion"
+  | "encounterDeck"
+  | "encounterDiscard"
+  | "reserveNpcDeck"
+  | "reserveNpcDiscard"
+> & { readonly schemaVersion: 6 };
+
 /** Explicit in-memory forward migration; persistence bytes remain untouched until the next accepted snapshot. */
-function upgradeDamageMasksFromV5(
-  legacy: Omit<MatchState, "schemaVersion"> & { readonly schemaVersion: 5 },
-): MatchState {
+function upgradeEncounterDecksFromV6(legacy: MatchStateV6): MatchState {
   return {
     ...legacy,
     schemaVersion: MATCH_SCHEMA_VERSION,
+    ...createEncounterDecks(legacy.rng.seed),
+  };
+}
+
+function upgradeDamageMasksFromV5(
+  legacy: Omit<MatchStateV6, "schemaVersion"> & { readonly schemaVersion: 5 },
+): MatchStateV6 {
+  return {
+    ...legacy,
+    schemaVersion: 6,
     effectStack: legacy.effectStack.map((effect) => {
       const damageItems = effect.payload.damageItems;
       if (!Array.isArray(damageItems)) return effect;
@@ -567,6 +596,10 @@ export function migrateMatchState(value: unknown): MatchState {
       !("winner" in raw) ||
       !("dyingBatch" in raw) ||
       !("connections" in raw) ||
+      !Array.isArray(current.encounterDeck) ||
+      !Array.isArray(current.encounterDiscard) ||
+      !Array.isArray(current.reserveNpcDeck) ||
+      !Array.isArray(current.reserveNpcDiscard) ||
       (current.turn !== null &&
         (typeof current.turn.openedAt !== "number" ||
           typeof current.turn.deadlineAt !== "number")) ||
@@ -579,75 +612,85 @@ export function migrateMatchState(value: unknown): MatchState {
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v6 snapshot is missing required fields.");
+      throw new Error("Match schema v7 snapshot is missing required fields.");
     }
     return current;
   }
+  if (raw.schemaVersion === 6) {
+    return upgradeEncounterDecksFromV6(value as MatchStateV6);
+  }
   if (raw.schemaVersion === 5) {
-    return upgradeDamageMasksFromV5(
-      value as Omit<MatchState, "schemaVersion"> & {
-        readonly schemaVersion: 5;
-      },
+    return upgradeEncounterDecksFromV6(
+      upgradeDamageMasksFromV5(
+        value as Omit<MatchStateV6, "schemaVersion"> & {
+          readonly schemaVersion: 5;
+        },
+      ),
     );
   }
   if (raw.schemaVersion === 4) {
     const legacy = value as Omit<
-      MatchState,
+      MatchStateV6,
       "schemaVersion" | "connections" | "turn" | "setup"
     > & {
       readonly schemaVersion: 4;
       readonly turn: Omit<TurnState, "openedAt" | "deadlineAt"> | null;
       readonly setup: Omit<SetupState, "openedAt" | "deadlineAt"> | null;
     };
-    return upgradeDamageMasksFromV5({
-      ...legacy,
-      schemaVersion: 5,
-      turn:
-        legacy.turn === null
-          ? null
-          : { ...legacy.turn, openedAt: 0, deadlineAt: 0 },
-      setup:
-        legacy.setup === null
-          ? null
-          : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
-      connections: Object.fromEntries(
-        Object.keys(legacy.players).map((playerId) => [
-          playerId,
-          { status: "connected", disconnectedAt: null, autoAt: null },
-        ]),
-      ),
-    });
+    return upgradeEncounterDecksFromV6(
+      upgradeDamageMasksFromV5({
+        ...legacy,
+        schemaVersion: 5,
+        turn:
+          legacy.turn === null
+            ? null
+            : { ...legacy.turn, openedAt: 0, deadlineAt: 0 },
+        setup:
+          legacy.setup === null
+            ? null
+            : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
+        connections: Object.fromEntries(
+          Object.keys(legacy.players).map((playerId) => [
+            playerId,
+            { status: "connected", disconnectedAt: null, autoAt: null },
+          ]),
+        ),
+      }),
+    );
   }
   if (raw.schemaVersion === 3) {
-    const legacy = value as Omit<MatchState, "schemaVersion" | "dyingBatch"> & {
-      readonly schemaVersion: 3;
-    };
-    return upgradeDamageMasksFromV5({
-      ...legacy,
-      schemaVersion: 5,
-      dyingBatch: null,
-      turn:
-        legacy.turn === null
-          ? null
-          : { ...legacy.turn, openedAt: 0, deadlineAt: 0 },
-      setup:
-        legacy.setup === null
-          ? null
-          : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
-      connections: Object.fromEntries(
-        Object.keys(legacy.players).map((playerId) => [
-          playerId,
-          { status: "connected", disconnectedAt: null, autoAt: null },
-        ]),
-      ),
-    });
+    const legacy = value as Omit<
+      MatchStateV6,
+      "schemaVersion" | "dyingBatch"
+    > & { readonly schemaVersion: 3 };
+    return upgradeEncounterDecksFromV6(
+      upgradeDamageMasksFromV5({
+        ...legacy,
+        schemaVersion: 5,
+        dyingBatch: null,
+        turn:
+          legacy.turn === null
+            ? null
+            : { ...legacy.turn, openedAt: 0, deadlineAt: 0 },
+        setup:
+          legacy.setup === null
+            ? null
+            : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
+        connections: Object.fromEntries(
+          Object.keys(legacy.players).map((playerId) => [
+            playerId,
+            { status: "connected", disconnectedAt: null, autoAt: null },
+          ]),
+        ),
+      }),
+    );
   }
   if (raw.schemaVersion !== 2) {
     throw new Error(
       `Unsupported match schema version ${String(raw.schemaVersion)}.`,
     );
   }
-  const legacy = value as Omit<MatchState, "schemaVersion"> & {
+  const legacy = value as Omit<MatchStateV6, "schemaVersion"> & {
     readonly schemaVersion: 2;
   };
   const players = Object.fromEntries(
@@ -660,28 +703,30 @@ export function migrateMatchState(value: unknown): MatchState {
       },
     ]),
   );
-  return upgradeDamageMasksFromV5({
-    ...legacy,
-    schemaVersion: 5,
-    turn:
-      legacy.turn ??
-      (legacy.phase === "playing"
-        ? { number: 1, phase: "action", openedAt: 0, deadlineAt: 0 }
-        : null),
-    winner: legacy.winner ?? null,
-    players,
-    dyingBatch: null,
-    setup:
-      legacy.setup === null
-        ? null
-        : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
-    connections: Object.fromEntries(
-      Object.keys(players).map((playerId) => [
-        playerId,
-        { status: "connected", disconnectedAt: null, autoAt: null },
-      ]),
-    ),
-  });
+  return upgradeEncounterDecksFromV6(
+    upgradeDamageMasksFromV5({
+      ...legacy,
+      schemaVersion: 5,
+      turn:
+        legacy.turn ??
+        (legacy.phase === "playing"
+          ? { number: 1, phase: "action", openedAt: 0, deadlineAt: 0 }
+          : null),
+      winner: legacy.winner ?? null,
+      players,
+      dyingBatch: null,
+      setup:
+        legacy.setup === null
+          ? null
+          : { ...legacy.setup, openedAt: 0, deadlineAt: 0 },
+      connections: Object.fromEntries(
+        Object.keys(players).map((playerId) => [
+          playerId,
+          { status: "connected", disconnectedAt: null, autoAt: null },
+        ]),
+      ),
+    }),
+  );
 }
 
 export function createPlayerView(
@@ -748,6 +793,10 @@ export function createPlayerView(
           autoAt: null,
         },
       })),
+    encounter: {
+      deckCount: state.encounterDeck.length,
+      discardPile: state.encounterDiscard,
+    },
     setup:
       state.setup === null
         ? null
@@ -1556,6 +1605,16 @@ export type {
   ResumeResult,
 } from "./architecture.js";
 export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
+export {
+  ENCOUNTER_DECK_ALGORITHM,
+  SETUP_MONSTER_IDS,
+  SETUP_NPC_IDS,
+  createEncounterDecks,
+  type EncounterCardId,
+  type EncounterDecks,
+  type MonsterId,
+  type NpcId,
+} from "./encounter-content.js";
 export { reduceDuelEvent } from "./duel.js";
 export { beginDamageResponse } from "./reaction.js";
 export {

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-cs03-encounter-deck-v1",
+  "scope": "CONTENT-STANDARD/CS03-BATTLE-DECKS/DECK-SUBSTRATE",
+  "rulesetVersion": "standard-fengmingyushi@1",
+  "catalog": {
+    "monsters": 20,
+    "npcs": 26,
+    "npcActions": 9
+  },
+  "partition": {
+    "mainDeck": {
+      "monsters": 20,
+      "npcs": 10,
+      "total": 30
+    },
+    "reserveNpcDeck": 16,
+    "encounterDiscard": 0,
+    "reserveNpcDiscard": 0,
+    "allScopedEncounterCardsConserved": 46
+  },
+  "rng": {
+    "algorithm": "sha256-counter-v1",
+    "deckAlgorithm": "legacy-20-monster-10-npc-reserve-v1",
+    "domainSeparatedFromGameplayRng": true,
+    "sameSeedSamePartitionAndOrder": true,
+    "migrationPreservesGameplayCursor": true
+  },
+  "privacy": {
+    "public": ["main-deck-count", "revealed-discard-identities"],
+    "serverSecret": [
+      "main-deck-order",
+      "unrevealed-main-identities",
+      "reserve-npc-membership",
+      "reserve-npc-order"
+    ],
+    "sixViewsDerivedIndependently": true
+  },
+  "persistence": {
+    "matchSchema": 7,
+    "migratesFrom": 6,
+    "stores": [
+      "encounter-deck",
+      "encounter-discard",
+      "reserve-npc-deck",
+      "reserve-npc-discard"
+    ]
+  },
+  "legacyEvidence": [
+    "PSDGamepkg/XI.cs:149-173 ConstructPiles shuffles 20 monsters and NPCs, interleaves two monsters plus one NPC ten times, then shuffles the 30-card main deck",
+    "PSDGamepkg/XI.cs:182-189 constructs reserve NPC and reserve monster piles",
+    "PSDBase/Utils/Algo.cs:91-108 TakeRange uses zero-based inclusive-start exclusive-end indices",
+    "PSDBase/Board.cs:100-112 stores main encounter and reserve pile/discard zones",
+    "PSDBase/Board.cs:378-385 exposes main pile/discard counts but not unrevealed identities",
+    "catalog/catalog.json contains exactly 20 standard monsters, 26 standard NPCs and 9 NPC action definitions"
+  ],
+  "decisions": {
+    "legacyNpcGap": "SEM-009 fixes legacy TakeRange start 11 to the zero-based start 10 so the randomly omitted eleventh NPC enters the reserve",
+    "contentStatus": "deck substrate does not by itself mark any monster, NPC or NPC action verified"
+  },
+  "acceptanceMap": {
+    "CS03-01-01": "the-standard-catalog-has-exactly-20-monsters-26-NPCs-and-9-NPC-actions",
+    "CS03-01-02": "the-main-deck-has-all-20-monsters-and-10-seeded-NPCs",
+    "CS03-01-03": "the-other-16-NPCs-enter-the-reserve-with-no-missing-or-duplicate-content",
+    "CS03-01-04": "SEM-009-records-the-legacy-zero-based-off-by-one-and-the-entity-conserving-provisional-decision",
+    "CS03-01-05": "same-seed-reproduces-both-orders-and-different-seeds-diverge",
+    "CS03-01-06": "encounter-shuffling-is-domain-separated-and-does-not-consume-gameplay-RNG",
+    "CS03-01-07": "six-player-views-show-only-main-count-and-revealed-discard-identities",
+    "CS03-01-08": "JSON-round-trip-and-v6-to-v7-migration-preserve-decks-without-changing-gameplay-cursor",
+    "CS03-01-09": "SQLite-restart-over-six-real-WebSockets-preserves-count-and-hidden-identities",
+    "CS03-01-10": "all-CS03-content-items-remain-unstarted-until-their-behavioral-rules-are-verified"
+  }
+}
