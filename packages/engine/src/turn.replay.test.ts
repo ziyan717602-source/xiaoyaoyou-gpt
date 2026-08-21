@@ -916,6 +916,75 @@ describe("M03 turn event replay", () => {
     expect(replayed).toEqual(state);
   });
 
+  it("replays JN20701 automatic turn-start draw before entering action", () => {
+    const base = started("jn20701-replay");
+    const actor = base.activePlayerId!;
+    const nextPlayer =
+      base.turnOrder[
+        (base.turnOrder.indexOf(actor) + 1) % base.turnOrder.length
+      ]!;
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === nextPlayer ? "xyy.hero.xj207" : player.heroId,
+            hp: player.id === nextPlayer ? 5 : player.hp,
+            maxHp: player.id === nextPlayer ? 5 : player.maxHp,
+            strength: player.id === nextPlayer ? 8 : player.strength,
+            dexterity: player.id === nextPlayer ? 2 : player.dexterity,
+            handLimit: 3,
+            hand: [],
+            equipment: { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES,
+      discardPile: [],
+    };
+    const command = { type: "end-action" as const };
+    const uninterrupted = apply(initial, actor, "jn20701-replay-end", command);
+    const recovered = apply(
+      JSON.parse(JSON.stringify(initial)) as MatchState,
+      actor,
+      "jn20701-replay-end",
+      command,
+    );
+    expect(recovered).toEqual(uninterrupted);
+    expect(uninterrupted.state).toMatchObject({ activePlayerId: nextPlayer });
+    expect(uninterrupted.state.turn).toMatchObject({
+      number: 2,
+      phase: "action",
+      usedSkillIds: ["xyy.skill.jn20701"],
+    });
+    expect(uninterrupted.state.turn?.rewardContinuation).toBeUndefined();
+    expect(uninterrupted.state.players[nextPlayer]!.hand).toEqual([
+      SETUP_CARD_INSTANCES[1],
+    ]);
+    const trigger = uninterrupted.events.findIndex(
+      (event) =>
+        event.type === "turn.hero-skill-triggered" &&
+        event.payload.skillId === "xyy.skill.jn20701",
+    );
+    const draw = uninterrupted.events.findIndex(
+      (event) =>
+        event.type === "turn.cards-drawn" &&
+        event.payload.reason === "hero-skill:xyy.skill.jn20701",
+    );
+    expect(trigger).toBeGreaterThan(-1);
+    expect(draw).toBeGreaterThan(trigger);
+    let replayed = initial;
+    for (const event of uninterrupted.events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted.state);
+  });
+
   it("replays JN10502 through a restarted damage window and delayed reward", () => {
     const base = started("jn10502-replay");
     const actor = base.activePlayerId!;

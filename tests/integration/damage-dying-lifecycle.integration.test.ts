@@ -842,6 +842,56 @@ function injectJn20602(state: MatchState, owner: PlayerId): MatchState {
   return beginDyingBatch(transformed, "jn20602-network-dying", 1_000);
 }
 
+function injectJn20701(
+  state: MatchState,
+  actor: PlayerId,
+  nextPlayer: PlayerId,
+): MatchState {
+  const openedAt = Date.now();
+  const turnOrder = Object.values(state.players)
+    .sort((left, right) => left.seat - right.seat)
+    .map((player) => player.id);
+  return {
+    ...state,
+    phase: "playing",
+    activePlayerId: actor,
+    turnOrder,
+    turn: {
+      number: 1,
+      phase: "action",
+      openedAt,
+      deadlineAt: openedAt + 15_000,
+      usedSkillIds: [],
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          turnIndex: turnOrder.indexOf(player.id),
+          heroId:
+            player.id === nextPlayer ? "xyy.hero.xj207" : "xyy.hero.xj201",
+          alive: true,
+          hp: player.id === nextPlayer ? 5 : 4,
+          maxHp: player.id === nextPlayer ? 5 : player.maxHp,
+          strength: player.id === nextPlayer ? 8 : player.strength,
+          dexterity: player.id === nextPlayer ? 2 : player.dexterity,
+          handLimit: 3,
+          hand: [],
+          equipment: { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES,
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -2406,6 +2456,105 @@ describe("M05 damage/dying over six real WebSockets", () => {
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
+  });
+
+  it("persists JN20701 private turn-start draw through a six-socket restart", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn20701-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn20701.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const actor = ordered[0]!.id;
+    const nextPlayer = ordered[1]!.id;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+    let serverOpen = true;
+    const closeRunning = async () => {
+      for (const client of clients) client.socket.close();
+      if (serverOpen) {
+        serverOpen = false;
+        await running.server.closeGracefully();
+      }
+    };
+
+    try {
+      await closeRunning();
+      rewriteSnapshot(databasePath, created.roomId, (state) =>
+        injectJn20701(state, actor, nextPlayer),
+      );
+      running = await start(databasePath);
+      serverOpen = true;
+      clients = await Promise.all(
+        sessions.map((session) => connect(running.wsUrl, session)),
+      );
+      let version = clients[0]!.latestView.version;
+      const rewardCard = SETUP_CARD_INSTANCES[0]!;
+      const startCard = SETUP_CARD_INSTANCES[1]!;
+      const response = await send(
+        clients[indexOf(actor)]!,
+        sessions[indexOf(actor)]!,
+        "jn20701-end-before-start",
+        version,
+        { type: "end-action" },
+      );
+      expect(response).toMatchObject({ type: "command-accepted" });
+      version += 1;
+      await waitVersion(clients, version);
+      expect(clients[0]!.latestView).toMatchObject({
+        activePlayerId: nextPlayer,
+      });
+      expect(clients[0]!.latestView.turn).toMatchObject({
+        number: 2,
+        phase: "action",
+      });
+      expect(
+        clients[indexOf(actor)]!.latestView.players.find(
+          (player) => player.id === actor,
+        )?.hand,
+      ).toEqual([rewardCard]);
+      expect(
+        clients[indexOf(nextPlayer)]!.latestView.players.find(
+          (player) => player.id === nextPlayer,
+        )?.hand,
+      ).toEqual([startCard]);
+      for (const player of ordered) {
+        if (player.id === nextPlayer) continue;
+        expect(
+          JSON.stringify(clients[indexOf(player.id)]!.latestView),
+        ).not.toContain(startCard);
+      }
+
+      await closeRunning();
+      running = await start(databasePath);
+      serverOpen = true;
+      clients = await Promise.all(
+        sessions.map((session) => connect(running.wsUrl, session)),
+      );
+      expect(
+        clients[indexOf(nextPlayer)]!.latestView.players.find(
+          (player) => player.id === nextPlayer,
+        )?.hand,
+      ).toEqual([startCard]);
+      expect(clients[0]!.latestView).toMatchObject({
+        activePlayerId: nextPlayer,
+      });
+      expect(clients[0]!.latestView.turn).toMatchObject({
+        number: 2,
+        phase: "action",
+      });
+      for (const player of ordered) {
+        if (player.id === nextPlayer) continue;
+        expect(
+          JSON.stringify(clients[indexOf(player.id)]!.latestView),
+        ).not.toContain(startCard);
+      }
+    } finally {
+      await closeRunning();
+    }
   });
 
   it("restarts JN10502 mid-response and preserves six private team draws", async () => {

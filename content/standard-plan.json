@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 38,
-    "verified": 21,
+    "verified": 22,
     "deferred": 0,
-    "unstarted": 146
+    "unstarted": 145
   },
   "executionQueue": [
     {
@@ -1524,7 +1524,7 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity and base stats plus JN20601 and JN20602 death-before-cleanup transformation are verified for current hand/equipment state; pet preservation awaits CS03 and XJ207 skills remain pending",
+      "boundary": "setup identity and base stats plus JN20601 and JN20602 death-before-cleanup transformation are verified for current hand/equipment state; pet preservation awaits CS03 and transformed XJ207 still has JN20702 pending",
       "evidence": [
         "M02-SETUP-AND-TEAMS",
         "receipt:docs/verification/receipts/cs02-jn20601.md",
@@ -1548,10 +1548,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "nonselectable transformation identity, full 5 HP and 8/2 base stats are verified through JN20602 with hand/equipment preservation; JN20701/JN20702 and source pet preservation remain pending",
+      "boundary": "nonselectable transformation identity, full 5 HP and 8/2 base stats plus automatic JN20701 own-turn-start draw are verified; JN20702 and source JN20602 pet preservation remain pending",
       "evidence": [
         "M02-SETUP-AND-TEAMS",
-        "receipt:docs/verification/receipts/cs02-jn20602-core.md"
+        "receipt:docs/verification/receipts/cs02-jn20602-core.md",
+        "receipt:docs/verification/receipts/cs02-jn20701.md"
       ],
       "dependencies": {
         "contentIds": [
@@ -3889,9 +3890,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native transformed XJ207 automatically draws one at each own turn-start before event and action, using canonical deterministic draw/refill with private identity, replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn20701.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": ["card-zone", "effect-stack", "triggered-effect"],

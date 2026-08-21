@@ -796,6 +796,13 @@ export function reduceTurnEvent(
       (reason === "card-effect" &&
         state.turn.phase === "action" &&
         player?.alive === true) ||
+      (reason === "hero-skill:xyy.skill.jn20701" &&
+        state.turn.phase === "turn-start" &&
+        state.activePlayerId === playerId &&
+        player?.alive === true &&
+        player.heroId !== null &&
+        heroHasSkill(player.heroId, "xyy.skill.jn20701") &&
+        (state.turn.usedSkillIds ?? []).includes("xyy.skill.jn20701")) ||
       (reason === "hero-skill:xyy.skill.jn10502" &&
         state.turn.phase === "reward" &&
         state.turn.rewardContinuation?.kind === "jn10502-damage" &&
@@ -844,38 +851,64 @@ export function reduceTurnEvent(
     const playerId = stringPayload(event, "playerId");
     const skillId = stringPayload(event, "skillId");
     const player = state.players[playerId];
-    if (
-      skillId !== "xyy.skill.jn10502" ||
-      state.turn.phase !== "reward" ||
-      state.turn.rewardContinuation !== undefined ||
-      state.activePlayerId !== playerId ||
-      player === undefined ||
-      !player.alive ||
-      player.heroId === null ||
-      !heroHasSkill(player.heroId, skillId) ||
-      player.hand.length !== 0 ||
-      player.team === null ||
-      state.pendingChoice !== null ||
-      state.reactionWindow !== null ||
-      state.dyingBatch !== null
-    ) {
-      throw new Error("JN10502 trigger event is not applicable.");
-    }
-    const pendingTeamDrawPlayerIds = Object.values(state.players)
-      .filter((candidate) => candidate.alive && candidate.team === player.team)
-      .sort((left, right) => left.seat - right.seat)
-      .map((candidate) => candidate.id);
-    next = {
-      ...state,
-      turn: {
-        ...state.turn,
-        rewardContinuation: {
-          kind: "jn10502-damage",
-          step: "drawing-team",
-          pendingTeamDrawPlayerIds,
+    if (skillId === "xyy.skill.jn20701") {
+      if (
+        state.turn.phase !== "turn-start" ||
+        state.activePlayerId !== playerId ||
+        player === undefined ||
+        !player.alive ||
+        player.heroId === null ||
+        !heroHasSkill(player.heroId, skillId) ||
+        (state.turn.usedSkillIds ?? []).includes(skillId) ||
+        state.pendingChoice !== null ||
+        state.reactionWindow !== null ||
+        state.dyingBatch !== null
+      ) {
+        throw new Error("JN20701 trigger event is not applicable.");
+      }
+      next = {
+        ...state,
+        turn: {
+          ...state.turn,
+          usedSkillIds: [...(state.turn.usedSkillIds ?? []), skillId],
         },
-      },
-    };
+      };
+    } else {
+      if (
+        skillId !== "xyy.skill.jn10502" ||
+        state.turn.phase !== "reward" ||
+        state.turn.rewardContinuation !== undefined ||
+        state.activePlayerId !== playerId ||
+        player === undefined ||
+        !player.alive ||
+        player.heroId === null ||
+        !heroHasSkill(player.heroId, skillId) ||
+        player.hand.length !== 0 ||
+        player.team === null ||
+        state.pendingChoice !== null ||
+        state.reactionWindow !== null ||
+        state.dyingBatch !== null
+      ) {
+        throw new Error("JN10502 trigger event is not applicable.");
+      }
+      const pendingTeamDrawPlayerIds = Object.values(state.players)
+        .filter(
+          (candidate) => candidate.alive && candidate.team === player.team,
+        )
+        .sort((left, right) => left.seat - right.seat)
+        .map((candidate) => candidate.id);
+      next = {
+        ...state,
+        turn: {
+          ...state.turn,
+          rewardContinuation: {
+            kind: "jn10502-damage",
+            step: "drawing-team",
+            pendingTeamDrawPlayerIds,
+          },
+        },
+      };
+    }
   } else if (event.type === "turn.damage-started") {
     const playerId = stringPayload(event, "playerId");
     const skillId = stringPayload(event, "skillId");
@@ -1091,7 +1124,11 @@ function appendDraw(
   builder: EventBuilder,
   playerId: PlayerId,
   requestedCount: number,
-  reason: "card-effect" | "reward" | "hero-skill:xyy.skill.jn10502",
+  reason:
+    | "card-effect"
+    | "reward"
+    | "hero-skill:xyy.skill.jn10502"
+    | "hero-skill:xyy.skill.jn20701",
 ): void {
   const planned = planDraw(builder.state, requestedCount);
   builder.append("turn.cards-drawn", {
@@ -1121,6 +1158,18 @@ function finishOrAdvance(builder: EventBuilder): void {
     turnNumber: builder.state.turn.number + 1,
     advancedAt: builder.resolvedAt,
   });
+  const nextPlayer = builder.state.players[nextPlayerId]!;
+  if (
+    nextPlayer.heroId !== null &&
+    heroHasSkill(nextPlayer.heroId, "xyy.skill.jn20701")
+  ) {
+    builder.append("turn.hero-skill-triggered", {
+      playerId: nextPlayerId,
+      skillId: "xyy.skill.jn20701",
+      triggeredAt: builder.resolvedAt,
+    });
+    appendDraw(builder, nextPlayerId, 1, "hero-skill:xyy.skill.jn20701");
+  }
   changePhase(builder, "event");
   changePhase(builder, "action");
 }

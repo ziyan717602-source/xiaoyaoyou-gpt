@@ -1893,6 +1893,94 @@ describe("M03 deterministic turn core", () => {
     expectConserved(state);
   });
 
+  it("triggers JN20701 at XJ207 turn-start before event and action", () => {
+    let state = playing("jn20701-turn-start-draw");
+    const actor = state.activePlayerId!;
+    const nextPlayer =
+      state.turnOrder[
+        (state.turnOrder.indexOf(actor) + 1) % state.turnOrder.length
+      ]!;
+    state = arrange(state, {});
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [nextPlayer]: {
+          ...state.players[nextPlayer]!,
+          heroId: "xyy.hero.xj207",
+          hp: 5,
+          maxHp: 5,
+          strength: 8,
+          dexterity: 2,
+          handLimit: 3,
+        },
+      },
+    };
+    const actorReward = state.drawPile[0]!;
+    const startDraw = state.drawPile[1]!;
+    const result = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 1_000,
+      envelope: envelope(state, actor, "jn20701-end-before-start", {
+        type: "end-action",
+      }),
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) throw new Error(result.reason);
+    const triggerIndex = result.events.findIndex(
+      (event) =>
+        event.type === "turn.hero-skill-triggered" &&
+        event.payload.skillId === "xyy.skill.jn20701",
+    );
+    const drawIndex = result.events.findIndex(
+      (event) =>
+        event.type === "turn.cards-drawn" &&
+        event.payload.reason === "hero-skill:xyy.skill.jn20701",
+    );
+    const eventPhaseIndex = result.events.findIndex(
+      (event) =>
+        event.type === "turn.phase-changed" && event.payload.to === "event",
+    );
+    expect(triggerIndex).toBeGreaterThan(-1);
+    expect(drawIndex).toBeGreaterThan(triggerIndex);
+    expect(eventPhaseIndex).toBeGreaterThan(drawIndex);
+    expect(
+      result.events.filter(
+        (event) =>
+          event.type === "turn.hero-skill-triggered" &&
+          event.payload.skillId === "xyy.skill.jn20701",
+      ),
+    ).toHaveLength(1);
+    expect(
+      result.events.filter(
+        (event) =>
+          event.type === "turn.cards-drawn" &&
+          event.payload.reason === "hero-skill:xyy.skill.jn20701",
+      ),
+    ).toHaveLength(1);
+    let beforeTrigger = state;
+    for (const event of result.events.slice(0, triggerIndex)) {
+      beforeTrigger = reduceEvent(beforeTrigger, event);
+    }
+    const triggerEvent = result.events[triggerIndex]!;
+    expect(() =>
+      reduceEvent(beforeTrigger, {
+        ...triggerEvent,
+        payload: { ...triggerEvent.payload, playerId: actor },
+      }),
+    ).toThrow("JN20701 trigger event is not applicable");
+    expect(result.state.players[actor]!.hand).toEqual([actorReward]);
+    expect(result.state.players[nextPlayer]!.hand).toEqual([startDraw]);
+    expect(result.state).toMatchObject({ activePlayerId: nextPlayer });
+    expect(result.state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(result.state.turn?.usedSkillIds).toEqual(["xyy.skill.jn20701"]);
+    expect(result.state.turn?.rewardContinuation).toBeUndefined();
+    let replayed = state;
+    for (const event of result.events) replayed = reduceEvent(replayed, event);
+    expect(replayed).toEqual(result.state);
+    expectConserved(result.state);
+  });
+
   it("triggers JN10502 before the ordinary reward draw and resumes after damage responses", () => {
     let state = playing("jn10502-reward-trigger");
     const actor = state.activePlayerId!;
