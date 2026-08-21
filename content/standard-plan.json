@@ -7,10 +7,10 @@
     "standard": 177,
     "sharedCore": 28,
     "total": 205,
-    "partial": 38,
-    "verified": 26,
+    "partial": 39,
+    "verified": 28,
     "deferred": 0,
-    "unstarted": 141
+    "unstarted": 138
   },
   "executionQueue": [
     {
@@ -1463,8 +1463,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN20102 private paid reroll are verified for the reachable JN30601 dice chain; JN20101 and every future CS03 dice producer remain pending",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-duel-dice.md"
+      ],
       "dependencies": {
         "contentIds": [
           "xyy.hero.xj202",
@@ -1622,8 +1625,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN30601 sequential duel and JN30602 ALIVE damage are verified; battle-stage JN30603 remains pending CS03",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-duel-dice.md"
+      ],
       "dependencies": {
         "contentIds": [
           "xyy.skill.jn30601",
@@ -3713,9 +3719,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "partial",
+      "boundary": "optional owner-private one-hand-card reroll, repeated nesting, 15-second pass, deterministic dice evidence, replay and six-socket restart are verified for JN30601; every future CS03 dice producer must route through the same gate before full verification",
+      "evidence": ["receipt:docs/verification/receipts/cs02-duel-dice.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [
@@ -4071,9 +4077,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ306 repeatable one-or-two-target duel with rising hand payment, sequential deterministic dice, per-roll reroll gates, masked damage, dying continuation, replay and six-socket restart is verified",
+      "evidence": ["receipt:docs/verification/receipts/cs02-duel-dice.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [
@@ -4102,9 +4108,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ306 duel damage carries canonical ALIVE semantics so HP two or more retains one while HP one may die; prevention, dying, replay and restart are verified",
+      "evidence": ["receipt:docs/verification/receipts/cs02-duel-dice.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

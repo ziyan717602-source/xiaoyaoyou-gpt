@@ -30,6 +30,33 @@
       "verifiedBoundary": "native ownership, DEX-to-dexterity mapping, public projection, weapon import and export, one-slot replacement without stacking, armor non-effect, WQ04 pawn, shared JP06/transfer/death paths, JSON event replay, SQLite restart and six-socket projection",
       "linkedPending": ["xyy.skill.jn10602", "CS03 battle hit consumption"]
     },
+    "xyy.skill.jn20102": {
+      "name": "不屈不挠",
+      "owner": "xyy.hero.xj201",
+      "rule": "after any own die roll, the native owner may repeatedly discard exactly one own hand card to replace that public result with the next deterministic roll",
+      "status": "partial",
+      "implementedBoundary": "JN30601 owner and target dice, public roll evidence, owner-private optional hand payment, repeated reroll, 15-second pass, JSON replay and two SQLite restart checkpoints",
+      "linkedPending": [
+        "xyy.skill.jn20101",
+        "CS03 battle and every future dice producer"
+      ]
+    },
+    "xyy.skill.jn30601": {
+      "name": "决斗",
+      "owner": "xyy.hero.xj306",
+      "rule": "during his own action phase, the owner pays one more hand card than his previous duel use this turn, chooses one or two other living targets, and resolves a fresh owner roll and target roll sequentially for each target; lower side takes three and a tie deals two to target then owner",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, rising payment, one-or-two ordered targets, sha256-counter dice evidence, per-roll JN20102 gates, TUX_INAVO damage, sequential response/dying continuation, repeat use, JSON replay, SQLite restart and six-socket privacy",
+      "linkedPending": []
+    },
+    "xyy.skill.jn30602": {
+      "name": "手下留情",
+      "owner": "xyy.hero.xj306",
+      "rule": "every JN30601 damage item uses ALIVE: a recipient starting at two or more HP retains at least one, while a recipient at one HP can still die",
+      "status": "verified",
+      "verifiedBoundary": "canonical composable hp mask, post-modifier actual damage clamp, HP two survival, HP one dying/death, FJ05 eligibility, TP03 ineligibility, replay and restart",
+      "linkedPending": []
+    },
     "xyy.skill.jn50401": {
       "name": "赠剑",
       "owner": "xyy.hero.xj404",
@@ -221,7 +248,13 @@
     "the scoped runtime has one physical weapon slot, so replacing one weapon with another is a one-to-one transition and must not stack JN10401",
     "psd.db3:Skill:JN10601 OCCURS !G1IZ,!G1OZ PRIORS 120,70 ONCE 1,1 TERMINI 0,0 and description weapon-equipped hit plus one",
     "PSDGamepkg/JNS/XJ405.cs:249-276 counts native-owner weapon imports and exports, raising G0IX or G0OX type zero by the same count",
-    "PSDBase/Player.cs:44-50 and PSDGamepkg/Artiad/Pond.cs:21 establish DEX as the public hit value compared against monster AGL"
+    "PSDBase/Player.cs:44-50 and PSDGamepkg/Artiad/Pond.cs:21 establish DEX as the public hit value compared against monster AGL",
+    "psd.db3:Skill:JN20102 OCCURS G0TT and description discard one hand card to reroll any unsatisfactory own die result",
+    "PSDGamepkg/JNS/XJ405.cs:390-414 validates the current roller and hand, discards the selected hand card, then raises nested G0TT so reroll can repeat",
+    "psd.db3:Skill:JN30601 OCCURS R#GR and description rising discard cost, one-or-two targets, fresh opposed dice, lower-side three damage and tie two each",
+    "PSDGamepkg/JNS/XJ405.cs:881-924 pays DuelCount plus one, preserves selected target order, rolls owner then each target sequentially and settles each Harm before continuing",
+    "psd.db3:Skill:JN30602 OCCURS !G0OH and description duel participants at HP two or more retain at least one HP",
+    "PSDBase/Card/FiveElement.cs and PSDGamepkg/XIG.cs:1352-1363 implement ALIVE after damage capping so HP two or more keeps one while HP one still loses one"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -299,7 +332,16 @@
     "jn10601StateRepresentation": "the authoritative dexterity field maps legacy DEX and contains the currently applied locked-skill modifier; the shared weapon transition applies its signed occupancy delta",
     "jn10601Replacement": "a one-slot weapon replacement changes occupancy from one to one and therefore adds zero dexterity, while armor changes also produce zero",
     "jn10601Visibility": "dexterity is a public player-view battle attribute; the locked skill creates no available action, choice, response window, timeout or private capability signal",
-    "jn10601Recovery": "the same serialized equipment transition and public stat event path used by JN10401 yields deterministic JSON replay and SQLite restart for JN10601"
+    "jn10601Recovery": "the same serialized equipment transition and public stat event path used by JN10401 yields deterministic JSON replay and SQLite restart for JN10601",
+    "duelDiceEvidence": "every automatic d6 roll consumes exactly one accepted sha256-counter-v1 result and records face-set hash, cursor start/end, value, roller, target index and retry attempt in a canonical event",
+    "jn20102Choice": "only the current native XJ201 roller receives the optional zero-or-one-card choice; public viewers see the rolled value and waiting state but never the private option ids or available action",
+    "jn20102RepeatAndTimeout": "paying one current hand instance discards it before replacing the roll and may reopen another choice while hand remains; manual empty selection, 15-second timeout and disconnected auto-decision accept the current roll without payment",
+    "jn30601Ordering": "one activation pays use-count plus one cards and stores one or two distinct other living targets in command order; owner roll, target roll, that target damage/response/dying and only then the next target are serialized",
+    "jn30601Outcome": "owner-high deals three to target, target-high deals three to owner, and tie orders two damage to target then owner; dead recipients are ignored on later targets exactly as legacy G0OH ignores zero-HP harm",
+    "jn30601Continuation": "turn.duelContinuation persists target index, stage, retry attempt and accepted public rolls through private choices, FJ05 response, JN30201 pursuit, rescue, death and SQLite restart before resuming or clearing",
+    "jn30601RepeatCost": "turn.usedSkillCounts increments on each paid activation, making costs one, two and so on within the action turn; a newly created turn omits the map and resets the first cost to one",
+    "jn30602Alive": "duel items carry canonical tux-inavo, alive and rsv-duel flags; after normal modifiers actual damage leaves one from HP two or more, still kills from HP one, blocks TP03 and retains legal FJ05 equipment response",
+    "duelVisibilityAndRecovery": "dice and public HP/card counts are shared, reroll card identities remain roller-private, deterministic events replay byte-equivalent after JSON, and both private waits survive six-WebSocket SQLite restarts"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -457,6 +499,24 @@
     "CS02-153": "JN10601-does-not-stack-on-weapon-replacement-and-does-not-react-to-armor-transitions",
     "CS02-154": "JN10601-reuses-the-complete-JN10401-weapon-transfer-discard-pawn-and-death-path-set",
     "CS02-155": "JN10601-import-and-export-replay-identically-from-JSON-events",
-    "CS02-156": "JN10601-public-dexterity-and-equipment-survive-SQLite-restart-over-six-WebSockets"
+    "CS02-156": "JN10601-public-dexterity-and-equipment-survive-SQLite-restart-over-six-WebSockets",
+    "CS02-157": "JN30601-is-offered-only-to-native-XJ306-during-own-action-with-use-count-plus-one-hand-cards",
+    "CS02-158": "JN30601-requires-the-exact-rising-distinct-owned-hand-payment-and-one-or-two-distinct-other-living-targets",
+    "CS02-159": "JN30601-processes-each-target-as-owner-roll-target-roll-complete-damage-and-dying-before-the-next-target",
+    "CS02-160": "every-duel-roll-records-and-validates-sha256-counter-face-hash-cursors-value-roller-target-and-attempt",
+    "CS02-161": "JN20102-opens-an-optional-owner-private-zero-or-one-current-hand-card-choice-after-each-native-XJ201-duel-roll",
+    "CS02-162": "JN20102-discards-before-reroll-and-may-repeat-until-pass-or-hand-exhaustion",
+    "CS02-163": "JN20102-manual-timeout-and-disconnected-auto-pass-accept-the-current-roll-without-payment",
+    "CS02-164": "JN30601-owner-high-target-high-and-tie-results-produce-authoritative-three-or-ordered-two-damage-items",
+    "CS02-165": "duel-TUX_INAVO-never-projects-TP03-while-legal-FJ05-response-remains-available",
+    "CS02-166": "JN30602-ALIVE-leaves-one-HP-when-the-recipient-starts-at-two-or-more",
+    "CS02-167": "JN30602-ALIVE-still-allows-one-HP-recipients-to-enter-rescue-and-death",
+    "CS02-168": "the-serialized-duel-continuation-resumes-only-after-current-response-pursuit-dying-rescue-or-death-is-quiescent",
+    "CS02-169": "JN30601-repeat-use-cost-and-count-increase-within-the-turn-and-reset-on-a-new-turn",
+    "CS02-170": "all-seats-see-public-dice-but-only-the-current-XJ201-roller-sees-reroll-card-identities-and-actions",
+    "CS02-171": "duel-reducers-reject-forged-rng-cursors-values-payments-targets-and-derived-damage",
+    "CS02-172": "all-duel-events-and-private-wait-points-replay-identically-through-JSON",
+    "CS02-173": "both-JN20102-private-waits-and-final-JN30601-state-survive-SQLite-restarts-over-six-WebSockets",
+    "CS02-174": "JN30601-and-JN30602-are-verified-while-JN20102-and-XJ201-remain-partial-until-all-CS03-dice-producers-use-the-gate"
   }
 }

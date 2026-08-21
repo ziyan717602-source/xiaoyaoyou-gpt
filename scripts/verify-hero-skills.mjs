@@ -16,6 +16,9 @@ const replay = read("packages/engine/src/turn.replay.test.ts");
 const damage = read("packages/engine/src/damage-dying.ts");
 const damageUnit = read("packages/engine/src/damage-dying.test.ts");
 const damageReplay = read("packages/engine/src/damage-dying.replay.test.ts");
+const duel = read("packages/engine/src/duel.ts");
+const duelUnit = read("packages/engine/src/duel.test.ts");
+const duelReplay = read("packages/engine/src/duel.replay.test.ts");
 const protocol = read("packages/protocol/src/index.ts");
 const view = read("packages/engine/src/index.ts");
 const reaction = read("packages/engine/src/reaction.ts");
@@ -186,6 +189,11 @@ const swordHitPlan = plan.items.find((item) => item.id === "xyy.skill.jn10601");
 const swordHitHeroPlan = plan.items.find(
   (item) => item.id === "xyy.hero.xj106",
 );
+const rerollPlan = plan.items.find((item) => item.id === "xyy.skill.jn20102");
+const rerollHeroPlan = plan.items.find((item) => item.id === "xyy.hero.xj201");
+const duelPlan = plan.items.find((item) => item.id === "xyy.skill.jn30601");
+const mercyPlan = plan.items.find((item) => item.id === "xyy.skill.jn30602");
+const duelHeroPlan = plan.items.find((item) => item.id === "xyy.hero.xj306");
 assert(skillPlan?.state === "verified", "JN50402 must be verified in plan.");
 assert(
   giftSwordPlan?.state === "verified",
@@ -330,6 +338,25 @@ assert(
     swordHitHeroPlan?.boundary.includes("JN10602") &&
     swordHitHeroPlan?.boundary.includes("CS03"),
   "XJ106 boundary must name completed dexterity skill and pending battle skill.",
+);
+assert(rerollPlan?.state === "partial", "JN20102 must remain partial.");
+assert(rerollHeroPlan?.state === "partial", "XJ201 must remain partial.");
+assert(
+  rerollPlan?.boundary.includes("JN30601") &&
+    rerollPlan?.boundary.includes("CS03") &&
+    rerollHeroPlan?.boundary.includes("JN20102") &&
+    rerollHeroPlan?.boundary.includes("JN20101"),
+  "JN20102 and XJ201 boundaries must name the verified duel and pending dice/battle scope.",
+);
+assert(duelPlan?.state === "verified", "JN30601 must be verified.");
+assert(mercyPlan?.state === "verified", "JN30602 must be verified.");
+assert(duelHeroPlan?.state === "partial", "XJ306 must remain partial.");
+assert(
+  duelHeroPlan?.boundary.includes("JN30601") &&
+    duelHeroPlan?.boundary.includes("JN30602") &&
+    duelHeroPlan?.boundary.includes("JN30603") &&
+    duelHeroPlan?.boundary.includes("CS03"),
+  "XJ306 boundary must name both verified duel skills and pending battle skill.",
 );
 for (const [source, token] of [
   [setupSource, "handLimit: handLimitForHero(heroId)"],
@@ -485,6 +512,19 @@ for (const [source, token] of [
   [replay, "replays JN10601 weapon import and pawn export"],
   [damageNetwork, "player.id === secondTarget ? 1 : player.dexterity"],
   [damageNetwork, "dexterity: 2"],
+  [view, 'skillId: "xyy.skill.jn30601" as const'],
+  [view, "minTargetCount: 1 as const"],
+  [duel, 'this.append("duel.die-rolled"'],
+  [duel, 'prompt: "hero-skill:xyy.skill.jn20102"'],
+  [duel, 'hpEvoMask: ["tux-inavo", "alive", "rsv-duel"]'],
+  [duel, "continueDuelAfterDamage"],
+  [duelUnit, "pays for a reroll, settles targets sequentially"],
+  [duelUnit, "defaults JN20102 to pass after 15 seconds"],
+  [duelUnit, "does not project TP03 against TUX_INAVO"],
+  [duelUnit, "lets ALIVE kill at one HP"],
+  [duelReplay, "replays every JN20102 wait and sequential JN30601 target"],
+  [damageNetwork, "restarts both private JN20102 waits"],
+  [damageNetwork, '"duel-integration-reroll"'],
 ]) {
   assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
@@ -510,14 +550,15 @@ for (const path of [
   "docs/verification/receipts/cs02-jn30201.md",
   "docs/verification/receipts/cs02-jn10401.md",
   "docs/verification/receipts/cs02-jn10601.md",
+  "docs/verification/receipts/cs02-duel-dice.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 156,
-  "Expected 156 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 174,
+  "Expected 174 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN10401/JN10601/JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20701/JN20702/JN30201/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20602 core partial pending CS03 pets`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN10401/JN10601/JN30601/JN30602/JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20701/JN20702/JN30201/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20102 duel boundary and JN20602 core partial pending CS03`,
 );

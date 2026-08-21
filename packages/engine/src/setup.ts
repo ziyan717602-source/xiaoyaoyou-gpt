@@ -28,6 +28,12 @@ import {
   reduceDyingEvent,
 } from "./damage-dying.js";
 import {
+  applyDuelChoiceCommand,
+  applyDuelChoiceTimeout,
+  continueDuelAfterDamage,
+  reduceDuelEvent,
+} from "./duel.js";
+import {
   applyPendingChoiceCommand,
   applyPendingChoiceTimeout,
   applyReactionCommand,
@@ -229,6 +235,9 @@ export function reduceEvent(
   ) {
     return reduceTimeRecoveryEvent(state, eventToReduce);
   }
+  if (eventToReduce.type.startsWith("duel.")) {
+    return reduceDuelEvent(state, eventToReduce);
+  }
   if (
     eventToReduce.type.startsWith("turn.") ||
     eventToReduce.type === "match.finished"
@@ -381,6 +390,9 @@ function applyCommandOnce(
       return applyDyingCommand(input, envelope, serverReceivedAt);
     }
     if (input.pendingChoice !== null) {
+      if (input.pendingChoice.prompt === "hero-skill:xyy.skill.jn20102") {
+        return applyDuelChoiceCommand(input, envelope, serverReceivedAt);
+      }
       if (input.pendingChoice.prompt === "hero-skill:xyy.skill.jn30201") {
         return applyJn30201Command(input, envelope, serverReceivedAt);
       }
@@ -504,12 +516,21 @@ export function applyCommand(
       : command.origin === "system-presence"
         ? command.occurredAt
         : command.deadlineAt;
-  const rewardContinuation = continueRewardAfterJN10502(
+  const duelContinuation = continueDuelAfterDamage(
     result.state,
     commandId,
     input.version + 1,
     resolvedAt,
     result.events.at(-1)?.eventId ?? null,
+  );
+  const rewardContinuation = continueRewardAfterJN10502(
+    duelContinuation.state,
+    commandId,
+    input.version + 1,
+    resolvedAt,
+    duelContinuation.events.at(-1)?.eventId ??
+      result.events.at(-1)?.eventId ??
+      null,
   );
   const turnEndContinuation = continueTurnAfterJN20702(
     rewardContinuation.state,
@@ -521,6 +542,7 @@ export function applyCommand(
       null,
   );
   const continuationEvents = [
+    ...duelContinuation.events,
     ...rewardContinuation.events,
     ...turnEndContinuation.events,
   ];
@@ -665,6 +687,9 @@ function resolveTimeout(
     return applyDeathLootTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("choice:")) {
+    if (state.pendingChoice?.prompt === "hero-skill:xyy.skill.jn20102") {
+      return applyDuelChoiceTimeout(state, command, deadline.playerId);
+    }
     if (state.pendingChoice?.prompt === "hero-skill:xyy.skill.jn30201") {
       return applyJn30201Timeout(state, command, deadline.playerId);
     }

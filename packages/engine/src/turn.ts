@@ -13,6 +13,7 @@ import type {
 } from "./architecture.js";
 import { planDraw } from "./card-zones.js";
 import { planDamageBatch } from "./damage-dying.js";
+import { applyDuelActivation } from "./duel.js";
 import type { MatchState, TeamId, TurnPhase } from "./index.js";
 import { planCureBatch, playersAfterCures } from "./healing.js";
 import { withWeaponSkillEquipment } from "./hero-stats.js";
@@ -1152,11 +1153,13 @@ export function reduceTurnEvent(
     ) {
       throw new Error("Match finish event is not applicable.");
     }
+    const { duelContinuation: _completedDuel, ...finishedTurn } = state.turn;
     next = {
       ...state,
       phase: "finished",
       activePlayerId: null,
       winner: expectedWinner,
+      turn: finishedTurn,
     };
   } else {
     throw new Error(`Unsupported turn event ${event.type}.`);
@@ -1468,6 +1471,13 @@ export function applyTurnCommand(
         serverReceivedAt > input.turn.deadlineAt ? "expired-window" : "invalid",
       currentVersion: input.version,
     };
+  }
+
+  if (
+    command.type === "activate-hero-skill" &&
+    command.skillId === "xyy.skill.jn30601"
+  ) {
+    return applyDuelActivation(input, envelope, serverReceivedAt);
   }
 
   if (command.type === "play-card") {

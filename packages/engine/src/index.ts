@@ -30,6 +30,28 @@ export type TurnPhase =
   | "discard"
   | "turn-end";
 
+export interface DiceRollState {
+  readonly playerId: PlayerId;
+  readonly value: number;
+  readonly attempt: number;
+  readonly rngCursorStart: number;
+  readonly rngCursorEnd: number;
+  readonly optionSetHash: string;
+}
+
+export interface DuelContinuation {
+  readonly kind: "jn30601-duel";
+  readonly sourceEffectId: EffectId;
+  readonly ownerPlayerId: PlayerId;
+  readonly targetPlayerIds: readonly PlayerId[];
+  readonly currentTargetIndex: number;
+  readonly stage:
+    "rolling-owner" | "rolling-target" | "ready-damage" | "resolving-damage";
+  readonly attempt: number;
+  readonly ownerRoll: DiceRollState | null;
+  readonly targetRoll: DiceRollState | null;
+}
+
 export interface TurnState {
   readonly number: number;
   readonly phase: TurnPhase;
@@ -39,6 +61,10 @@ export interface TurnState {
   readonly usedSkillIds?: readonly string[];
   /** Per-skill targets already visited this turn; omitted until a skill needs it. */
   readonly usedSkillTargetIds?: Readonly<Record<string, readonly PlayerId[]>>;
+  /** Per-skill activation counts for repeatable skills with rising costs. */
+  readonly usedSkillCounts?: Readonly<Record<string, number>>;
+  /** Serialized per-target JN30601 dice, reroll and damage continuation. */
+  readonly duelContinuation?: DuelContinuation;
   /** Serialized reward-phase continuation while JN10502 draws/damage resolve. */
   readonly rewardContinuation?: {
     readonly kind: "jn10502-damage";
@@ -319,6 +345,15 @@ export type AvailableAction =
       readonly skillId: "xyy.skill.jn20601";
       readonly targetPlayerIds: readonly PlayerId[];
       readonly requiredTargetCount: 1;
+    }
+  | {
+      readonly type: "activate-hero-skill";
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly requiredCardCount: number;
+      readonly skillId: "xyy.skill.jn30601";
+      readonly targetPlayerIds: readonly PlayerId[];
+      readonly minTargetCount: 1;
+      readonly maxTargetCount: 2;
     }
   | { readonly type: "end-action" }
   | {
@@ -839,10 +874,24 @@ function reactionActions(
   const targetEffect = state.effectStack.find(
     (effect) => effect.effectId === window.effectId,
   );
+  const damageItems = Array.isArray(targetEffect?.payload.damageItems)
+    ? (targetEffect.payload.damageItems as readonly {
+        readonly targetPlayerId?: string;
+        readonly amount?: number;
+        readonly hpEvoMask?: readonly string[];
+      }[])
+    : [];
   const reactions = player.hand.flatMap((cardInstanceId) =>
     (
       targetEffect?.kind === "damage-batch"
-        ? cardDefinition(cardInstanceId).coreAction?.type === "prevent-damage"
+        ? cardDefinition(cardInstanceId).coreAction?.type ===
+            "prevent-damage" &&
+          damageItems.some(
+            (item) =>
+              item.targetPlayerId === viewerId &&
+              (item.amount ?? 0) > 0 &&
+              !item.hpEvoMask?.includes("tux-inavo"),
+          )
         : cardDefinition(cardInstanceId).coreAction?.type === "cancel-effect"
     )
       ? [
@@ -855,13 +904,6 @@ function reactionActions(
       : [],
   );
   const armor = player.equipment.armor;
-  const damageItems = Array.isArray(targetEffect?.payload.damageItems)
-    ? (targetEffect.payload.damageItems as readonly {
-        readonly targetPlayerId?: string;
-        readonly amount?: number;
-        readonly hpEvoMask?: readonly string[];
-      }[])
-    : [];
   const equipmentActions =
     targetEffect?.kind === "damage-batch" &&
     armor !== null &&
@@ -1432,6 +1474,28 @@ function turnActions(
           },
         ]
       : [];
+  const duelTargets = Object.values(state.players)
+    .filter((candidate) => candidate.alive && candidate.id !== viewerId)
+    .sort((left, right) => left.seat - right.seat)
+    .map((candidate) => candidate.id);
+  const duelCost = (state.turn.usedSkillCounts?.["xyy.skill.jn30601"] ?? 0) + 1;
+  const duelActions =
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn30601") &&
+    player.hand.length >= duelCost &&
+    duelTargets.length > 0
+      ? [
+          {
+            type: "activate-hero-skill" as const,
+            cardInstanceIds: player.hand,
+            requiredCardCount: duelCost,
+            skillId: "xyy.skill.jn30601" as const,
+            targetPlayerIds: duelTargets,
+            minTargetCount: 1 as const,
+            maxTargetCount: 2 as const,
+          },
+        ]
+      : [];
   return [
     ...playable,
     ...equippedPawn,
@@ -1444,6 +1508,7 @@ function turnActions(
     ...giftHandActions,
     ...harmFemaleActions,
     ...brothersActions,
+    ...duelActions,
     { type: "end-action" },
   ];
 }
@@ -1491,6 +1556,7 @@ export type {
   ResumeResult,
 } from "./architecture.js";
 export { applyCommand, createSetupMatch, reduceEvent } from "./setup.js";
+export { reduceDuelEvent } from "./duel.js";
 export { beginDamageResponse } from "./reaction.js";
 export {
   applyPlannedDamage,

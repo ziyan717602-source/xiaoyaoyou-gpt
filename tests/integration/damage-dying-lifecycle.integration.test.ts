@@ -1006,6 +1006,80 @@ function injectJn30201(
   };
 }
 
+function injectDuel(
+  state: MatchState,
+  owner: PlayerId,
+  firstTarget: PlayerId,
+  secondTarget: PlayerId,
+): MatchState {
+  const openedAt = Date.now();
+  const turnOrder = Object.values(state.players)
+    .sort((left, right) => left.seat - right.seat)
+    .map((player) => player.id);
+  const claimed = new Set([
+    "xyy.card.jp01@1",
+    "xyy.card.tp03@39",
+    "xyy.card.jp02@3",
+  ]);
+  return {
+    ...state,
+    phase: "playing",
+    activePlayerId: owner,
+    turnOrder,
+    turn: {
+      number: 1,
+      phase: "action",
+      openedAt,
+      deadlineAt: openedAt + 15_000,
+      usedSkillIds: [],
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          turnIndex: turnOrder.indexOf(player.id),
+          heroId:
+            player.id === owner
+              ? "xyy.hero.xj306"
+              : player.id === firstTarget || player.id === secondTarget
+                ? "xyy.hero.xj201"
+                : "xyy.hero.xj202",
+          alive: true,
+          hp:
+            player.id === owner
+              ? 5
+              : player.id === firstTarget || player.id === secondTarget
+                ? 2
+                : 4,
+          maxHp: player.id === owner ? 5 : 4,
+          hand:
+            player.id === owner
+              ? ["xyy.card.jp01@1"]
+              : player.id === firstTarget
+                ? ["xyy.card.tp03@39"]
+                : player.id === secondTarget
+                  ? ["xyy.card.jp02@3"]
+                  : [],
+          equipment: { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+    rng: {
+      algorithm: "sha256-counter-v1",
+      seed: "duel-sequential-rng",
+      cursor: 0,
+    },
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -3370,6 +3444,205 @@ describe("M05 damage/dying over six real WebSockets", () => {
           action.skillId === "xyy.skill.jn50401",
       ),
     ).toBe(false);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+  });
+
+  it("restarts both private JN20102 waits and resumes the JN30601 duel over six sockets", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-duel-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "duel.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const owner = ordered[0]!.id;
+    const firstTarget = ordered[1]!.id;
+    const secondTarget = ordered[2]!.id;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectDuel(state, owner, firstTarget, secondTarget),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    let version = clients[0]!.latestView.version;
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.find(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn30601",
+      ),
+    ).toEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: ["xyy.card.jp01@1"],
+      requiredCardCount: 1,
+      skillId: "xyy.skill.jn30601",
+      targetPlayerIds: ordered.slice(1).map((player) => player.id),
+      minTargetCount: 1,
+      maxTargetCount: 2,
+    });
+    for (const player of ordered.slice(1)) {
+      expect(
+        clients[indexOf(player.id)]!.latestView.availableActions,
+      ).not.toContainEqual(
+        expect.objectContaining({
+          type: "activate-hero-skill",
+          skillId: "xyy.skill.jn30601",
+        }),
+      );
+    }
+
+    let response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "duel-integration-start",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.jp01@1"],
+        skillId: "xyy.skill.jn30601",
+        targetPlayerIds: [firstTarget, secondTarget],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    const firstPublicRoll = clients[0]!.latestView.turn?.duelContinuation;
+    expect(firstPublicRoll).toMatchObject({
+      currentTargetIndex: 0,
+      stage: "rolling-target",
+      ownerRoll: { playerId: owner, value: 3 },
+      targetRoll: { playerId: firstTarget, value: 4 },
+    });
+    expect(
+      clients[indexOf(firstTarget)]!.latestView.pendingChoice?.optionIds,
+    ).toEqual(["xyy.card.tp03@39"]);
+    for (const player of ordered) {
+      if (player.id === firstTarget) continue;
+      const view = clients[indexOf(player.id)]!.latestView;
+      expect(view.pendingChoice).toBeNull();
+      expect(JSON.stringify(view.availableActions)).not.toContain(
+        "xyy.card.tp03@39",
+      );
+    }
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(clients[0]!.latestView.turn?.duelContinuation).toEqual(
+      firstPublicRoll,
+    );
+    expect(
+      clients[indexOf(firstTarget)]!.latestView.pendingChoice?.optionIds,
+    ).toEqual(["xyy.card.tp03@39"]);
+
+    response = await send(
+      clients[indexOf(firstTarget)]!,
+      sessions[indexOf(firstTarget)]!,
+      "duel-integration-reroll",
+      version,
+      {
+        type: "submit-choice",
+        choiceId:
+          clients[indexOf(firstTarget)]!.latestView.pendingChoice!.choiceId,
+        selections: ["xyy.card.tp03@39"],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(clients[0]!.latestView.turn?.duelContinuation).toMatchObject({
+      currentTargetIndex: 1,
+      stage: "rolling-target",
+      ownerRoll: { playerId: owner, value: 6 },
+      targetRoll: { playerId: secondTarget, value: 4 },
+    });
+    expect(
+      clients[0]!.latestView.players.find(
+        (player) => player.id === firstTarget,
+      ),
+    ).toMatchObject({ hp: 1, handCount: 0 });
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === owner),
+    ).toMatchObject({ hp: 3, handCount: 0 });
+    expect(
+      clients[indexOf(secondTarget)]!.latestView.pendingChoice?.optionIds,
+    ).toEqual(["xyy.card.jp02@3"]);
+    for (const player of ordered) {
+      if (player.id === secondTarget) continue;
+      const serialized = JSON.stringify(
+        clients[indexOf(player.id)]!.latestView,
+      );
+      expect(serialized).not.toContain("xyy.card.jp02@3");
+    }
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(
+      clients[indexOf(secondTarget)]!.latestView.pendingChoice?.optionIds,
+    ).toEqual(["xyy.card.jp02@3"]);
+    response = await send(
+      clients[indexOf(secondTarget)]!,
+      sessions[indexOf(secondTarget)]!,
+      "duel-integration-pass",
+      version,
+      {
+        type: "submit-choice",
+        choiceId:
+          clients[indexOf(secondTarget)]!.latestView.pendingChoice!.choiceId,
+        selections: [],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(clients[0]!.latestView.turn?.duelContinuation).toBeUndefined();
+    expect(
+      clients[0]!.latestView.players.find(
+        (player) => player.id === secondTarget,
+      )?.hp,
+    ).toBe(1);
+    expect(
+      clients[indexOf(secondTarget)]!.latestView.players.find(
+        (player) => player.id === secondTarget,
+      )?.hand,
+    ).toEqual(["xyy.card.jp02@3"]);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    expect(clients[0]!.latestView.turn?.duelContinuation).toBeUndefined();
+    expect(clients[0]!.latestView.turn?.usedSkillCounts).toEqual({
+      "xyy.skill.jn30601": 1,
+    });
+    for (const player of ordered) {
+      const view = clients[indexOf(player.id)]!.latestView;
+      expect(view.pendingChoice).toBeNull();
+      if (player.id !== secondTarget) {
+        expect(JSON.stringify(view)).not.toContain("xyy.card.jp02@3");
+      }
+    }
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

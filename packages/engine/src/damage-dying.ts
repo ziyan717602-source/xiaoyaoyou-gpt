@@ -406,10 +406,23 @@ export function applyPlannedDamage(
     if (target === undefined || !target.alive) {
       throw new Error("Applied damage target is not alive.");
     }
-    const actualAmount = Math.min(target.hp, damage.amount);
+    let actualAmount = Math.min(target.hp, damage.amount);
+    if (
+      target.hp > 0 &&
+      actualAmount === target.hp &&
+      hasHpEvolutionFlag(damage.hpEvoMask, "alive")
+    ) {
+      actualAmount = Math.max(1, target.hp - 1);
+    } else if (
+      target.hp > 0 &&
+      actualAmount === target.hp &&
+      hasHpEvolutionFlag(damage.hpEvoMask, "alive-hard")
+    ) {
+      actualAmount = target.hp - 1;
+    }
     players[damage.targetPlayerId] = {
       ...target,
-      hp: Math.max(0, target.hp - damage.amount),
+      hp: Math.max(0, target.hp - actualAmount),
     };
     if (
       actualAmount > 0 &&
