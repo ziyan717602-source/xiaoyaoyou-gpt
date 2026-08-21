@@ -2328,10 +2328,15 @@ describe("M03 deterministic turn core", () => {
     state = arrange(state, {});
     state = {
       ...state,
-      players: {
-        ...state.players,
-        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj105" },
-      },
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === actor ? "xyy.hero.xj105" : "xyy.hero.xj201",
+          },
+        ]),
+      ),
     };
 
     state = dispatch(state, actor, "jn10502-end-action", {

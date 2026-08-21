@@ -173,6 +173,8 @@ const turnStartDrawPlan = plan.items.find(
 const turnEndDamagePlan = plan.items.find(
   (item) => item.id === "xyy.skill.jn20702",
 );
+const pursuitPlan = plan.items.find((item) => item.id === "xyy.skill.jn30201");
+const pursuitHeroPlan = plan.items.find((item) => item.id === "xyy.hero.xj302");
 assert(skillPlan?.state === "verified", "JN50402 must be verified in plan.");
 assert(
   giftSwordPlan?.state === "verified",
@@ -292,6 +294,15 @@ assert(
     transformedHeroPlan?.boundary.includes("JN20702") &&
     transformedHeroPlan?.boundary.includes("pet"),
   "XJ207 boundary must name both verified native skills and pending pets.",
+);
+assert(pursuitPlan?.state === "verified", "JN30201 must be verified in plan.");
+assert(pursuitHeroPlan?.state === "partial", "XJ302 must remain partial.");
+assert(
+  pursuitHeroPlan?.boundary.includes("JN30201") &&
+    pursuitHeroPlan?.boundary.includes("JN30202") &&
+    pursuitHeroPlan?.boundary.includes("JN30203") &&
+    pursuitHeroPlan?.boundary.includes("CS03"),
+  "XJ302 boundary must name verified pursuit and pending battle skills.",
 );
 for (const [source, token] of [
   [setupSource, "handLimit: handLimitForHero(heroId)"],
@@ -421,6 +432,15 @@ for (const [source, token] of [
   [turnUnit, "settles JN20702 owner death before advancing"],
   [replay, "replays JN20702 turn-end self-damage"],
   [damageNetwork, "restarts JN20702 turn-end response"],
+  [damage, 'heroHasSkill(player.heroId, "xyy.skill.jn30201")'],
+  [damage, 'prompt: "hero-skill:xyy.skill.jn30201"'],
+  [damage, "applyJn30201Timeout"],
+  [setupSource, 'eventToReduce.type.startsWith("damage.")'],
+  [damageUnit, "opens owner-private JN30201 pursuit before dying"],
+  [damageUnit, "does not offer JN30201 for owner-only or CHAIN_INVAO"],
+  [damageUnit, "includes the JN30201 owner when the same original batch"],
+  [damageReplay, "replays JN30201 payment and nested damage"],
+  [damageNetwork, "restarts JN30201 at private payment"],
 ]) {
   assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
@@ -443,14 +463,15 @@ for (const path of [
   "docs/verification/receipts/cs02-jn20602-core.md",
   "docs/verification/receipts/cs02-jn20701.md",
   "docs/verification/receipts/cs02-jn20702.md",
+  "docs/verification/receipts/cs02-jn30201.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 132,
-  "Expected 132 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 142,
+  "Expected 142 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20701/JN20702/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20602 core partial pending CS03 pets`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20701/JN20702/JN30201/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20602 core partial pending CS03 pets`,
 );

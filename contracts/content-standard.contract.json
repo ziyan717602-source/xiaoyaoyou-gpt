@@ -131,6 +131,10 @@
     "xyy.skill.jn20702": {
       "boundary": "native transformed XJ207 automatically takes one ordinary neutral self-damage after discard at own turn-end, fully settling response, prevention, dying, rescue or death before the next turn through replay and six-socket restart",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn20702.md"]
+    },
+    "xyy.skill.jn30201": {
+      "boundary": "native XJ302 may privately discard one hand card after non-chain actual damage to another player and before dying to add canonical neutral damage to each distinct original damaged target, with recursive payment, timeout, replay and six-socket restart verified",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn30201.md"]
     }
   },
   "baselinePartial": {
@@ -158,6 +162,13 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn20302.md"
+        ]
+      },
+      "xyy.hero.xj302": {
+        "boundary": "setup identity and base stats plus JN30201 post-damage pursuit are verified; battle-stage JN30202 and JN30203 remain pending CS03",
+        "evidence": [
+          "M02-SETUP-AND-TEAMS",
+          "receipt:docs/verification/receipts/cs02-jn30201.md"
         ]
       },
       "xyy.hero.x3w04": {

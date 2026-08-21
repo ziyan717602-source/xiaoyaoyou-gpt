@@ -23,6 +23,8 @@ import { seedCommitment, nextInt, shuffle } from "./random.js";
 import {
   applyDeathLootTimeout,
   applyDyingCommand,
+  applyJn30201Command,
+  applyJn30201Timeout,
   reduceDyingEvent,
 } from "./damage-dying.js";
 import {
@@ -241,7 +243,8 @@ export function reduceEvent(
   }
   if (
     eventToReduce.type.startsWith("rescue.") ||
-    eventToReduce.type.startsWith("death.")
+    eventToReduce.type.startsWith("death.") ||
+    eventToReduce.type.startsWith("damage.")
   ) {
     return reduceDyingEvent(state, eventToReduce);
   }
@@ -378,6 +381,9 @@ function applyCommandOnce(
       return applyDyingCommand(input, envelope, serverReceivedAt);
     }
     if (input.pendingChoice !== null) {
+      if (input.pendingChoice.prompt === "hero-skill:xyy.skill.jn30201") {
+        return applyJn30201Command(input, envelope, serverReceivedAt);
+      }
       if (input.pendingChoice.prompt === "jn40302-distribute-hand") {
         return applyBrotherHandCommand(input, envelope, serverReceivedAt);
       }
@@ -659,6 +665,9 @@ function resolveTimeout(
     return applyDeathLootTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("choice:")) {
+    if (state.pendingChoice?.prompt === "hero-skill:xyy.skill.jn30201") {
+      return applyJn30201Timeout(state, command, deadline.playerId);
+    }
     if (state.pendingChoice?.prompt === "jn40302-distribute-hand") {
       return applyBrotherHandTimeout(state, command, deadline.playerId);
     }

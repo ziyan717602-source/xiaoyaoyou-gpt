@@ -384,6 +384,115 @@ describe("M05 damage/dying event replay", () => {
     expect(uninterrupted.players[recipient]!.hand).toEqual(["xyy.card.jp01@1"]);
   });
 
+  it("replays JN30201 payment and nested damage from JSON choice and response checkpoints", () => {
+    const setup = fixture();
+    const owner = setup.rescuer;
+    const target = setup.target;
+    const base: MatchState = {
+      ...setup.state,
+      players: Object.fromEntries(
+        Object.values(setup.state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === owner ? "xyy.hero.xj302" : "xyy.hero.xj201",
+            hp: player.id === target ? 5 : player.hp,
+            hand: player.id === owner ? ["xyy.card.jp01@1"] : [],
+            equipment: { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.jp01@1",
+      ),
+      discardPile: [],
+    };
+    const initial = applyPlannedDamage(
+      base,
+      "jn30201-replay-original",
+      planDamageBatch(base, [
+        {
+          itemId: "jn30201-replay-original:damage:0",
+          sourcePlayerId: setup.actor,
+          targetPlayerId: target,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+      1_000,
+    );
+    expect(initial.pendingChoice?.prompt).toBe("hero-skill:xyy.skill.jn30201");
+    const command = {
+      type: "submit-choice" as const,
+      choiceId: initial.pendingChoice!.choiceId,
+      selections: ["xyy.card.jp01@1"],
+    };
+    const uninterruptedActivation = apply(
+      initial,
+      owner,
+      "jn30201-replay-activate",
+      command,
+      1_001,
+    );
+    const restartedActivation = apply(
+      JSON.parse(JSON.stringify(initial)) as MatchState,
+      owner,
+      "jn30201-replay-activate",
+      command,
+      1_001,
+    );
+    expect(restartedActivation).toEqual(uninterruptedActivation);
+    let uninterrupted = uninterruptedActivation.state;
+    let restarted = JSON.parse(
+      JSON.stringify(restartedActivation.state),
+    ) as MatchState;
+    const events: DomainEvent[] = [...uninterruptedActivation.events];
+    let pass = 0;
+    while (uninterrupted.reactionWindow !== null) {
+      const window = uninterrupted.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const passCommand = {
+        type: "pass-reaction" as const,
+        windowId: window.windowId,
+      };
+      const commandId = `jn30201-replay-pass-${pass}`;
+      const next = apply(
+        uninterrupted,
+        priority,
+        commandId,
+        passCommand,
+        1_002 + pass,
+      );
+      const recovered = apply(
+        restarted,
+        priority,
+        commandId,
+        passCommand,
+        1_002 + pass,
+      );
+      expect(recovered).toEqual(next);
+      uninterrupted = next.state;
+      restarted = JSON.parse(JSON.stringify(recovered.state)) as MatchState;
+      events.push(...next.events);
+      pass += 1;
+      if (pass > 12) throw new Error("JN30201 replay did not converge.");
+    }
+    expect(uninterrupted.players[target]!.hp).toBe(3);
+    expect(uninterrupted.players[owner]!.hand).toEqual([]);
+    expect(uninterrupted.discardPile).toContain("xyy.card.jp01@1");
+    expect(uninterrupted.pendingChoice).toBeNull();
+    expect(uninterrupted.dyingBatch).toBeNull();
+    expect(restarted).toEqual(uninterrupted);
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted);
+  });
+
   it("resumes JN50501 IMMUNE_INVAO fire damage after a JSON checkpoint", () => {
     const setup = fixture();
     const initialBase: MatchState = {

@@ -11,6 +11,7 @@ import type {
 } from "./architecture.js";
 import type {
   DyingBatch,
+  EffectFrame,
   MatchState,
   PendingChoice,
   PlayerState,
@@ -398,17 +399,78 @@ export function applyPlannedDamage(
   openedAt: number,
 ): MatchState {
   const players: Record<PlayerId, PlayerState> = { ...state.players };
+  const pursuitTargetPlayerIds: PlayerId[] = [];
   for (const damage of applied) {
     const target = players[damage.targetPlayerId];
     if (target === undefined || !target.alive) {
       throw new Error("Applied damage target is not alive.");
     }
+    const actualAmount = Math.min(target.hp, damage.amount);
     players[damage.targetPlayerId] = {
       ...target,
       hp: Math.max(0, target.hp - damage.amount),
     };
+    if (
+      actualAmount > 0 &&
+      !hasHpEvolutionFlag(damage.hpEvoMask, "chain-inavo") &&
+      !pursuitTargetPlayerIds.includes(damage.targetPlayerId)
+    ) {
+      pursuitTargetPlayerIds.push(damage.targetPlayerId);
+    }
   }
-  return beginDyingBatch({ ...state, players }, sourceEffectId, openedAt);
+  const damaged: MatchState = { ...state, players };
+  const owner = Object.values(damaged.players)
+    .filter(
+      (player) =>
+        player.alive &&
+        player.heroId !== null &&
+        heroHasSkill(player.heroId, "xyy.skill.jn30201") &&
+        player.hand.length > 0 &&
+        pursuitTargetPlayerIds.some((targetId) => targetId !== player.id),
+    )
+    .sort((left, right) => left.seat - right.seat)[0];
+  if (owner === undefined) {
+    return beginDyingBatch(damaged, sourceEffectId, openedAt);
+  }
+  const effectId = `${sourceEffectId}:jn30201:${owner.id}`;
+  const effect: EffectFrame = {
+    effectId,
+    parentEffectId: null,
+    kind: "hero-skill:xyy.skill.jn30201",
+    sourcePlayerId: owner.id,
+    targetIds: pursuitTargetPlayerIds,
+    step: "awaiting-payment",
+    status: "waiting",
+    payload: { sourceEffectId },
+  };
+  return {
+    ...damaged,
+    effectStack: [...damaged.effectStack, effect],
+    pendingChoice: {
+      choiceId: `${effectId}:choice`,
+      playerIds: [owner.id],
+      prompt: "hero-skill:xyy.skill.jn30201",
+      minSelections: 0,
+      maxSelections: 1,
+      optionIds: owner.hand,
+      optional: true,
+      status: "open",
+      openedAt,
+      deadlineAt: openedAt + RESCUE_DEADLINE_MS,
+      fallback: "pass",
+      continuation: {
+        continuationId: `${effectId}:continuation`,
+        effectId,
+        step: "after-payment",
+        locals: {
+          sourceEffectId,
+          targetPlayerIds: pursuitTargetPlayerIds,
+        },
+        resumeWith: "resolve-jn30201",
+      },
+    },
+    dyingBatch: null,
+  };
 }
 
 function advanceBatch(
@@ -417,6 +479,151 @@ function advanceBatch(
   openedAt: number,
 ): MatchState {
   return openTarget(state, batch, batch.currentIndex + 1, openedAt);
+}
+
+interface Jn30201Context {
+  readonly owner: PlayerState;
+  readonly effect: EffectFrame;
+  readonly choice: PendingChoice;
+  readonly sourceEffectId: EffectId;
+  readonly targetPlayerIds: readonly PlayerId[];
+}
+
+function jn30201Context(state: Readonly<MatchState>): Jn30201Context | null {
+  const choice = state.pendingChoice;
+  const effect = state.effectStack.at(-1);
+  if (
+    choice === null ||
+    choice.status !== "open" ||
+    choice.prompt !== "hero-skill:xyy.skill.jn30201" ||
+    choice.playerIds.length !== 1 ||
+    effect === undefined ||
+    effect.effectId !== choice.continuation.effectId ||
+    effect.kind !== "hero-skill:xyy.skill.jn30201" ||
+    effect.status !== "waiting" ||
+    effect.sourcePlayerId === null ||
+    choice.continuation.resumeWith !== "resolve-jn30201" ||
+    typeof effect.payload.sourceEffectId !== "string"
+  ) {
+    return null;
+  }
+  const owner = state.players[effect.sourcePlayerId];
+  if (
+    owner === undefined ||
+    !owner.alive ||
+    owner.heroId === null ||
+    !heroHasSkill(owner.heroId, "xyy.skill.jn30201") ||
+    choice.playerIds[0] !== owner.id ||
+    !sameValues(choice.optionIds, owner.hand) ||
+    choice.minSelections !== 0 ||
+    choice.maxSelections !== 1 ||
+    choice.fallback !== "pass" ||
+    effect.targetIds.length === 0 ||
+    !effect.targetIds.some((targetId) => targetId !== owner.id) ||
+    effect.targetIds.some((targetId) => state.players[targetId] === undefined)
+  ) {
+    return null;
+  }
+  return {
+    owner,
+    effect,
+    choice,
+    sourceEffectId: effect.payload.sourceEffectId,
+    targetPlayerIds: effect.targetIds as readonly PlayerId[],
+  };
+}
+
+function clearJn30201Choice(
+  state: Readonly<MatchState>,
+  context: Readonly<Jn30201Context>,
+): MatchState {
+  return {
+    ...state,
+    effectStack: state.effectStack.slice(0, -1),
+    pendingChoice: null,
+  };
+}
+
+function reduceJn30201Event(
+  state: Readonly<MatchState>,
+  event: Readonly<DomainEvent>,
+): MatchState {
+  const context = jn30201Context(state);
+  const ownerPlayerId = stringPayload(event, "ownerPlayerId");
+  const skillId = stringPayload(event, "skillId");
+  const choiceId = stringPayload(event, "choiceId");
+  const sourceEffectId = stringPayload(event, "sourceEffectId");
+  const targetPlayerIds = stringsPayload(
+    event,
+    "targetPlayerIds",
+  ) as readonly PlayerId[];
+  const resolvedAt = numberPayload(event, "resolvedAt");
+  if (
+    context === null ||
+    ownerPlayerId !== context.owner.id ||
+    skillId !== "xyy.skill.jn30201" ||
+    choiceId !== context.choice.choiceId ||
+    sourceEffectId !== context.sourceEffectId ||
+    !sameValues(targetPlayerIds, context.targetPlayerIds)
+  ) {
+    throw new Error("JN30201 event is not applicable.");
+  }
+  if (event.type === "damage.jn30201-declined") {
+    if (typeof event.payload.timeout !== "boolean") {
+      throw new Error("Invalid timeout payload.");
+    }
+    return beginDyingBatch(
+      clearJn30201Choice(state, context),
+      sourceEffectId,
+      resolvedAt,
+    );
+  }
+  if (event.type !== "damage.jn30201-activated") {
+    throw new Error("Unsupported JN30201 event.");
+  }
+  const cardInstanceId = stringPayload(
+    event,
+    "cardInstanceId",
+  ) as CardInstanceId;
+  const pursuitSourceEffectId = stringPayload(event, "pursuitSourceEffectId");
+  if (
+    !context.choice.optionIds.includes(cardInstanceId) ||
+    !context.owner.hand.includes(cardInstanceId) ||
+    pursuitSourceEffectId !== `${context.effect.effectId}:pursuit`
+  ) {
+    throw new Error("JN30201 payment is not applicable.");
+  }
+  const paid: MatchState = {
+    ...clearJn30201Choice(state, context),
+    players: {
+      ...state.players,
+      [context.owner.id]: {
+        ...context.owner,
+        hand: context.owner.hand.filter((card) => card !== cardInstanceId),
+      },
+    },
+    discardPile: [...state.discardPile, cardInstanceId],
+  };
+  const expected = planDamageBatch(
+    paid,
+    context.targetPlayerIds.map((targetPlayerId, index) => ({
+      itemId: `${pursuitSourceEffectId}:damage:${index}`,
+      sourcePlayerId: context.owner.id,
+      targetPlayerId,
+      amount: 1,
+      element: "neutral",
+    })),
+  );
+  if (JSON.stringify(event.payload.damageItems) !== JSON.stringify(expected)) {
+    throw new Error("JN30201 damage event is not applicable.");
+  }
+  return beginDamageResponse(
+    paid,
+    pursuitSourceEffectId,
+    context.owner.id,
+    expected,
+    resolvedAt,
+  );
 }
 
 export function reduceDyingEvent(
@@ -443,6 +650,14 @@ export function reduceDyingEvent(
     event.causationEventId === null ? state.version + 1 : state.version;
   if (matchVersion !== expectedMatchVersion) {
     throw new Error("Dying event has an invalid match version.");
+  }
+  if (event.type.startsWith("damage.jn30201-")) {
+    const pursuit = reduceJn30201Event(state, event);
+    return {
+      ...pursuit,
+      version: matchVersion,
+      eventSequence: event.sequence,
+    };
   }
   const batch = state.dyingBatch;
   if (batch === null) throw new Error("Dying batch is missing.");
@@ -1124,6 +1339,120 @@ class EventBuilder {
       reason: "death-cycle",
     });
   }
+}
+
+export function applyJn30201Command(
+  input: Readonly<MatchState>,
+  envelope: Readonly<CommandEnvelope>,
+  serverReceivedAt: number,
+): ApplyCommandResult {
+  const context = jn30201Context(input);
+  const command = envelope.command;
+  if (
+    context === null ||
+    envelope.playerId !== context.owner.id ||
+    command.type !== "submit-choice" ||
+    command.choiceId !== context.choice.choiceId ||
+    command.selections.length > 1 ||
+    command.selections.some((card) => !context.choice.optionIds.includes(card))
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  if (
+    !Number.isSafeInteger(serverReceivedAt) ||
+    serverReceivedAt < 0 ||
+    serverReceivedAt > context.choice.deadlineAt
+  ) {
+    return {
+      accepted: false,
+      reason:
+        serverReceivedAt > context.choice.deadlineAt
+          ? "expired-window"
+          : "invalid",
+      currentVersion: input.version,
+    };
+  }
+  const builder = new EventBuilder(
+    input,
+    envelope.commandId,
+    input.version + 1,
+    serverReceivedAt,
+  );
+  const common = {
+    ownerPlayerId: context.owner.id,
+    skillId: "xyy.skill.jn30201",
+    choiceId: context.choice.choiceId,
+    sourceEffectId: context.sourceEffectId,
+    targetPlayerIds: context.targetPlayerIds,
+    resolvedAt: serverReceivedAt,
+  };
+  const cardInstanceId = command.selections[0] as CardInstanceId | undefined;
+  if (cardInstanceId === undefined) {
+    builder.append("damage.jn30201-declined", {
+      ...common,
+      timeout: false,
+    });
+  } else {
+    const pursuitSourceEffectId = `${context.effect.effectId}:pursuit`;
+    builder.append("damage.jn30201-activated", {
+      ...common,
+      cardInstanceId,
+      pursuitSourceEffectId,
+      damageItems: planDamageBatch(
+        input,
+        context.targetPlayerIds.map((targetPlayerId, index) => ({
+          itemId: `${pursuitSourceEffectId}:damage:${index}`,
+          sourcePlayerId: context.owner.id,
+          targetPlayerId,
+          amount: 1,
+          element: "neutral",
+        })),
+      ),
+    });
+  }
+  return { accepted: true, state: builder.state, events: builder.events };
+}
+
+export function applyJn30201Timeout(
+  input: Readonly<MatchState>,
+  command: Readonly<Extract<EngineCommand, { origin: "system-timeout" }>>,
+  playerId: PlayerId,
+): ApplyCommandResult {
+  const context = jn30201Context(input);
+  if (
+    context === null ||
+    playerId !== context.owner.id ||
+    context.choice.fallback !== "pass" ||
+    command.deadlineAt < context.choice.openedAt ||
+    command.deadlineAt > context.choice.deadlineAt ||
+    command.targetId !== `choice:${context.choice.choiceId}:${playerId}`
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  const builder = new EventBuilder(
+    input,
+    command.commandId,
+    input.version + 1,
+    command.deadlineAt,
+  );
+  builder.append("damage.jn30201-declined", {
+    ownerPlayerId: context.owner.id,
+    skillId: "xyy.skill.jn30201",
+    choiceId: context.choice.choiceId,
+    sourceEffectId: context.sourceEffectId,
+    targetPlayerIds: context.targetPlayerIds,
+    resolvedAt: command.deadlineAt,
+    timeout: true,
+  });
+  return { accepted: true, state: builder.state, events: builder.events };
 }
 
 export function applyDyingCommand(

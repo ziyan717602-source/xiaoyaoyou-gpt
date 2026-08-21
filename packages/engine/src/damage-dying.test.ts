@@ -391,6 +391,10 @@ describe("M05 damage and dying core", () => {
           hp: 3,
         },
         [victim]: { ...state.players[victim]!, hp: 1 },
+        [recipient]: {
+          ...state.players[recipient]!,
+          heroId: "xyy.hero.xj201",
+        },
       },
     };
     const damage = planDamageBatch(state, [
@@ -800,6 +804,369 @@ describe("M05 damage and dying core", () => {
       ]),
     );
     expect(state.dyingBatch).toBeNull();
+  });
+
+  it("opens owner-private JN30201 pursuit before dying and chains once per paid card", () => {
+    let state = playing("jn30201-chain");
+    const owner = state.turnOrder[0]!;
+    const target = state.turnOrder[1]!;
+    state = arrange(state, {
+      [owner]: ["xyy.card.jp01@1", "xyy.card.jp02@3"],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [owner]: {
+          ...state.players[owner]!,
+          heroId: "xyy.hero.xj302",
+        },
+        [target]: { ...state.players[target]!, hp: 5 },
+      },
+    };
+    const original = planDamageBatch(state, [
+      {
+        itemId: "jn30201-original:damage:0",
+        sourcePlayerId: target,
+        targetPlayerId: target,
+        amount: 2,
+        element: "thunder",
+      },
+    ]);
+    state = applyPlannedDamage(state, "jn30201-original", original, 100);
+
+    expect(state.players[target]!.hp).toBe(3);
+    expect(state.dyingBatch).toBeNull();
+    expect(state.pendingChoice).toMatchObject({
+      playerIds: [owner],
+      prompt: "hero-skill:xyy.skill.jn30201",
+      minSelections: 0,
+      maxSelections: 1,
+      optionIds: ["xyy.card.jp01@1", "xyy.card.jp02@3"],
+      fallback: "pass",
+    });
+    expect(createPlayerView(state, owner).availableActions).toContainEqual({
+      type: "submit-choice",
+      choiceId: state.pendingChoice!.choiceId,
+      optionIds: ["xyy.card.jp01@1", "xyy.card.jp02@3"],
+      minSelections: 0,
+      maxSelections: 1,
+    });
+    expect(createPlayerView(state, target).pendingChoice).toBeNull();
+    expect(createPlayerView(state, target).availableActions).toEqual([]);
+    expect(
+      applied(
+        state,
+        owner,
+        "jn30201-forged-card",
+        {
+          type: "submit-choice",
+          choiceId: state.pendingChoice!.choiceId,
+          selections: ["xyy.card.tp01@33"],
+        },
+        101,
+      ),
+    ).toMatchObject({ accepted: false });
+    const plannedActivation = applied(
+      state,
+      owner,
+      "jn30201-tamper-source",
+      {
+        type: "submit-choice",
+        choiceId: state.pendingChoice!.choiceId,
+        selections: ["xyy.card.jp01@1"],
+      },
+      101,
+    );
+    expect(plannedActivation.accepted).toBe(true);
+    if (!plannedActivation.accepted) {
+      throw new Error(plannedActivation.reason);
+    }
+    const activationEvent = plannedActivation.events[0]!;
+    expect(() =>
+      reduceEvent(state, {
+        ...activationEvent,
+        payload: {
+          ...activationEvent.payload,
+          sourceEffectId: "forged-source",
+        },
+      }),
+    ).toThrow("JN30201 event is not applicable");
+    expect(() =>
+      reduceEvent(state, {
+        ...activationEvent,
+        payload: {
+          ...activationEvent.payload,
+          targetPlayerIds: [owner],
+        },
+      }),
+    ).toThrow("JN30201 event is not applicable");
+    const damageItems = activationEvent.payload.damageItems as readonly Record<
+      string,
+      unknown
+    >[];
+    expect(() =>
+      reduceEvent(state, {
+        ...activationEvent,
+        payload: {
+          ...activationEvent.payload,
+          damageItems: damageItems.map((item, index) =>
+            index === 0 ? { ...item, amount: 2 } : item,
+          ),
+        },
+      }),
+    ).toThrow("JN30201 damage event is not applicable");
+    const declined = accepted(
+      JSON.parse(JSON.stringify(state)) as MatchState,
+      owner,
+      "jn30201-decline",
+      {
+        type: "submit-choice",
+        choiceId: state.pendingChoice!.choiceId,
+        selections: [],
+      },
+      101,
+    );
+    expect(declined.players[target]!.hp).toBe(3);
+    expect(declined.players[owner]!.hand).toEqual([
+      "xyy.card.jp01@1",
+      "xyy.card.jp02@3",
+    ]);
+    expect(declined.pendingChoice).toBeNull();
+    expect(declined.dyingBatch).toBeNull();
+
+    state = accepted(
+      state,
+      owner,
+      "jn30201-first",
+      {
+        type: "submit-choice",
+        choiceId: state.pendingChoice!.choiceId,
+        selections: ["xyy.card.jp01@1"],
+      },
+      102,
+    );
+    expect(state.players[owner]!.hand).toEqual(["xyy.card.jp02@3"]);
+    expect(state.discardPile).toContain("xyy.card.jp01@1");
+    expect(state.reactionWindow).not.toBeNull();
+    state = passAllReactions(state, 103);
+    expect(state.players[target]!.hp).toBe(2);
+    expect(state.pendingChoice?.prompt).toBe("hero-skill:xyy.skill.jn30201");
+
+    state = accepted(
+      state,
+      owner,
+      "jn30201-second",
+      {
+        type: "submit-choice",
+        choiceId: state.pendingChoice!.choiceId,
+        selections: ["xyy.card.jp02@3"],
+      },
+      120,
+    );
+    state = passAllReactions(state, 121);
+    expect(state.players[target]!.hp).toBe(1);
+    expect(state.players[owner]!.hand).toEqual([]);
+    expect(state.pendingChoice).toBeNull();
+    expect(state.dyingBatch).toBeNull();
+  });
+
+  it("does not offer JN30201 for owner-only or CHAIN_INVAO damage", () => {
+    let selfOnly = playing("jn30201-self-only");
+    const owner = selfOnly.turnOrder[0]!;
+    const target = selfOnly.turnOrder[1]!;
+    selfOnly = arrange(selfOnly, { [owner]: ["xyy.card.jp01@1"] });
+    selfOnly = {
+      ...selfOnly,
+      players: {
+        ...selfOnly.players,
+        [owner]: {
+          ...selfOnly.players[owner]!,
+          heroId: "xyy.hero.xj302",
+          hp: 5,
+        },
+      },
+    };
+    selfOnly = applyPlannedDamage(
+      selfOnly,
+      "jn30201-self-only",
+      planDamageBatch(selfOnly, [
+        {
+          itemId: "jn30201-self-only:damage:0",
+          sourcePlayerId: target,
+          targetPlayerId: owner,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+      100,
+    );
+    expect(selfOnly.players[owner]!.hp).toBe(4);
+    expect(selfOnly.pendingChoice).toBeNull();
+
+    let chainBlocked = playing("jn30201-chain-inavo");
+    const chainOwner = chainBlocked.turnOrder[0]!;
+    const chainTarget = chainBlocked.turnOrder[1]!;
+    chainBlocked = arrange(chainBlocked, {
+      [chainOwner]: ["xyy.card.jp01@1"],
+    });
+    chainBlocked = {
+      ...chainBlocked,
+      players: {
+        ...chainBlocked.players,
+        [chainOwner]: {
+          ...chainBlocked.players[chainOwner]!,
+          heroId: "xyy.hero.xj302",
+        },
+      },
+    };
+    chainBlocked = applyPlannedDamage(
+      chainBlocked,
+      "jn30201-chain-inavo",
+      planDamageBatch(chainBlocked, [
+        {
+          itemId: "jn30201-chain-inavo:damage:0",
+          sourcePlayerId: chainOwner,
+          targetPlayerId: chainTarget,
+          amount: 1,
+          element: "neutral",
+          hpEvoMask: ["chain-inavo"],
+        },
+      ]),
+      100,
+    );
+    expect(chainBlocked.pendingChoice).toBeNull();
+  });
+
+  it("includes the JN30201 owner when the same original batch also damaged another player", () => {
+    let state = playing("jn30201-owner-and-other");
+    const owner = state.turnOrder[0]!;
+    const target = state.turnOrder[1]!;
+    state = arrange(state, { [owner]: ["xyy.card.jp01@1"] });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [owner]: {
+          ...state.players[owner]!,
+          heroId: "xyy.hero.xj302",
+          hp: 5,
+        },
+        [target]: { ...state.players[target]!, hp: 5 },
+      },
+    };
+    state = applyPlannedDamage(
+      state,
+      "jn30201-owner-and-other",
+      planDamageBatch(state, [
+        {
+          itemId: "jn30201-owner-and-other:damage:0",
+          sourcePlayerId: target,
+          targetPlayerId: owner,
+          amount: 1,
+          element: "neutral",
+        },
+        {
+          itemId: "jn30201-owner-and-other:damage:1",
+          sourcePlayerId: target,
+          targetPlayerId: target,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+      100,
+    );
+    expect(state.players[owner]!.hp).toBe(4);
+    expect(state.players[target]!.hp).toBe(4);
+    expect(state.effectStack.at(-1)?.targetIds).toEqual([owner, target]);
+    state = accepted(
+      state,
+      owner,
+      "jn30201-owner-and-other-activate",
+      {
+        type: "submit-choice",
+        choiceId: state.pendingChoice!.choiceId,
+        selections: ["xyy.card.jp01@1"],
+      },
+      101,
+    );
+    state = passAllReactions(state, 102);
+    expect(state.players[owner]!.hp).toBe(3);
+    expect(state.players[target]!.hp).toBe(3);
+    expect(state.pendingChoice).toBeNull();
+    expect(state.dyingBatch).toBeNull();
+  });
+
+  it("times out JN30201 as pass before starting the original dying batch", () => {
+    let state = playing("jn30201-timeout-before-dying");
+    const owner = state.turnOrder[0]!;
+    const target = state.turnOrder[1]!;
+    state = arrange(state, { [owner]: ["xyy.card.jp01@1"] });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [owner]: {
+          ...state.players[owner]!,
+          heroId: "xyy.hero.xj302",
+        },
+        [target]: { ...state.players[target]!, hp: 1 },
+      },
+    };
+    state = applyPlannedDamage(
+      state,
+      "jn30201-lethal",
+      planDamageBatch(state, [
+        {
+          itemId: "jn30201-lethal:damage:0",
+          sourcePlayerId: owner,
+          targetPlayerId: target,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+      100,
+    );
+    expect(state.players[target]!.hp).toBe(0);
+    expect(state.pendingChoice?.prompt).toBe("hero-skill:xyy.skill.jn30201");
+    expect(state.dyingBatch).toBeNull();
+    let activated = accepted(
+      JSON.parse(JSON.stringify(state)) as MatchState,
+      owner,
+      "jn30201-lethal-activate",
+      {
+        type: "submit-choice",
+        choiceId: state.pendingChoice!.choiceId,
+        selections: ["xyy.card.jp01@1"],
+      },
+      101,
+    );
+    activated = passAllReactions(activated, 102);
+    expect(activated.players[target]!.hp).toBe(0);
+    expect(activated.players[owner]!.hand).toEqual([]);
+    expect(activated.discardPile).toContain("xyy.card.jp01@1");
+    expect(activated.dyingBatch?.currentTargetPlayerId).toBe(target);
+    const deadline = collectSystemDeadlines(state).find((candidate) =>
+      candidate.targetId.startsWith("choice:"),
+    );
+    expect(deadline).toBeDefined();
+    const result = applyCommand(state, {
+      origin: "system-timeout",
+      commandId: "jn30201-timeout",
+      matchId: state.matchId,
+      expectedVersion: state.version,
+      deadlineAt: deadline!.deadlineAt,
+      targetId: deadline!.targetId,
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) throw new Error(result.reason);
+    let replayed = state;
+    for (const event of result.events) replayed = reduceEvent(replayed, event);
+    expect(replayed).toEqual(result.state);
+    expect(result.state.players[owner]!.hand).toEqual(["xyy.card.jp01@1"]);
+    expect(result.state.discardPile).not.toContain("xyy.card.jp01@1");
+    expect(result.state.pendingChoice).not.toBeNull();
+    expect(result.state.dyingBatch?.currentTargetPlayerId).toBe(target);
   });
 
   it("applies JN50501 water/fire immunity with IMMUNE_INVAO bypass", () => {

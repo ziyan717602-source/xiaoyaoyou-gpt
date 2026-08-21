@@ -939,6 +939,62 @@ function injectJn20702(state: MatchState, actor: PlayerId): MatchState {
   };
 }
 
+function injectJn30201(
+  state: MatchState,
+  actor: PlayerId,
+  target: PlayerId,
+  owner: PlayerId,
+): MatchState {
+  const openedAt = Date.now();
+  const turnOrder = Object.values(state.players)
+    .sort((left, right) => left.seat - right.seat)
+    .map((player) => player.id);
+  const claimed = new Set(["xyy.card.jp05@10", "xyy.card.jp01@1"]);
+  return {
+    ...state,
+    phase: "playing",
+    activePlayerId: actor,
+    turnOrder,
+    turn: {
+      number: 1,
+      phase: "action",
+      openedAt,
+      deadlineAt: openedAt + 15_000,
+      usedSkillIds: [],
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          turnIndex: turnOrder.indexOf(player.id),
+          heroId: player.id === owner ? "xyy.hero.xj302" : "xyy.hero.xj201",
+          alive: true,
+          hp: player.id === target ? 4 : player.id === owner ? 6 : 4,
+          maxHp: player.id === owner ? 6 : 4,
+          strength: player.id === owner ? 2 : player.strength,
+          dexterity: player.id === owner ? 4 : player.dexterity,
+          handLimit: 3,
+          hand:
+            player.id === actor
+              ? ["xyy.card.jp05@10"]
+              : player.id === owner
+                ? ["xyy.card.jp01@1"]
+                : [],
+          equipment: { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -2742,6 +2798,170 @@ describe("M05 damage/dying over six real WebSockets", () => {
       expect(
         clients[0]!.latestView.players.find((player) => player.id === actor),
       ).toMatchObject({ hp: 5, handCount: 1 });
+    } finally {
+      await closeRunning();
+    }
+  });
+
+  it("restarts JN30201 at private payment and nested damage checkpoints over six sockets", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn30201-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn30201.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const actor = ordered[0]!.id;
+    const target = ordered[1]!.id;
+    const owner = ordered[2]!.id;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+    let serverOpen = true;
+    const closeRunning = async () => {
+      for (const client of clients) client.socket.close();
+      if (serverOpen) {
+        serverOpen = false;
+        await running.server.closeGracefully();
+      }
+    };
+
+    try {
+      await closeRunning();
+      rewriteSnapshot(databasePath, created.roomId, (state) =>
+        injectJn30201(state, actor, target, owner),
+      );
+      running = await start(databasePath);
+      serverOpen = true;
+      clients = await Promise.all(
+        sessions.map((session) => connect(running.wsUrl, session)),
+      );
+      let version = clients[0]!.latestView.version;
+      let response = await send(
+        clients[indexOf(actor)]!,
+        sessions[indexOf(actor)]!,
+        "jn30201-play-jp05",
+        version,
+        {
+          type: "play-card",
+          cardInstanceId: "xyy.card.jp05@10",
+          targetPlayerIds: [target],
+        },
+      );
+      expect(response).toMatchObject({ type: "command-accepted" });
+      version += 1;
+      await waitVersion(clients, version);
+      version = await passReactions(
+        clients,
+        sessions,
+        version,
+        "jn30201-original-pass",
+      );
+      expect(
+        clients[0]!.latestView.players.find((player) => player.id === target),
+      ).toMatchObject({ hp: 2 });
+      expect(clients[indexOf(owner)]!.latestView.pendingChoice).toMatchObject({
+        playerIds: [owner],
+        prompt: "hero-skill:xyy.skill.jn30201",
+        optionIds: ["xyy.card.jp01@1"],
+        minSelections: 0,
+        maxSelections: 1,
+        fallback: "pass",
+      });
+      const pursuitAction = clients[
+        indexOf(owner)
+      ]!.latestView.availableActions.find(
+        (action) => action.type === "submit-choice",
+      );
+      expect(pursuitAction).toMatchObject({
+        type: "submit-choice",
+        optionIds: ["xyy.card.jp01@1"],
+      });
+      for (const player of ordered) {
+        if (player.id === owner) continue;
+        expect(
+          clients[indexOf(player.id)]!.latestView.pendingChoice,
+        ).toBeNull();
+        expect(
+          JSON.stringify(clients[indexOf(player.id)]!.latestView),
+        ).not.toContain("xyy.card.jp01@1");
+      }
+
+      const persistedChoice = JSON.parse(
+        JSON.stringify(clients[indexOf(owner)]!.latestView.pendingChoice),
+      );
+      await closeRunning();
+      running = await start(databasePath);
+      serverOpen = true;
+      clients = await Promise.all(
+        sessions.map((session) => connect(running.wsUrl, session)),
+      );
+      expect(clients[indexOf(owner)]!.latestView.pendingChoice).toEqual(
+        persistedChoice,
+      );
+      version = clients[0]!.latestView.version;
+      response = await send(
+        clients[indexOf(owner)]!,
+        sessions[indexOf(owner)]!,
+        "jn30201-pay-card",
+        version,
+        {
+          type: "submit-choice",
+          choiceId: persistedChoice.choiceId,
+          selections: ["xyy.card.jp01@1"],
+        },
+      );
+      expect(response).toMatchObject({ type: "command-accepted" });
+      version += 1;
+      await waitVersion(clients, version);
+      expect(clients[0]!.latestView.reactionWindow).not.toBeNull();
+      const persistedWindow = JSON.parse(
+        JSON.stringify(clients[0]!.latestView.reactionWindow),
+      );
+
+      await closeRunning();
+      running = await start(databasePath);
+      serverOpen = true;
+      clients = await Promise.all(
+        sessions.map((session) => connect(running.wsUrl, session)),
+      );
+      expect(clients[0]!.latestView.reactionWindow).toEqual(persistedWindow);
+      version = clients[0]!.latestView.version;
+      version = await passReactions(
+        clients,
+        sessions,
+        version,
+        "jn30201-pursuit-pass",
+      );
+      expect(clients[0]!.latestView).toMatchObject({
+        activePlayerId: actor,
+      });
+      expect(clients[0]!.latestView.turn).toMatchObject({
+        number: 1,
+        phase: "action",
+      });
+      expect(
+        clients[0]!.latestView.players.find((player) => player.id === target),
+      ).toMatchObject({ hp: 1 });
+      expect(
+        clients[0]!.latestView.players.find((player) => player.id === owner),
+      ).toMatchObject({ handCount: 0 });
+      expect(clients[0]!.latestView.pendingChoice).toBeNull();
+      expect(clients[0]!.latestView.reactionWindow).toBeNull();
+      expect(clients[0]!.latestView.dyingBatch).toBeNull();
+
+      await closeRunning();
+      running = await start(databasePath);
+      serverOpen = true;
+      clients = await Promise.all(
+        sessions.map((session) => connect(running.wsUrl, session)),
+      );
+      expect(
+        clients[0]!.latestView.players.find((player) => player.id === target),
+      ).toMatchObject({ hp: 1 });
+      expect(clients[0]!.latestView.pendingChoice).toBeNull();
+      expect(clients[0]!.latestView.reactionWindow).toBeNull();
     } finally {
       await closeRunning();
     }
