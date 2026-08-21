@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 38,
-    "verified": 25,
+    "verified": 26,
     "deferred": 0,
-    "unstarted": 142
+    "unstarted": 141
   },
   "executionQueue": [
     {
@@ -1428,8 +1428,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "setup identity and base stats plus JN10601 weapon-dependent dexterity are verified; second-battle JN10602 remains pending CS03",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn10601.md"
+      ],
       "dependencies": {
         "contentIds": ["xyy.skill.jn10601", "xyy.skill.jn10602"],
         "primitives": ["hero-state"],
@@ -3587,9 +3590,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native XJ106 gains exactly one public dexterity while a weapon is equipped; import, replacement, pawn, shared export paths, replay and six-socket restart are verified",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn10601.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

@@ -142,6 +142,71 @@ describe("M03 turn event replay", () => {
     });
   });
 
+  it("replays JN10601 weapon import and pawn export", () => {
+    const base = started("jn10601-replay");
+    const actor = base.activePlayerId!;
+    const initial: MatchState = {
+      ...base,
+      players: {
+        ...base.players,
+        [actor]: {
+          ...base.players[actor]!,
+          heroId: "xyy.hero.xj106",
+          dexterity: 1,
+          hand: ["xyy.card.wq04@50"],
+          equipment: { weapon: null, armor: null },
+        },
+      },
+      drawPile: SETUP_CARD_INSTANCES.filter(
+        (card) => card !== "xyy.card.wq04@50",
+      ),
+      discardPile: [],
+    };
+    const equip = {
+      type: "play-card" as const,
+      cardInstanceId: "xyy.card.wq04@50" as const,
+      targetPlayerIds: [actor],
+    };
+    const first = apply(initial, actor, "jn10601-equip", equip);
+    expect(
+      apply(
+        JSON.parse(JSON.stringify(initial)) as MatchState,
+        actor,
+        "jn10601-equip",
+        equip,
+      ),
+    ).toEqual(first);
+    expect(first.state.players[actor]!.dexterity).toBe(2);
+
+    const pawn = {
+      type: "play-card" as const,
+      cardInstanceId: "xyy.card.wq04@50" as const,
+      targetPlayerIds: [],
+      mode: "pawn" as const,
+    };
+    const second = apply(first.state, actor, "jn10601-pawn", pawn);
+    expect(
+      apply(
+        JSON.parse(JSON.stringify(first.state)) as MatchState,
+        actor,
+        "jn10601-pawn",
+        pawn,
+      ),
+    ).toEqual(second);
+    let replayed = initial;
+    for (const event of [...first.events, ...second.events]) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(second.state);
+    expect(second.state.players[actor]).toMatchObject({
+      dexterity: 1,
+      equipment: { weapon: null, armor: null },
+    });
+  });
+
   it("replays repeated JN10501 private teammate hand transfers across JSON restarts", () => {
     const base = started("jn10501-replay");
     const owner = base.activePlayerId!;

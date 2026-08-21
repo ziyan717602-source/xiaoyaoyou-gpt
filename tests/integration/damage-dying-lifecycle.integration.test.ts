@@ -535,11 +535,13 @@ function injectJn50401(
   state: MatchState,
   owner: PlayerId,
   firstTarget: PlayerId,
+  secondTarget: PlayerId,
 ): MatchState {
   const claimed = new Set([
     "xyy.card.wq01@47",
     "xyy.card.fj01@52",
     "xyy.card.wq02@48",
+    "xyy.card.wq03@49",
   ]);
   return {
     ...state,
@@ -565,13 +567,16 @@ function injectJn50401(
               ? "xyy.hero.xj404"
               : player.id === firstTarget
                 ? "xyy.hero.xj104"
-                : player.heroId,
+                : player.id === secondTarget
+                  ? "xyy.hero.xj106"
+                  : player.heroId,
           alive: true,
           hp: player.id === owner ? 6 : player.maxHp,
           maxHp: player.id === owner ? 6 : player.maxHp,
           handLimit: player.id === owner ? 5 : player.handLimit,
           strength: player.id === firstTarget ? 3 : player.strength,
-          hand: [],
+          dexterity: player.id === secondTarget ? 1 : player.dexterity,
+          hand: player.id === owner ? ["xyy.card.wq03@49"] : [],
           equipment:
             player.id === owner
               ? {
@@ -3123,21 +3128,23 @@ describe("M05 damage/dying over six real WebSockets", () => {
       .filter((playerId) => playerId !== owner);
     const firstTarget = targets[0]!;
     const secondTarget = targets[1]!;
+    const thirdTarget = targets[2]!;
     const indexOf = (playerId: PlayerId) =>
       sessions.findIndex((session) => session.playerId === playerId);
     const claimed = new Set([
       "xyy.card.wq01@47",
       "xyy.card.fj01@52",
       "xyy.card.wq02@48",
+      "xyy.card.wq03@49",
     ]);
     const expectedDrawn = SETUP_CARD_INSTANCES.filter(
       (card) => !claimed.has(card),
-    ).slice(0, 4);
+    ).slice(0, 6);
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
     rewriteSnapshot(databasePath, created.roomId, (state) =>
-      injectJn50401(state, owner, firstTarget),
+      injectJn50401(state, owner, firstTarget, secondTarget),
     );
     running = await start(databasePath);
     clients = await Promise.all(
@@ -3190,7 +3197,7 @@ describe("M05 damage/dying over six real WebSockets", () => {
       clients[indexOf(owner)]!.latestView.players.find(
         (player) => player.id === owner,
       )?.hand,
-    ).toEqual(expectedDrawn.slice(0, 2));
+    ).toEqual(["xyy.card.wq03@49", ...expectedDrawn.slice(0, 2)]);
     expect(
       clients[0]!.latestView.players.find((player) => player.id === firstTarget)
         ?.equipment.weapon,
@@ -3252,11 +3259,35 @@ describe("M05 damage/dying over six real WebSockets", () => {
     response = await send(
       clients[indexOf(owner)]!,
       sessions[indexOf(owner)]!,
+      "jn10601-equip-second-weapon",
+      version,
+      {
+        type: "play-card",
+        cardInstanceId: "xyy.card.wq03@49",
+        targetPlayerIds: [owner],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[indexOf(owner)]!.latestView.availableActions.find(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn50401",
+      ),
+    ).toMatchObject({
+      cardInstanceIds: ["xyy.card.wq03@49", "xyy.card.fj01@52"],
+      targetPlayerIds: targets.filter((playerId) => playerId !== firstTarget),
+    });
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
       "jn50401-second-transfer",
       version,
       {
         type: "activate-hero-skill",
-        cardInstanceIds: ["xyy.card.fj01@52"],
+        cardInstanceIds: ["xyy.card.wq03@49"],
         skillId: "xyy.skill.jn50401",
         targetPlayerIds: [secondTarget],
       },
@@ -3267,7 +3298,37 @@ describe("M05 damage/dying over six real WebSockets", () => {
     expect(
       clients[0]!.latestView.players.find(
         (player) => player.id === secondTarget,
-      )?.equipment.armor,
+      )?.equipment.weapon,
+    ).toBe("xyy.card.wq03@49");
+    expect(
+      clients[0]!.latestView.players.find(
+        (player) => player.id === secondTarget,
+      )?.dexterity,
+    ).toBe(2);
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(expectedDrawn.slice(0, 4));
+
+    response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn50401-third-transfer",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: ["xyy.card.fj01@52"],
+        skillId: "xyy.skill.jn50401",
+        targetPlayerIds: [thirdTarget],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === thirdTarget)
+        ?.equipment.armor,
     ).toBe("xyy.card.fj01@52");
     expect(
       clients[indexOf(owner)]!.latestView.players.find(
@@ -3287,6 +3348,21 @@ describe("M05 damage/dying over six real WebSockets", () => {
         (player) => player.id === owner,
       )?.hand,
     ).toEqual(expectedDrawn);
+    expect(
+      clients[0]!.latestView.players.find(
+        (player) => player.id === secondTarget,
+      ),
+    ).toMatchObject({
+      dexterity: 2,
+      equipment: { weapon: "xyy.card.wq03@49", armor: null },
+    });
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      const serialized = JSON.stringify(
+        clients[indexOf(player.id)]!.latestView,
+      );
+      for (const card of expectedDrawn) expect(serialized).not.toContain(card);
+    }
     expect(
       clients[indexOf(owner)]!.latestView.availableActions.some(
         (action) =>

@@ -182,6 +182,10 @@ const swordFingerPlan = plan.items.find(
 const swordFingerHeroPlan = plan.items.find(
   (item) => item.id === "xyy.hero.xj104",
 );
+const swordHitPlan = plan.items.find((item) => item.id === "xyy.skill.jn10601");
+const swordHitHeroPlan = plan.items.find(
+  (item) => item.id === "xyy.hero.xj106",
+);
 assert(skillPlan?.state === "verified", "JN50402 must be verified in plan.");
 assert(
   giftSwordPlan?.state === "verified",
@@ -318,6 +322,14 @@ assert(
     swordFingerHeroPlan?.boundary.includes("JN10402") &&
     swordFingerHeroPlan?.boundary.includes("CS03"),
   "XJ104 boundary must name completed strength skill and pending battle skill.",
+);
+assert(swordHitPlan?.state === "verified", "JN10601 must be verified.");
+assert(swordHitHeroPlan?.state === "partial", "XJ106 must remain partial.");
+assert(
+  swordHitHeroPlan?.boundary.includes("JN10601") &&
+    swordHitHeroPlan?.boundary.includes("JN10602") &&
+    swordHitHeroPlan?.boundary.includes("CS03"),
+  "XJ106 boundary must name completed dexterity skill and pending battle skill.",
 );
 for (const [source, token] of [
   [setupSource, "handLimit: handLimitForHero(heroId)"],
@@ -459,14 +471,20 @@ for (const [source, token] of [
   [heroStats, 'heroHasSkill(player.heroId, "xyy.skill.jn10401")'],
   [view, "readonly strength: number"],
   [view, "strength: player.strength"],
-  [turn, "withJn10401Equipment"],
-  [reaction, "withJn10401Equipment"],
-  [damage, "withJn10401Equipment"],
+  [turn, "withWeaponSkillEquipment"],
+  [reaction, "withWeaponSkillEquipment"],
+  [damage, "withWeaponSkillEquipment"],
   [turnUnit, "applies JN10401 exactly once"],
   [replay, "replays JN10401 weapon import, replacement, and pawn export"],
   [reactionReplay, "expect(primary.state.players[target]!.strength).toBe(2)"],
   [damageUnit, "strength: 2"],
   [damageNetwork, "player.id === firstTarget ? 3 : player.strength"],
+  [heroStats, 'heroHasSkill(player.heroId, "xyy.skill.jn10601")'],
+  [heroStats, "dexterity: player.dexterity + dexterityDelta"],
+  [turnUnit, "applies JN10601 exactly once"],
+  [replay, "replays JN10601 weapon import and pawn export"],
+  [damageNetwork, "player.id === secondTarget ? 1 : player.dexterity"],
+  [damageNetwork, "dexterity: 2"],
 ]) {
   assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
@@ -491,14 +509,15 @@ for (const path of [
   "docs/verification/receipts/cs02-jn20702.md",
   "docs/verification/receipts/cs02-jn30201.md",
   "docs/verification/receipts/cs02-jn10401.md",
+  "docs/verification/receipts/cs02-jn10601.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 149,
-  "Expected 149 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 156,
+  "Expected 156 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN10401/JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20701/JN20702/JN30201/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20602 core partial pending CS03 pets`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN10401/JN10601/JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20701/JN20702/JN30201/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20602 core partial pending CS03 pets`,
 );

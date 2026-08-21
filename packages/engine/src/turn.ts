@@ -15,7 +15,7 @@ import { planDraw } from "./card-zones.js";
 import { planDamageBatch } from "./damage-dying.js";
 import type { MatchState, TeamId, TurnPhase } from "./index.js";
 import { planCureBatch, playersAfterCures } from "./healing.js";
-import { withJn10401Equipment } from "./hero-stats.js";
+import { withWeaponSkillEquipment } from "./hero-stats.js";
 import {
   beginDamageResponse,
   beginCancellableCardEffect,
@@ -332,7 +332,7 @@ export function reduceTurnEvent(
         players: {
           ...state.players,
           [playerId]: {
-            ...withJn10401Equipment(
+            ...withWeaponSkillEquipment(
               player,
               sourceZone === "weapon" || sourceZone === "armor"
                 ? { ...player.equipment, [sourceZone]: null }
@@ -576,13 +576,13 @@ export function reduceTurnEvent(
         players: {
           ...state.players,
           [playerId]: {
-            ...withJn10401Equipment(player, {
+            ...withWeaponSkillEquipment(player, {
               ...player.equipment,
               [sourceZone]: null,
             }),
           },
           [target.id]: {
-            ...withJn10401Equipment(target, {
+            ...withWeaponSkillEquipment(target, {
               ...target.equipment,
               [slot!]: cardInstanceId!,
             }),
@@ -720,7 +720,7 @@ export function reduceTurnEvent(
       players: {
         ...state.players,
         [playerId]: {
-          ...withJn10401Equipment(
+          ...withWeaponSkillEquipment(
             player,
             fromWeapon
               ? { ...player.equipment, weapon: null }
@@ -763,7 +763,7 @@ export function reduceTurnEvent(
         players: {
           ...state.players,
           [playerId]: {
-            ...withJn10401Equipment(player, {
+            ...withWeaponSkillEquipment(player, {
               ...player.equipment,
               [slot]: cardInstanceId,
             }),
