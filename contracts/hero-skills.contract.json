@@ -93,6 +93,14 @@
       "status": "verified",
       "verifiedBoundary": "native ownership, whole-batch death timing, owner-death and victory skip, hand/equipment collection, optional repeated distribution, retain remainder, canonical self-damage response and recursive dying, 15-second/disconnect pass, JSON replay, SQLite loot/reaction restart and six-socket privacy",
       "linkedPending": []
+    },
+    "xyy.skill.jn10502": {
+      "name": "万蛊蚀天",
+      "owner": "xyy.hero.xj105",
+      "rule": "at the start of the native owner's reward phase, if her hand is empty, every living teammate draws one in seat order, then every other living player takes one ordinary neutral damage before the owner receives the normal reward draw",
+      "status": "verified",
+      "verifiedBoundary": "native empty-hand trigger, pre-reward ordering, living-team deterministic draws, all-other canonical neutral damage, TP03 prevention, dying/death continuation, nonempty skip, exact-once ordinary reward, JSON replay, SQLite response restart and six-socket privacy",
+      "linkedPending": []
     }
   },
   "legacyEvidence": [
@@ -127,7 +135,10 @@
     "PSDGamepkg/XIG.cs:1015+ G0HQ type 0 moves the requested hand-card count and hides transferred identities from uninvolved players",
     "psd.db3:Skill:JN10501 OCCURS R#GR ONCE 0 and description give any number of hand cards to one or more players during own action phase",
     "PSDGamepkg/JNS/XJ405.cs:201-236 JN10501 requires own hand and another living teammate, selects one-to-all own cards plus exactly one teammate per activation and encrypts identities for uninvolved players",
-    "PSDGamepkg/XIG.cs:1015-1042 G0HQ type 0 subtype 1 explicitly moves selected instances and exposes identities only to source and recipient"
+    "PSDGamepkg/XIG.cs:1015-1042 G0HQ type 0 subtype 1 explicitly moves selected instances and exposes identities only to source and recipient",
+    "psd.db3:Skill:JN10502 OCCURS !R#BC PRIORS -150 ONCE 1 and description empty-hand team draw one followed by one HP loss to every other character",
+    "PSDGamepkg/JNS/XJ405.cs:238-246 JN10502 requires zero owner hand cards, draws one for every living teammate, then calls Harm against every other living player",
+    "PSDGamepkg/XIR.cs:622-630 runs BC mixed-stage skills before the ordinary priority-100 reward draw, placing JN10502 priority -150 before the owner's normal draw"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -171,7 +182,11 @@
     "jn10501TransferRepresentation": "each repeatable activation records one explicit nonempty subset of current own hand instances and exactly one other living teammate, matching the C# input/action even though the prose describes one or more recipients across repeated uses",
     "jn10501OrderingAndZones": "selected instances are removed from the source hand and appended to the recipient hand in command order; no discard, equipment, effect-stack or reaction step is created",
     "jn10501Timeout": "the skill is optional and ONCE 0, so the shared 15-second action timeout activates nothing and pays no cards; successful use leaves it available while hand cards and a living teammate remain",
-    "jn10501Visibility": "the available action and source hand identities are owner-only, received identities become visible only in the recipient own-hand projection, and all other seats see public hand counts without instance ids"
+    "jn10501Visibility": "the available action and source hand identities are owner-only, received identities become visible only in the recipient own-hand projection, and all other seats see public hand counts without instance ids",
+    "jn10502Timing": "the empty-hand predicate is evaluated on entry to reward before any ordinary reward draw; living teammates draw first in deterministic seat order, then all-other damage resolves completely, and only then does the ordinary owner reward resume exactly once",
+    "jn10502Continuation": "turn.rewardContinuation serializes drawing-team and resolving-damage steps plus remaining team draws across TP03/FJ05 responses, nested counters, dying rescue/death and SQLite restart; only quiescent resolving-damage completion emits reward-resumed and ordinary draw events under the same command version",
+    "jn10502Damage": "every other living player receives one ordinary neutral damage item through the canonical batch pipeline, so TP03 removes only its owner's preventable item and unprevented items can open multi-target dying",
+    "jn10502Visibility": "each living teammate sees only the instance drawn into their own hand; other seats see public hand counts, while the later ordinary reward identity remains absent from every projection until the continuation resumes"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -267,6 +282,13 @@
     "CS02-91": "JN10501-moves-the-exact-selected-subset-in-command-order-from-source-hand-to-one-recipient-hand-without-touching-other-zones",
     "CS02-92": "JN10501-is-repeatable-without-a-once-marker-and-disappears-only-when-no-hand-card-or-living-teammate-remains",
     "CS02-93": "JN10501-opens-no-reaction-window-and-optional-action-timeout-transfers-no-card",
-    "CS02-94": "JN10501-replays-through-JSON-and-persists-repeated-transfers-final-zones-and-private-identities-through-SQLite-restarts-with-six-WebSockets"
+    "CS02-94": "JN10501-replays-through-JSON-and-persists-repeated-transfers-final-zones-and-private-identities-through-SQLite-restarts-with-six-WebSockets",
+    "CS02-95": "JN10502-triggers-only-for-native-XJ105-entering-reward-with-an-empty-hand-and-skips-nonempty-entry",
+    "CS02-96": "JN10502-draws-one-for-every-living-teammate-in-deterministic-seat-order-before-damage-or-ordinary-reward",
+    "CS02-97": "JN10502-plans-one-ordinary-neutral-damage-for-every-other-living-player-through-the-canonical-response-pipeline",
+    "CS02-98": "TP03-prevents-only-its-owner-JN10502-damage-item-while-the-other-items-resolve",
+    "CS02-99": "JN10502-delays-and-resumes-the-ordinary-reward-exactly-once-after-response-and-dying-become-quiescent",
+    "CS02-100": "JN10502-replays-identically-through-JSON-and-survives-response-and-dying-restarts",
+    "CS02-101": "JN10502-persists-its-window-and-private-team-draw-identities-through-SQLite-restart-with-six-WebSockets"
   }
 }

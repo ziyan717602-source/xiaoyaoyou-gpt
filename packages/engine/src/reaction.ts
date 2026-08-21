@@ -421,8 +421,11 @@ export function reduceReactionEvent(
   ) {
     throw new Error("Reaction event does not extend the current match head.");
   }
-  if (state.phase !== "playing" || state.turn?.phase !== "action") {
-    throw new Error("Reaction events require the action phase.");
+  if (
+    state.phase !== "playing" ||
+    (state.turn?.phase !== "action" && state.turn?.phase !== "reward")
+  ) {
+    throw new Error("Reaction events require an interactive turn phase.");
   }
   const matchVersion = numberPayload(event, "matchVersion");
   const expectedMatchVersion =

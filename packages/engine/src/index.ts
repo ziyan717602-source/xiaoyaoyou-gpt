@@ -34,6 +34,12 @@ export interface TurnState {
   readonly usedSkillIds?: readonly string[];
   /** Per-skill targets already visited this turn; omitted until a skill needs it. */
   readonly usedSkillTargetIds?: Readonly<Record<string, readonly PlayerId[]>>;
+  /** Serialized reward-phase continuation while JN10502 draws/damage resolve. */
+  readonly rewardContinuation?: {
+    readonly kind: "jn10502-damage";
+    readonly step: "drawing-team" | "resolving-damage";
+    readonly pendingTeamDrawPlayerIds: readonly PlayerId[];
+  };
 }
 
 export interface HeroOffer {

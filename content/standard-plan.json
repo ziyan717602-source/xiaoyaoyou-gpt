@@ -7,10 +7,10 @@
     "standard": 177,
     "sharedCore": 28,
     "total": 205,
-    "partial": 38,
-    "verified": 18,
+    "partial": 37,
+    "verified": 20,
     "deferred": 0,
-    "unstarted": 149
+    "unstarted": 148
   },
   "executionQueue": [
     {
@@ -1404,11 +1404,12 @@
       "kind": "hero",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "partial",
-      "boundary": "setup identity and base stats plus JN10501 repeatable private teammate hand transfer are verified; JN10502 remains pending",
+      "state": "verified",
+      "boundary": "setup identity, base stats and both native skills JN10501/JN10502 are fully verified",
       "evidence": [
         "M02-SETUP-AND-TEAMS",
-        "receipt:docs/verification/receipts/cs02-jn10501.md"
+        "receipt:docs/verification/receipts/cs02-jn10501.md",
+        "receipt:docs/verification/receipts/cs02-jn10502.md"
       ],
       "dependencies": {
         "contentIds": ["xyy.skill.jn10501", "xyy.skill.jn10502"],
@@ -3547,9 +3548,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "native empty-hand reward-phase trigger draws one for each living teammate before canonical all-other neutral damage, then resumes the ordinary reward exactly once through response, dying, JSON replay and six-socket restart",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn10502.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

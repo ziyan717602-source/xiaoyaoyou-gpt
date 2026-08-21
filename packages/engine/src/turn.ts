@@ -12,9 +12,11 @@ import type {
   EngineCommand,
 } from "./architecture.js";
 import { planDraw } from "./card-zones.js";
+import { planDamageBatch } from "./damage-dying.js";
 import type { MatchState, TeamId, TurnPhase } from "./index.js";
 import { planCureBatch, playersAfterCures } from "./healing.js";
 import {
+  beginDamageResponse,
   beginCancellableCardEffect,
   beginSkillConvertedCardEffect,
 } from "./reaction.js";
@@ -134,7 +136,8 @@ export function reduceTurnEvent(
     if (
       state.turn.phase !== from ||
       PHASE_EDGES[from] === undefined ||
-      !PHASE_EDGES[from].includes(to)
+      !PHASE_EDGES[from].includes(to) ||
+      (from === "reward" && state.turn.rewardContinuation !== undefined)
     ) {
       throw new Error(`Invalid turn phase transition ${from} -> ${to}.`);
     }
@@ -726,10 +729,21 @@ export function reduceTurnEvent(
     const validReason =
       (reason === "reward" &&
         state.turn.phase === "reward" &&
+        state.turn.rewardContinuation === undefined &&
         state.activePlayerId === playerId) ||
       (reason === "card-effect" &&
         state.turn.phase === "action" &&
-        player?.alive === true);
+        player?.alive === true) ||
+      (reason === "hero-skill:xyy.skill.jn10502" &&
+        state.turn.phase === "reward" &&
+        state.turn.rewardContinuation?.kind === "jn10502-damage" &&
+        state.turn.rewardContinuation.step === "drawing-team" &&
+        state.turn.rewardContinuation.pendingTeamDrawPlayerIds[0] ===
+          playerId &&
+        player?.alive === true &&
+        state.activePlayerId !== null &&
+        state.players[state.activePlayerId]?.team !== null &&
+        player.team === state.players[state.activePlayerId]?.team);
     if (player === undefined || requestedCount < 0 || !validReason) {
       throw new Error("Card draw event is not applicable.");
     }
@@ -749,7 +763,129 @@ export function reduceTurnEvent(
       drawPile: expected.drawPile,
       discardPile: expected.discardPile,
       rng: expected.rng,
+      turn:
+        reason === "hero-skill:xyy.skill.jn10502"
+          ? {
+              ...state.turn,
+              rewardContinuation: {
+                kind: "jn10502-damage",
+                step: "drawing-team",
+                pendingTeamDrawPlayerIds:
+                  state.turn.rewardContinuation!.pendingTeamDrawPlayerIds.slice(
+                    1,
+                  ),
+              },
+            }
+          : state.turn,
     };
+  } else if (event.type === "turn.hero-skill-triggered") {
+    const playerId = stringPayload(event, "playerId");
+    const skillId = stringPayload(event, "skillId");
+    const player = state.players[playerId];
+    if (
+      skillId !== "xyy.skill.jn10502" ||
+      state.turn.phase !== "reward" ||
+      state.turn.rewardContinuation !== undefined ||
+      state.activePlayerId !== playerId ||
+      player === undefined ||
+      !player.alive ||
+      player.heroId === null ||
+      !heroHasSkill(player.heroId, skillId) ||
+      player.hand.length !== 0 ||
+      player.team === null ||
+      state.pendingChoice !== null ||
+      state.reactionWindow !== null ||
+      state.dyingBatch !== null
+    ) {
+      throw new Error("JN10502 trigger event is not applicable.");
+    }
+    const pendingTeamDrawPlayerIds = Object.values(state.players)
+      .filter((candidate) => candidate.alive && candidate.team === player.team)
+      .sort((left, right) => left.seat - right.seat)
+      .map((candidate) => candidate.id);
+    next = {
+      ...state,
+      turn: {
+        ...state.turn,
+        rewardContinuation: {
+          kind: "jn10502-damage",
+          step: "drawing-team",
+          pendingTeamDrawPlayerIds,
+        },
+      },
+    };
+  } else if (event.type === "turn.damage-started") {
+    const playerId = stringPayload(event, "playerId");
+    const skillId = stringPayload(event, "skillId");
+    const sourceEffectId = stringPayload(event, "sourceEffectId");
+    const openedAt = numberPayload(event, "openedAt");
+    const player = state.players[playerId];
+    const targets = Object.values(state.players)
+      .filter((candidate) => candidate.alive && candidate.id !== playerId)
+      .sort((left, right) => left.seat - right.seat);
+    const expected = planDamageBatch(
+      state,
+      targets.map((target, index) => ({
+        itemId: `${sourceEffectId}:damage:${index}`,
+        sourcePlayerId: playerId,
+        targetPlayerId: target.id,
+        amount: 1,
+        element: "neutral" as const,
+      })),
+    );
+    if (
+      skillId !== "xyy.skill.jn10502" ||
+      state.turn.phase !== "reward" ||
+      state.turn.rewardContinuation?.kind !== "jn10502-damage" ||
+      state.turn.rewardContinuation.step !== "drawing-team" ||
+      state.turn.rewardContinuation.pendingTeamDrawPlayerIds.length !== 0 ||
+      state.activePlayerId !== playerId ||
+      player === undefined ||
+      !player.alive ||
+      player.heroId === null ||
+      !heroHasSkill(player.heroId, skillId) ||
+      sourceEffectId !==
+        `${state.matchId}:effect:jn10502:turn:${state.turn.number}` ||
+      state.pendingChoice !== null ||
+      state.reactionWindow !== null ||
+      state.dyingBatch !== null ||
+      JSON.stringify(event.payload.damageItems) !== JSON.stringify(expected)
+    ) {
+      throw new Error("JN10502 damage event is not applicable.");
+    }
+    const resolvingState: MatchState = {
+      ...state,
+      turn: {
+        ...state.turn,
+        rewardContinuation: {
+          ...state.turn.rewardContinuation,
+          step: "resolving-damage",
+        },
+      },
+    };
+    next = beginDamageResponse(
+      resolvingState,
+      sourceEffectId,
+      playerId,
+      expected,
+      openedAt,
+    );
+  } else if (event.type === "turn.reward-resumed") {
+    const playerId = stringPayload(event, "playerId");
+    if (
+      state.turn.phase !== "reward" ||
+      state.turn.rewardContinuation?.kind !== "jn10502-damage" ||
+      state.turn.rewardContinuation.step !== "resolving-damage" ||
+      state.turn.rewardContinuation.pendingTeamDrawPlayerIds.length !== 0 ||
+      state.activePlayerId !== playerId ||
+      state.pendingChoice !== null ||
+      state.reactionWindow !== null ||
+      state.dyingBatch !== null
+    ) {
+      throw new Error("Reward continuation event is not applicable.");
+    }
+    const { rewardContinuation: _completed, ...turn } = state.turn;
+    next = { ...state, turn };
   } else if (event.type === "turn.cards-discarded") {
     const playerId = stringPayload(event, "playerId");
     const cards = stringsPayload(event, "cardInstanceIds") as CardInstanceId[];
@@ -856,6 +992,7 @@ class EventBuilder {
     private readonly commandId: CommandId,
     private readonly matchVersion: number,
     readonly resolvedAt: number,
+    private readonly initialCausationEventId: string | null = null,
   ) {
     this.state = state as MatchState;
   }
@@ -868,7 +1005,7 @@ class EventBuilder {
       sequence,
       matchId: this.state.matchId,
       causationCommandId: this.commandId,
-      causationEventId: previous?.eventId ?? null,
+      causationEventId: previous?.eventId ?? this.initialCausationEventId,
       rulesetVersion: this.state.rulesetVersion,
       type,
       payload: { ...payload, matchVersion: this.matchVersion },
@@ -892,7 +1029,7 @@ function appendDraw(
   builder: EventBuilder,
   playerId: PlayerId,
   requestedCount: number,
-  reason: "card-effect" | "reward",
+  reason: "card-effect" | "reward" | "hero-skill:xyy.skill.jn10502",
 ): void {
   const planned = planDraw(builder.state, requestedCount);
   builder.append("turn.cards-drawn", {
@@ -930,6 +1067,48 @@ function endAction(builder: EventBuilder, playerId: PlayerId): void {
   changePhase(builder, "encounter");
   changePhase(builder, "battle");
   changePhase(builder, "reward");
+  const rewardPlayer = builder.state.players[playerId]!;
+  if (
+    rewardPlayer.heroId !== null &&
+    heroHasSkill(rewardPlayer.heroId, "xyy.skill.jn10502") &&
+    rewardPlayer.hand.length === 0 &&
+    rewardPlayer.team !== null
+  ) {
+    builder.append("turn.hero-skill-triggered", {
+      playerId,
+      skillId: "xyy.skill.jn10502",
+      triggeredAt: builder.resolvedAt,
+    });
+    const teammates = Object.values(builder.state.players)
+      .filter(
+        (candidate) => candidate.alive && candidate.team === rewardPlayer.team,
+      )
+      .sort((left, right) => left.seat - right.seat);
+    for (const teammate of teammates) {
+      appendDraw(builder, teammate.id, 1, "hero-skill:xyy.skill.jn10502");
+    }
+    const sourceEffectId = `${builder.state.matchId}:effect:jn10502:turn:${builder.state.turn!.number}`;
+    const targets = Object.values(builder.state.players)
+      .filter((candidate) => candidate.alive && candidate.id !== playerId)
+      .sort((left, right) => left.seat - right.seat);
+    builder.append("turn.damage-started", {
+      playerId,
+      skillId: "xyy.skill.jn10502",
+      sourceEffectId,
+      openedAt: builder.resolvedAt,
+      damageItems: planDamageBatch(
+        builder.state,
+        targets.map((target, index) => ({
+          itemId: `${sourceEffectId}:damage:${index}`,
+          sourcePlayerId: playerId,
+          targetPlayerId: target.id,
+          amount: 1,
+          element: "neutral",
+        })),
+      ),
+    });
+    return;
+  }
   appendDraw(builder, playerId, 1, "reward");
   const player = builder.state.players[playerId]!;
   if (player.hand.length > player.handLimit) {
@@ -938,6 +1117,46 @@ function endAction(builder: EventBuilder, playerId: PlayerId): void {
   }
   changePhase(builder, "turn-end");
   finishOrAdvance(builder);
+}
+
+export function continueRewardAfterJN10502(
+  input: Readonly<MatchState>,
+  commandId: CommandId,
+  matchVersion: number,
+  resolvedAt: number,
+  causationEventId: string | null,
+): { readonly state: MatchState; readonly events: readonly DomainEvent[] } {
+  if (
+    input.phase !== "playing" ||
+    input.turn?.phase !== "reward" ||
+    input.turn.rewardContinuation?.kind !== "jn10502-damage" ||
+    input.turn.rewardContinuation.step !== "resolving-damage" ||
+    input.turn.rewardContinuation.pendingTeamDrawPlayerIds.length !== 0 ||
+    input.activePlayerId === null ||
+    input.pendingChoice !== null ||
+    input.reactionWindow !== null ||
+    input.dyingBatch !== null
+  ) {
+    return { state: input as MatchState, events: [] };
+  }
+  const builder = new EventBuilder(
+    input,
+    commandId,
+    matchVersion,
+    resolvedAt,
+    causationEventId,
+  );
+  const playerId = input.activePlayerId;
+  builder.append("turn.reward-resumed", { playerId, resumedAt: resolvedAt });
+  appendDraw(builder, playerId, 1, "reward");
+  const player = builder.state.players[playerId]!;
+  if (player.hand.length > player.handLimit) {
+    changePhase(builder, "discard");
+  } else {
+    changePhase(builder, "turn-end");
+    finishOrAdvance(builder);
+  }
+  return { state: builder.state, events: builder.events };
 }
 
 export function applyTurnCommand(

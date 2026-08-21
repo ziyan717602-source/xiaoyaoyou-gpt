@@ -143,7 +143,12 @@ describe("M05 six-player combat bots", () => {
     let rescueCardsPlayed = 0;
     let observedDeaths = 0;
 
-    while (completedTurns < 1_000) {
+    while (completedTurns < 1_000 || completedMatches === 0) {
+      if (completedTurns >= 5_000) {
+        throw new Error(
+          "Combat Bot did not complete a match within 5,000 turns.",
+        );
+      }
       if (state.phase === "finished") {
         completedMatches += 1;
         game += 1;
@@ -153,7 +158,14 @@ describe("M05 six-player combat bots", () => {
       const turnNumber = state.turn!.number;
       const actor = state.activePlayerId!;
       let guard = 0;
-      while (state.phase === "playing" && state.turn?.phase === "action") {
+      while (
+        state.phase === "playing" &&
+        state.turn?.number === turnNumber &&
+        (state.turn.phase === "action" ||
+          state.dyingBatch !== null ||
+          state.pendingChoice !== null ||
+          state.reactionWindow !== null)
+      ) {
         guard += 1;
         if (guard > 256) throw new Error("Combat Bot action did not converge.");
         let playerId: PlayerId;
@@ -290,7 +302,6 @@ describe("M05 six-player combat bots", () => {
         ).length;
         observedDeaths += livingBefore - livingAfter;
         expect(cardSet(state)).toEqual(new Set(SETUP_CARD_INSTANCES));
-        if (nextCommand.type === "end-action") break;
       }
       if (state.phase === "playing" && state.turn?.phase === "discard") {
         const discard = createPlayerView(state, actor).availableActions[0];

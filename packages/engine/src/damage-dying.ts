@@ -428,8 +428,11 @@ export function reduceDyingEvent(
   ) {
     throw new Error("Dying event does not extend the current match head.");
   }
-  if (state.phase !== "playing" || state.turn?.phase !== "action") {
-    throw new Error("Dying events require the action phase.");
+  if (
+    state.phase !== "playing" ||
+    (state.turn?.phase !== "action" && state.turn?.phase !== "reward")
+  ) {
+    throw new Error("Dying events require an interactive turn phase.");
   }
   const matchVersion = numberPayload(event, "matchVersion");
   const expectedMatchVersion =

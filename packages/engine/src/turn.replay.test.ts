@@ -796,6 +796,93 @@ describe("M03 turn event replay", () => {
     expect(uninterrupted.state.discardPile).toContain("xyy.card.wq04@50");
   });
 
+  it("replays JN10502 through a restarted damage window and delayed reward", () => {
+    const base = started("jn10502-replay");
+    const actor = base.activePlayerId!;
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === actor ? "xyy.hero.xj105" : player.heroId,
+            hand: [],
+            equipment: { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES,
+      discardPile: [],
+    };
+    const hpBefore = Object.fromEntries(
+      Object.values(initial.players).map((player) => [player.id, player.hp]),
+    );
+
+    const ended = apply(initial, actor, "jn10502-replay-end", {
+      type: "end-action",
+    });
+    expect(ended.state.turn).toMatchObject({
+      phase: "reward",
+      rewardContinuation: {
+        kind: "jn10502-damage",
+        step: "resolving-damage",
+        pendingTeamDrawPlayerIds: [],
+      },
+    });
+    expect(ended.state.reactionWindow).not.toBeNull();
+    expect(
+      ended.events.filter(
+        (event) =>
+          event.type === "turn.cards-drawn" &&
+          event.payload.reason === "reward",
+      ),
+    ).toHaveLength(0);
+    let replayed = JSON.parse(JSON.stringify(initial)) as MatchState;
+    for (const event of ended.events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(ended.state);
+
+    let state = JSON.parse(JSON.stringify(ended.state)) as MatchState;
+    let passIndex = 0;
+    while (state.reactionWindow !== null) {
+      const before = state;
+      const window = state.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      const result = apply(
+        state,
+        priority,
+        `jn10502-replay-pass-${passIndex}`,
+        {
+          type: "pass-reaction",
+          windowId: window.windowId,
+        },
+      );
+      let commandReplay = JSON.parse(JSON.stringify(before)) as MatchState;
+      for (const event of result.events) {
+        commandReplay = reduceEvent(
+          commandReplay,
+          JSON.parse(JSON.stringify(event)) as DomainEvent,
+        );
+      }
+      expect(commandReplay).toEqual(result.state);
+      state = JSON.parse(JSON.stringify(result.state)) as MatchState;
+      passIndex += 1;
+    }
+
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(state.players[actor]!.hand).toHaveLength(2);
+    for (const player of Object.values(state.players)) {
+      expect(player.hp).toBe(
+        player.id === actor ? hpBefore[player.id] : hpBefore[player.id]! - 1,
+      );
+    }
+  });
+
   it("matches uninterrupted execution through JSON restart checkpoints", () => {
     const initial = started();
     let uninterrupted = initial;

@@ -129,6 +129,7 @@ const cookingPlan = plan.items.find((item) => item.id === "xyy.skill.jn40301");
 const cookingHeroPlan = plan.items.find((item) => item.id === "xyy.hero.x3w03");
 const brothersPlan = plan.items.find((item) => item.id === "xyy.skill.jn40302");
 const giftHandPlan = plan.items.find((item) => item.id === "xyy.skill.jn10501");
+const venomPlan = plan.items.find((item) => item.id === "xyy.skill.jn10502");
 const giftHandHeroPlan = plan.items.find(
   (item) => item.id === "xyy.hero.xj105",
 );
@@ -188,11 +189,12 @@ assert(
   "X3W03 boundary must name both completed skills.",
 );
 assert(giftHandPlan?.state === "verified", "JN10501 must be verified in plan.");
-assert(giftHandHeroPlan?.state === "partial", "XJ105 must remain partial.");
+assert(venomPlan?.state === "verified", "JN10502 must be verified in plan.");
+assert(giftHandHeroPlan?.state === "verified", "XJ105 must be verified.");
 assert(
   giftHandHeroPlan?.boundary.includes("JN10501") &&
     giftHandHeroPlan?.boundary.includes("JN10502"),
-  "XJ105 boundary must name completed and pending skills.",
+  "XJ105 boundary must name both completed skills.",
 );
 assert(
   healingSkillPlan?.state === "verified",
@@ -324,6 +326,14 @@ for (const [source, token] of [
   [replay, "replays repeated JN10501 private teammate hand transfers"],
   [damageNetwork, "persists repeated JN10501 teammate transfers"],
   [damageNetwork, '"jn10501-give-last"'],
+  [turn, 'heroHasSkill(rewardPlayer.heroId, "xyy.skill.jn10502")'],
+  [turn, 'kind: "jn10502-damage"'],
+  [turnUnit, "triggers JN10502 before the ordinary reward draw"],
+  [turnUnit, "lets TP03 prevent only its owner's JN10502 damage"],
+  [turnUnit, "resumes JN10502 reward once after a JSON restart during dying"],
+  [replay, "replays JN10502 through a restarted damage window"],
+  [damageNetwork, "restarts JN10502 mid-response"],
+  [damageNetwork, '"jn10502-end-action"'],
 ]) {
   assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
@@ -341,14 +351,15 @@ for (const path of [
   "docs/verification/receipts/cs02-jn50203.md",
   "docs/verification/receipts/cs02-jn40302.md",
   "docs/verification/receipts/cs02-jn10501.md",
+  "docs/verification/receipts/cs02-jn10502.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 94,
-  "Expected 94 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 101,
+  "Expected 101 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN20302/JN40401/JN50201/JN50202/JN50203 complete`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20302/JN40401/JN50201/JN50202/JN50203 complete`,
 );

@@ -43,6 +43,7 @@ import {
   applyBrotherHandTimeout,
   applyTurnCommand,
   applyTurnTimeout,
+  continueRewardAfterJN10502,
   reduceTurnEvent,
 } from "./turn.js";
 import {
@@ -339,7 +340,7 @@ export function reduceEvent(
   };
 }
 
-export function applyCommand(
+function applyCommandOnce(
   input: Readonly<MatchState>,
   command: Readonly<EngineCommand>,
 ): ApplyCommandResult {
@@ -478,6 +479,38 @@ export function applyCommand(
   let state: MatchState = input as MatchState;
   for (const nextEvent of events) state = reduceEvent(state, nextEvent);
   return { accepted: true, state, events };
+}
+
+export function applyCommand(
+  input: Readonly<MatchState>,
+  command: Readonly<EngineCommand>,
+): ApplyCommandResult {
+  const result = applyCommandOnce(input, command);
+  if (!result.accepted) return result;
+  const commandId =
+    command.origin === "player"
+      ? command.envelope.commandId
+      : command.commandId;
+  const resolvedAt =
+    command.origin === "player"
+      ? command.serverReceivedAt
+      : command.origin === "system-presence"
+        ? command.occurredAt
+        : command.deadlineAt;
+  const continuation = continueRewardAfterJN10502(
+    result.state,
+    commandId,
+    input.version + 1,
+    resolvedAt,
+    result.events.at(-1)?.eventId ?? null,
+  );
+  return continuation.events.length === 0
+    ? result
+    : {
+        accepted: true,
+        state: continuation.state,
+        events: [...result.events, ...continuation.events],
+      };
 }
 
 function timeoutEnvelope(

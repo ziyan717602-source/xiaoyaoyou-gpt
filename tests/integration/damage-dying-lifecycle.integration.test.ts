@@ -705,6 +705,44 @@ function injectJn10501(
   };
 }
 
+function injectJn10502(state: MatchState, owner: PlayerId): MatchState {
+  return {
+    ...state,
+    phase: "playing",
+    activePlayerId: owner,
+    turn: {
+      ...(state.turn ?? {
+        number: 1,
+        openedAt: 0,
+        deadlineAt: 15_000,
+      }),
+      number: state.turn?.number ?? 1,
+      phase: "action",
+      usedSkillIds: [],
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          heroId: player.id === owner ? "xyy.hero.xj105" : player.heroId,
+          alive: true,
+          hp: player.maxHp,
+          hand: [],
+          equipment: { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES,
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -2028,6 +2066,140 @@ describe("M05 damage/dying over six real WebSockets", () => {
         (player) => player.id === owner,
       )?.hand,
     ).toEqual(["xyy.card.zp01@16", "xyy.card.jp03@3"]);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+  });
+
+  it("restarts JN10502 mid-response and preserves six private team draws", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn10502-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn10502.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const owner = ordered[0]!.id;
+    const ownerTeam = ordered[0]!.team;
+    const teammates = ordered
+      .filter((player) => player.team === ownerTeam)
+      .map((player) => player.id);
+    const opponents = ordered
+      .filter((player) => player.team !== ownerTeam)
+      .map((player) => player.id);
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+    const teamDraws = new Map(
+      teammates.map((playerId, index) => [
+        playerId,
+        SETUP_CARD_INSTANCES[index]!,
+      ]),
+    );
+    const ordinaryReward = SETUP_CARD_INSTANCES[teammates.length]!;
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn10502(state, owner),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    let version = clients[0]!.latestView.version;
+    const hpBefore = Object.fromEntries(
+      clients[0]!.latestView.players.map((player) => [player.id, player.hp]),
+    );
+
+    const response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn10502-end-action",
+      version,
+      { type: "end-action" },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(clients[0]!.latestView.turn).toMatchObject({
+      phase: "reward",
+      rewardContinuation: {
+        kind: "jn10502-damage",
+        step: "resolving-damage",
+        pendingTeamDrawPlayerIds: [],
+      },
+    });
+    expect(clients[0]!.latestView.reactionWindow).not.toBeNull();
+    for (const playerId of teammates) {
+      const ownView = clients[indexOf(playerId)]!.latestView;
+      expect(
+        ownView.players.find((player) => player.id === playerId)?.hand,
+      ).toEqual([teamDraws.get(playerId)]);
+      for (const [otherId, card] of teamDraws) {
+        if (otherId === playerId) continue;
+        expect(JSON.stringify(ownView)).not.toContain(card);
+      }
+      expect(JSON.stringify(ownView)).not.toContain(ordinaryReward);
+    }
+    for (const playerId of opponents) {
+      const serialized = JSON.stringify(clients[indexOf(playerId)]!.latestView);
+      for (const card of teamDraws.values()) {
+        expect(serialized).not.toContain(card);
+      }
+      expect(serialized).not.toContain(ordinaryReward);
+    }
+
+    const persistedWindow = JSON.parse(
+      JSON.stringify(clients[0]!.latestView.reactionWindow),
+    );
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    expect(clients[0]!.latestView.version).toBeGreaterThanOrEqual(version);
+    version = clients[0]!.latestView.version;
+    expect(clients[0]!.latestView.reactionWindow).toEqual(persistedWindow);
+    expect(clients[0]!.latestView.turn).toMatchObject({
+      phase: "reward",
+      rewardContinuation: {
+        kind: "jn10502-damage",
+        step: "resolving-damage",
+        pendingTeamDrawPlayerIds: [],
+      },
+    });
+
+    version = await passReactions(clients, sessions, version, "jn10502-pass");
+    expect(clients[0]!.latestView.reactionWindow).toBeNull();
+    expect(clients[0]!.latestView.turn).toMatchObject({
+      number: 2,
+      phase: "action",
+    });
+    for (const player of clients[0]!.latestView.players) {
+      expect(player.hp).toBe(
+        player.id === owner ? hpBefore[player.id] : hpBefore[player.id]! - 1,
+      );
+    }
+    for (const playerId of teammates) {
+      const ownHand = clients[indexOf(playerId)]!.latestView.players.find(
+        (player) => player.id === playerId,
+      )?.hand;
+      expect(ownHand).toEqual(
+        playerId === owner
+          ? [teamDraws.get(playerId), ordinaryReward]
+          : [teamDraws.get(playerId)],
+      );
+    }
+    for (const playerId of opponents) {
+      expect(
+        clients[indexOf(playerId)]!.latestView.players.find(
+          (player) => player.id === playerId,
+        )?.hand,
+      ).toEqual([]);
+    }
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

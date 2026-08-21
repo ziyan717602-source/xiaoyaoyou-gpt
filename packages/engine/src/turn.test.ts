@@ -70,6 +70,26 @@ function passAllReactions(state: MatchState, prefix: string): MatchState {
   return next;
 }
 
+function passAllRescues(state: MatchState, prefix: string): MatchState {
+  let next = state;
+  let index = 0;
+  while (next.dyingBatch !== null) {
+    const choice = next.pendingChoice;
+    const batch = next.dyingBatch;
+    if (choice === null || batch.status !== "awaiting-rescue") {
+      throw new Error("Rescue fixture is missing its current choice.");
+    }
+    const priority = batch.priorityOrder[batch.priorityIndex]!;
+    next = dispatch(next, priority, `${prefix}-${index}`, {
+      type: "pass-rescue",
+      choiceId: choice.choiceId,
+    });
+    index += 1;
+    if (index > 24) throw new Error("Rescue fixture did not converge.");
+  }
+  return next;
+}
+
 function playing(seed = "m03-turn-seed"): MatchState {
   let state = createSetupMatch({
     matchId: `m03-${seed}`,
@@ -1588,6 +1608,294 @@ describe("M03 deterministic turn core", () => {
     expect(state.turn).toMatchObject({ number: 2, phase: "action" });
     expect(state.turn?.usedSkillIds).toEqual([]);
     expect(state.players[actor]!.hand).toHaveLength(3);
+    expectConserved(state);
+  });
+
+  it("triggers JN10502 before the ordinary reward draw and resumes after damage responses", () => {
+    let state = playing("jn10502-reward-trigger");
+    const actor = state.activePlayerId!;
+    const actorTeam = state.players[actor]!.team;
+    const next = state.turnOrder[(state.turnOrder.indexOf(actor) + 1) % 6]!;
+    const teammates = Object.values(state.players)
+      .filter((player) => player.alive && player.team === actorTeam)
+      .sort((left, right) => left.seat - right.seat)
+      .map((player) => player.id);
+    const originalHp = Object.fromEntries(
+      Object.values(state.players).map((player) => [player.id, player.hp]),
+    );
+    state = arrange(state, {});
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj105" },
+      },
+    };
+
+    state = dispatch(state, actor, "jn10502-end-action", {
+      type: "end-action",
+    });
+
+    expect(state.turn).toMatchObject({
+      number: 1,
+      phase: "reward",
+      rewardContinuation: {
+        kind: "jn10502-damage",
+        step: "resolving-damage",
+        pendingTeamDrawPlayerIds: [],
+      },
+    });
+    expect(state.activePlayerId).toBe(actor);
+    expect(state.reactionWindow).not.toBeNull();
+    expect(state.effectStack.at(-1)).toMatchObject({
+      kind: "damage-batch",
+      sourcePlayerId: actor,
+      targetIds: Object.values(state.players)
+        .filter((player) => player.alive && player.id !== actor)
+        .sort((left, right) => left.seat - right.seat)
+        .map((player) => player.id),
+    });
+    for (const playerId of teammates) {
+      expect(state.players[playerId]!.hand).toHaveLength(1);
+    }
+    for (const player of Object.values(state.players)) {
+      expect(player.hp).toBe(originalHp[player.id]);
+    }
+
+    state = JSON.parse(JSON.stringify(state)) as MatchState;
+    state = passAllReactions(state, "jn10502-pass");
+
+    expect(state.reactionWindow).toBeNull();
+    expect(state.dyingBatch).toBeNull();
+    expect(state.activePlayerId).toBe(next);
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(state.players[actor]!.hand).toHaveLength(2);
+    for (const player of Object.values(state.players)) {
+      expect(player.hp).toBe(
+        player.id === actor
+          ? originalHp[player.id]
+          : originalHp[player.id]! - 1,
+      );
+    }
+    expectConserved(state);
+  });
+
+  it("skips JN10502 when XJ105 enters reward with a nonempty hand", () => {
+    let state = playing("jn10502-nonempty-skip");
+    const actor = state.activePlayerId!;
+    const actorTeam = state.players[actor]!.team;
+    const next = state.turnOrder[(state.turnOrder.indexOf(actor) + 1) % 6]!;
+    state = arrange(state, { [actor]: ["xyy.card.jp01@1"] });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj105" },
+      },
+    };
+    const hpBefore = Object.fromEntries(
+      Object.values(state.players).map((player) => [player.id, player.hp]),
+    );
+
+    state = dispatch(state, actor, "jn10502-skip-end-action", {
+      type: "end-action",
+    });
+
+    expect(state.activePlayerId).toBe(next);
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(state.reactionWindow).toBeNull();
+    expect(state.players[actor]!.hand).toHaveLength(2);
+    for (const player of Object.values(state.players)) {
+      expect(player.hp).toBe(hpBefore[player.id]);
+      if (player.id !== actor && player.team === actorTeam) {
+        expect(player.hand).toHaveLength(0);
+      }
+    }
+    expectConserved(state);
+  });
+
+  it("rejects reordered JN10502 team draws and forged damage effect ids", () => {
+    let initial = playing("jn10502-event-integrity");
+    const actor = initial.activePlayerId!;
+    initial = arrange(initial, {});
+    initial = {
+      ...initial,
+      players: {
+        ...initial.players,
+        [actor]: { ...initial.players[actor]!, heroId: "xyy.hero.xj105" },
+      },
+    };
+    const result = applyCommand(initial, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(initial, actor, "jn10502-integrity-end", {
+        type: "end-action",
+      }),
+    });
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) throw new Error(result.reason);
+    const firstTeamDrawIndex = result.events.findIndex(
+      (event) =>
+        event.type === "turn.cards-drawn" &&
+        event.payload.reason === "hero-skill:xyy.skill.jn10502",
+    );
+    const damageIndex = result.events.findIndex(
+      (event) => event.type === "turn.damage-started",
+    );
+    expect(firstTeamDrawIndex).toBeGreaterThan(0);
+    expect(damageIndex).toBeGreaterThan(firstTeamDrawIndex);
+
+    let beforeFirstDraw = initial;
+    for (const event of result.events.slice(0, firstTeamDrawIndex)) {
+      beforeFirstDraw = reduceEvent(beforeFirstDraw, event);
+    }
+    const firstDraw = result.events[firstTeamDrawIndex]!;
+    const wrongPlayerId = Object.values(beforeFirstDraw.players).find(
+      (player) =>
+        player.id !==
+        beforeFirstDraw.turn!.rewardContinuation!.pendingTeamDrawPlayerIds[0],
+    )!.id;
+    expect(() =>
+      reduceEvent(beforeFirstDraw, {
+        ...firstDraw,
+        payload: { ...firstDraw.payload, playerId: wrongPlayerId },
+      }),
+    ).toThrow("Card draw event is not applicable");
+
+    let beforeDamage = initial;
+    for (const event of result.events.slice(0, damageIndex)) {
+      beforeDamage = reduceEvent(beforeDamage, event);
+    }
+    const previousEvent = result.events[damageIndex - 1]!;
+    expect(() =>
+      reduceEvent(beforeDamage, {
+        eventId: `${beforeDamage.matchId}:event:${beforeDamage.eventSequence + 1}`,
+        sequence: beforeDamage.eventSequence + 1,
+        matchId: beforeDamage.matchId,
+        causationCommandId: previousEvent.causationCommandId,
+        causationEventId: previousEvent.eventId,
+        rulesetVersion: beforeDamage.rulesetVersion,
+        type: "turn.reward-resumed",
+        payload: {
+          matchVersion: beforeDamage.version,
+          playerId: actor,
+          resumedAt: 0,
+        },
+      }),
+    ).toThrow("Reward continuation event is not applicable");
+    const damage = result.events[damageIndex]!;
+    expect(() =>
+      reduceEvent(beforeDamage, {
+        ...damage,
+        payload: { ...damage.payload, sourceEffectId: "forged-effect" },
+      }),
+    ).toThrow("JN10502 damage event is not applicable");
+  });
+
+  it("lets TP03 prevent only its owner's JN10502 damage before reward resumes", () => {
+    let state = playing("jn10502-tp03");
+    const actor = state.activePlayerId!;
+    const protectedPlayer = Object.values(state.players)
+      .filter((player) => player.id !== actor)
+      .sort((left, right) => left.seat - right.seat)[0]!.id;
+    state = arrange(state, {
+      [protectedPlayer]: ["xyy.card.tp03@39"],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj105" },
+      },
+    };
+    const hpBefore = Object.fromEntries(
+      Object.values(state.players).map((player) => [player.id, player.hp]),
+    );
+
+    state = dispatch(state, actor, "jn10502-tp03-end", {
+      type: "end-action",
+    });
+    let passIndex = 0;
+    while (
+      state.reactionWindow !== null &&
+      state.reactionWindow.priorityOrder[state.reactionWindow.priorityIndex] !==
+        protectedPlayer
+    ) {
+      const window = state.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      state = dispatch(state, priority, `jn10502-tp03-before-${passIndex}`, {
+        type: "pass-reaction",
+        windowId: window.windowId,
+      });
+      passIndex += 1;
+    }
+    const damageEffectId = state.effectStack.at(-1)!.effectId;
+    state = dispatch(state, protectedPlayer, "jn10502-tp03-card", {
+      type: "play-reaction-card",
+      cardInstanceId: "xyy.card.tp03@39",
+      targetEffectId: damageEffectId,
+    });
+    state = passAllReactions(state, "jn10502-tp03-pass");
+
+    for (const player of Object.values(state.players)) {
+      expect(player.hp).toBe(
+        player.id === actor || player.id === protectedPlayer
+          ? hpBefore[player.id]
+          : hpBefore[player.id]! - 1,
+      );
+    }
+    expect(state.players[protectedPlayer]!.hand).not.toContain(
+      "xyy.card.tp03@39",
+    );
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expectConserved(state);
+  });
+
+  it("resumes JN10502 reward once after a JSON restart during dying", () => {
+    let state = playing("jn10502-dying-restart");
+    const actor = state.activePlayerId!;
+    const dyingTarget = Object.values(state.players)
+      .filter((player) => player.id !== actor)
+      .sort((left, right) => left.seat - right.seat)[0]!.id;
+    const actorIndex = state.turnOrder.indexOf(actor);
+    const next = Array.from(
+      { length: state.turnOrder.length },
+      (_, index) =>
+        state.turnOrder[(actorIndex + index + 1) % state.turnOrder.length],
+    ).find((playerId) => playerId !== dyingTarget)!;
+    state = arrange(state, {});
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, heroId: "xyy.hero.xj105" },
+        [dyingTarget]: { ...state.players[dyingTarget]!, hp: 1 },
+      },
+    };
+
+    state = dispatch(state, actor, "jn10502-dying-end", {
+      type: "end-action",
+    });
+    state = passAllReactions(state, "jn10502-dying-damage-pass");
+    expect(state.turn).toMatchObject({
+      number: 1,
+      phase: "reward",
+      rewardContinuation: {
+        kind: "jn10502-damage",
+        step: "resolving-damage",
+        pendingTeamDrawPlayerIds: [],
+      },
+    });
+    expect(state.dyingBatch?.currentTargetPlayerId).toBe(dyingTarget);
+    expect(state.players[actor]!.hand).toHaveLength(1);
+
+    state = JSON.parse(JSON.stringify(state)) as MatchState;
+    state = passAllRescues(state, "jn10502-dying-rescue-pass");
+
+    expect(state.players[dyingTarget]!.alive).toBe(false);
+    expect(state.players[actor]!.hand).toHaveLength(2);
+    expect(state.activePlayerId).toBe(next);
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
     expectConserved(state);
   });
 
