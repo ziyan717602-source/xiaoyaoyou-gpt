@@ -7,10 +7,10 @@
     "standard": 177,
     "sharedCore": 28,
     "total": 205,
-    "partial": 37,
+    "partial": 38,
     "verified": 21,
     "deferred": 0,
-    "unstarted": 147
+    "unstarted": 146
   },
   "executionQueue": [
     {
@@ -1524,10 +1524,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity and base stats plus JN20601 repeatable female-target dual damage are verified; JN20602 death transformation and dependent XJ207 remain pending",
+      "boundary": "setup identity and base stats plus JN20601 and JN20602 death-before-cleanup transformation are verified for current hand/equipment state; pet preservation awaits CS03 and XJ207 skills remain pending",
       "evidence": [
         "M02-SETUP-AND-TEAMS",
-        "receipt:docs/verification/receipts/cs02-jn20601.md"
+        "receipt:docs/verification/receipts/cs02-jn20601.md",
+        "receipt:docs/verification/receipts/cs02-jn20602-core.md"
       ],
       "dependencies": {
         "contentIds": [
@@ -1547,8 +1548,11 @@
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
       "state": "partial",
-      "boundary": "setup identity, base stats, selectability and private offer only; hero skills are not implemented",
-      "evidence": ["M02-SETUP-AND-TEAMS"],
+      "boundary": "nonselectable transformation identity, full 5 HP and 8/2 base stats are verified through JN20602 with hand/equipment preservation; JN20701/JN20702 and source pet preservation remain pending",
+      "evidence": [
+        "M02-SETUP-AND-TEAMS",
+        "receipt:docs/verification/receipts/cs02-jn20602-core.md"
+      ],
       "dependencies": {
         "contentIds": [
           "xyy.hero.xj206",
@@ -3862,9 +3866,9 @@
       "kind": "skill",
       "packages": ["standard"],
       "slice": "CS02-HERO-SKILLS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "partial",
+      "boundary": "automatic post-rescue pre-death XJ206-to-XJ207 transformation, full new base stats, hand/base-equipment preservation, simultaneous death continuation, victory ordering, replay and six-socket restart are verified; pet preservation awaits CS03 pet state",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn20602-core.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

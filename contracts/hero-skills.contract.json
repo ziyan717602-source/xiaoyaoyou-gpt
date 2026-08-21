@@ -109,6 +109,18 @@
       "status": "verified",
       "verifiedBoundary": "native ownership, HP gate, living female teammate or opponent selection, zero payment, per-action target memory, owner-first dual canonical damage, TP03 local prevention, target dying and death, optional timeout, JSON replay, SQLite response restart and six-socket projection",
       "linkedPending": ["xyy.skill.jn20602", "xyy.hero.xj207"]
+    },
+    "xyy.skill.jn20602": {
+      "name": "生命献祭",
+      "owner": "xyy.hero.xj206",
+      "rule": "after all rescue opportunities fail for the dying native owner, replace XJ206 with full-health XJ207 before ordinary death, card cleanup or victory; keep hand, equipment and pets, then continue the same simultaneous death batch without the owner",
+      "status": "partial",
+      "implementedBoundary": "automatic post-rescue pre-death replacement, full XJ207 HP/base stats, hand and base-equipment preservation, rescued-owner skip, simultaneous death continuation, victory ordering, tamper rejection, JSON replay, SQLite rescue restart and six-socket hand privacy",
+      "linkedPending": [
+        "CS03 pet-state preservation",
+        "xyy.skill.jn20701",
+        "xyy.skill.jn20702"
+      ]
     }
   },
   "legacyEvidence": [
@@ -151,7 +163,13 @@
     "PSDGamepkg/JNS/XJ405.cs:569-591 JN20601 requires owner HP at least two, selects one living female absent from RAM harmed, calls one Harm batch ordered owner then target, and records the target",
     "PSDGamepkg/JNS/JNSBase.cs Harm(IEnumerable) targets the source and ordered target sequence before emitting one ordinary Artiad.Harm batch",
     "PSDGamepkg/XIR.cs:160-174 resets all player RAM on entry to the GR action period",
-    "psd.db3:Hero:XJ206 is selectable with JN20601/JN20602 while XJ207 is nonselectable and depends on JN20602 transformation"
+    "psd.db3:Hero:XJ206 is selectable with JN20601/JN20602 while XJ207 is nonselectable and depends on JN20602 transformation",
+    "psd.db3:Skill:JN20602 OCCURS !G0ZW PRIORS -10 ONCE 1 TERMINI 1 and description transform into XJ207 after death while preserving equipment, hand and pets",
+    "PSDGamepkg/JNS/XJ405.cs:591-612 JN20602 removes its owner from the G0ZW death list, unloads XJ206, loads hero 10207 and recursively continues the remaining death list",
+    "PSDGamepkg/XIG.cs:437-535 G0OY change type zero unloads hero effects and base stats before reset without discarding hand or base equipment",
+    "PSDGamepkg/XIG.cs:1433-1495 G0IY change type zero resets the player from the new hero at full HP, reloads native skills, base equipment and pet effects",
+    "PSDBase/Player.cs:343-361 InitFromHero reset sets alive, targetable, full new HP, strength, dexterity and hand limit three",
+    "psd.db3:Hero:XJ207 HP 5 STR 8 DEX 2 gender M, skills JN20701/JN20702 and ISO XJ206"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -203,7 +221,12 @@
     "jn20601TargetRepresentation": "the owner-only action lists every other living female teammate or opponent not already recorded for JN20601; activation requires zero cards and exactly one authoritative target while owner HP is at least two",
     "jn20601DamageOrdering": "one canonical ordinary neutral batch contains owner first and selected female second, preserving the legacy enumerable order while reusing TP03, FJ05, FJ03, damage and dying mechanisms per item",
     "jn20601TargetMemoryAndTimeout": "the selected target is appended to serialized turn.usedSkillTargetIds when damage starts, survives response and restart, resets on the next action turn, and optional action timeout performs no activation or damage",
-    "jn20601VisibilityAndDependency": "only the native XJ206 owner receives the available action; damage and HP are public, no private card identity changes, and XJ206 remains partial until JN20602 implements the death transformation that unlocks nonselectable XJ207"
+    "jn20601VisibilityAndDependency": "only the native XJ206 owner receives the available action; damage and HP are public, no private card identity changes, and XJ206 remains partial until JN20602 implements the death transformation that unlocks nonselectable XJ207",
+    "jn20602Timing": "after rescue priority is exhausted but before death.player-died, card cleanup or match.finished, native XJ206 emits one deterministic transformation event and advances the same dying batch without entering deadPlayerIds",
+    "jn20602IdentityReset": "the event derives XJ207 hero id, alive state, full HP five, max HP five, strength eight, dexterity two and native hand limit from authoritative hero content rather than client or event-supplied values",
+    "jn20602ZonePreservation": "the transformation event validates and preserves the exact current hand, weapon and armor instances; identities remain owner-only for hand and public for equipment, while team, seat, connection and turn ownership remain unchanged",
+    "jn20602RescueAndVictory": "a successful ordinary rescue keeps XJ206 and prevents transformation; on failure, other simultaneous zero-HP targets continue in seat order and victory is evaluated only after the transformed owner and remaining death cycle settle",
+    "jn20602PetBoundary": "legacy explicitly preserves pets and reloads their effects, but the current runtime has no pet state before CS03 battle decks; JN20602 and both linked hero identities therefore remain partial rather than being misreported verified"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -314,6 +337,14 @@
     "CS02-106": "TP03-prevents-only-its-owner-JN20601-item-while-the-other-item-and-normal-equipment-modifiers-continue",
     "CS02-107": "JN20601-target-memory-is-serialized-repeatable-on-different-targets-reset-next-turn-and-optional-timeout-does-not-activate",
     "CS02-108": "JN20601-replays-through-JSON-rejects-tampered-events-and-resumes-action-after-target-dying-or-death",
-    "CS02-109": "JN20601-persists-response-and-target-memory-through-SQLite-restart-with-owner-only-action-projection-over-six-WebSockets"
+    "CS02-109": "JN20601-persists-response-and-target-memory-through-SQLite-restart-with-owner-only-action-projection-over-six-WebSockets",
+    "CS02-110": "JN20602-triggers-only-for-native-XJ206-after-all-rescue-opportunities-fail-at-zero-HP",
+    "CS02-111": "JN20602-transforms-before-ordinary-death-card-cleanup-loot-and-victory-evaluation",
+    "CS02-112": "JN20602-authoritatively-replaces-XJ206-with-alive-full-HP-five-strength-eight-dexterity-two-XJ207",
+    "CS02-113": "JN20602-preserves-hand-weapon-armor-team-seat-turn-and-private-hand-projection",
+    "CS02-114": "successful-FJ01-rescue-keeps-XJ206-and-skips-JN20602-transformation",
+    "CS02-115": "JN20602-removes-only-its-owner-from-a-simultaneous-death-cycle-and-continues-other-targets",
+    "CS02-116": "JN20602-event-payload-replays-deterministically-and-rejects-a-forged-target-hero",
+    "CS02-117": "JN20602-persists-mid-rescue-and-transformed-private-state-through-SQLite-restarts-over-six-WebSockets"
   }
 }

@@ -24,6 +24,8 @@ import {
 } from "./hp-evolution.js";
 import {
   cardDefinition,
+  handLimitForHero,
+  heroDefinition,
   heroHasSkill,
   type CardInstanceId,
 } from "./setup-content.js";
@@ -653,6 +655,49 @@ export function reduceDyingEvent(
       pendingChoice: null,
     };
     next = advanceBatch(intermediate, intermediate.dyingBatch!, rescuedAt);
+  } else if (event.type === "death.hero-transformed") {
+    const playerId = stringPayload(event, "playerId");
+    const sourceHeroId = stringPayload(event, "sourceHeroId");
+    const targetHeroId = stringPayload(event, "targetHeroId");
+    const completedAt = numberPayload(event, "completedAt");
+    const preservedCardInstanceIds = stringsPayload(
+      event,
+      "preservedCardInstanceIds",
+    ) as readonly CardInstanceId[];
+    const player = state.players[playerId];
+    const targetHero = heroDefinition("xyy.hero.xj207");
+    if (
+      batch.status !== "awaiting-death" ||
+      playerId !== batch.currentTargetPlayerId ||
+      player === undefined ||
+      !player.alive ||
+      player.hp !== 0 ||
+      player.heroId !== "xyy.hero.xj206" ||
+      !heroHasSkill(player.heroId, "xyy.skill.jn20602") ||
+      sourceHeroId !== "xyy.hero.xj206" ||
+      targetHeroId !== "xyy.hero.xj207" ||
+      !sameValues(preservedCardInstanceIds, playerCards(player))
+    ) {
+      throw new Error("JN20602 transformation is not applicable.");
+    }
+    const transformed: MatchState = {
+      ...state,
+      players: {
+        ...state.players,
+        [playerId]: {
+          ...player,
+          heroId: targetHero.id,
+          alive: true,
+          hp: targetHero.maxHp,
+          maxHp: targetHero.maxHp,
+          strength: targetHero.strength,
+          dexterity: targetHero.dexterity,
+          handLimit: handLimitForHero(targetHero.id),
+        },
+      },
+      pendingChoice: null,
+    };
+    next = advanceBatch(transformed, batch, completedAt);
   } else if (event.type === "death.player-died") {
     const playerId = stringPayload(event, "playerId");
     const player = state.players[playerId];
@@ -976,6 +1021,20 @@ class EventBuilder {
     if (this.state.dyingBatch?.status !== "awaiting-death") return;
     const playerId = this.state.dyingBatch.currentTargetPlayerId;
     const player = this.state.players[playerId]!;
+    if (
+      player.heroId !== null &&
+      heroHasSkill(player.heroId, "xyy.skill.jn20602")
+    ) {
+      this.append("death.hero-transformed", {
+        playerId,
+        sourceHeroId: "xyy.hero.xj206",
+        targetHeroId: "xyy.hero.xj207",
+        preservedCardInstanceIds: playerCards(player),
+        completedAt: this.serverReceivedAt,
+      });
+      this.resolveBatchCleanup();
+      return;
+    }
     const cardInstanceIds = playerCards(player);
     this.append("death.player-died", { playerId, cardInstanceIds });
     this.append("death.after-effects-completed", {

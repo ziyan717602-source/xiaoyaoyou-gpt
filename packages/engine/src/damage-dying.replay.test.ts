@@ -108,6 +108,108 @@ function fixture(): {
 }
 
 describe("M05 damage/dying event replay", () => {
+  it("replays JN20602 death transformation identically across every JSON rescue checkpoint", () => {
+    const setup = fixture();
+    const owner = setup.target;
+    const preserved = new Set(["xyy.card.jp01@1", "xyy.card.wq01@47"]);
+    const base: MatchState = {
+      ...setup.state,
+      players: Object.fromEntries(
+        Object.values(setup.state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === owner ? "xyy.hero.xj206" : "xyy.hero.xj201",
+            hp: player.id === owner ? 1 : 4,
+            hand: player.id === owner ? ["xyy.card.jp01@1"] : [],
+            equipment:
+              player.id === owner
+                ? { weapon: "xyy.card.wq01@47", armor: null }
+                : { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !preserved.has(card)),
+      discardPile: [],
+    };
+    const initial = applyPlannedDamage(
+      base,
+      "jn20602-replay-damage",
+      planDamageBatch(base, [
+        {
+          itemId: "jn20602-replay-owner-zero",
+          sourcePlayerId: setup.actor,
+          targetPlayerId: owner,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+      1_000,
+    );
+    let uninterrupted = initial;
+    let resumed = JSON.parse(JSON.stringify(initial)) as MatchState;
+    const events: DomainEvent[] = [];
+    let sequence = 0;
+    while (uninterrupted.dyingBatch !== null) {
+      const batch = uninterrupted.dyingBatch;
+      const priority = batch.priorityOrder[batch.priorityIndex]!;
+      const command = {
+        type: "pass-rescue" as const,
+        choiceId: uninterrupted.pendingChoice!.choiceId,
+      };
+      const commandId = `jn20602-replay-pass-${sequence}`;
+      const next = apply(
+        uninterrupted,
+        priority,
+        commandId,
+        command,
+        2_000 + sequence,
+      );
+      const recovered = apply(
+        resumed,
+        priority,
+        commandId,
+        command,
+        2_000 + sequence,
+      );
+      expect(recovered).toEqual(next);
+      uninterrupted = next.state;
+      resumed = JSON.parse(JSON.stringify(recovered.state)) as MatchState;
+      events.push(...next.events);
+      sequence += 1;
+      if (sequence > 6) throw new Error("JN20602 replay did not converge.");
+    }
+
+    expect(
+      events.some((event) => event.type === "death.hero-transformed"),
+    ).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.type === "death.player-died" &&
+          event.payload.playerId === owner,
+      ),
+    ).toBe(false);
+    expect(uninterrupted.players[owner]).toMatchObject({
+      heroId: "xyy.hero.xj207",
+      alive: true,
+      hp: 5,
+      maxHp: 5,
+      strength: 8,
+      dexterity: 2,
+      hand: ["xyy.card.jp01@1"],
+      equipment: { weapon: "xyy.card.wq01@47", armor: null },
+    });
+    let replayed = initial;
+    for (const event of events) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(uninterrupted);
+  });
+
   it("replays JN50203 loot distribution, timeout and self damage across JSON checkpoints", () => {
     const setup = fixture();
     const owner = setup.actor;

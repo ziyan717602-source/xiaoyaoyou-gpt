@@ -794,6 +794,54 @@ function injectJn20601(
   };
 }
 
+function injectJn20602(state: MatchState, owner: PlayerId): MatchState {
+  const transformed: MatchState = {
+    ...state,
+    phase: "playing",
+    activePlayerId: owner,
+    turn: {
+      ...(state.turn ?? {
+        number: 1,
+        openedAt: 0,
+        deadlineAt: 15_000,
+      }),
+      number: state.turn?.number ?? 1,
+      phase: "action",
+      usedSkillIds: [],
+      usedSkillTargetIds: {},
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          heroId: player.id === owner ? "xyy.hero.xj206" : "xyy.hero.xj201",
+          alive: true,
+          hp: player.id === owner ? 0 : 4,
+          maxHp: player.id === owner ? 10 : player.maxHp,
+          strength: player.id === owner ? 4 : player.strength,
+          dexterity: player.id === owner ? 2 : player.dexterity,
+          hand: player.id === owner ? ["xyy.card.jp01@1"] : [],
+          equipment:
+            player.id === owner
+              ? { weapon: "xyy.card.wq01@47", armor: null }
+              : { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES.filter(
+      (card) => card !== "xyy.card.jp01@1" && card !== "xyy.card.wq01@47",
+    ),
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+  return beginDyingBatch(transformed, "jn20602-network-dying", 1_000);
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -2246,6 +2294,115 @@ describe("M05 damage/dying over six real WebSockets", () => {
       reason: "forbidden",
       currentVersion: version,
     });
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+  });
+
+  it("restarts JN20602 mid-rescue and preserves its transformed identity and private hand", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn20602-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn20602.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const owner = ordered[0]!.id;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn20602(state, owner),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    let version = clients[0]!.latestView.version;
+    expect(clients[0]!.latestView.dyingBatch).toMatchObject({
+      currentTargetPlayerId: owner,
+      status: "awaiting-rescue",
+    });
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === owner),
+    ).toMatchObject({ heroId: "xyy.hero.xj206", alive: true, hp: 0 });
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(["xyy.card.jp01@1"]);
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      expect(
+        JSON.stringify(clients[indexOf(player.id)]!.latestView),
+      ).not.toContain("xyy.card.jp01@1");
+    }
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    let pass = 0;
+    while (clients[0]!.latestView.dyingBatch !== null) {
+      const batch = clients[0]!.latestView.dyingBatch!;
+      const priority = batch.priorityOrder[batch.priorityIndex]!;
+      const response = await send(
+        clients[indexOf(priority)]!,
+        sessions[indexOf(priority)]!,
+        `jn20602-rescue-pass-${pass}`,
+        version,
+        {
+          type: "pass-rescue",
+          choiceId:
+            clients[indexOf(priority)]!.latestView.pendingChoice!.choiceId,
+        },
+      );
+      expect(response.type).toBe("command-accepted");
+      version += 1;
+      await waitVersion(clients, version);
+      pass += 1;
+      if (pass > 6) throw new Error("JN20602 network rescue did not converge.");
+    }
+
+    const transformed = clients[0]!.latestView.players.find(
+      (player) => player.id === owner,
+    );
+    expect(transformed).toMatchObject({
+      heroId: "xyy.hero.xj207",
+      alive: true,
+      hp: 5,
+      maxHp: 5,
+      handCount: 1,
+      equipment: { weapon: "xyy.card.wq01@47", armor: null },
+    });
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(["xyy.card.jp01@1"]);
+    expect(clients[0]!.latestView.winner).toBeNull();
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === owner),
+    ).toEqual(transformed);
+    expect(
+      clients[indexOf(owner)]!.latestView.players.find(
+        (player) => player.id === owner,
+      )?.hand,
+    ).toEqual(["xyy.card.jp01@1"]);
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

@@ -180,6 +180,189 @@ function passAllRescue(state: MatchState, now: number): MatchState {
 }
 
 describe("M05 damage and dying core", () => {
+  it("uses JN20602 to transform before death while preserving hand and equipment", () => {
+    let state = playing("jn20602-transform");
+    const ordered = Object.values(state.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const owner = ordered[0]!.id;
+    const victim = ordered[1]!.id;
+    state = arrange(
+      state,
+      {
+        [owner]: ["xyy.card.jp01@1"],
+        [victim]: ["xyy.card.zp01@16"],
+      },
+      {
+        [owner]: { weapon: "xyy.card.wq01@47", armor: null },
+      },
+    );
+    state = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === owner ? "xyy.hero.xj206" : "xyy.hero.xj201",
+            hp: player.id === owner || player.id === victim ? 1 : 4,
+          },
+        ]),
+      ),
+    };
+    state = applyPlannedDamage(
+      state,
+      "jn20602-simultaneous-damage",
+      planDamageBatch(state, [
+        {
+          itemId: "jn20602-owner-zero",
+          sourcePlayerId: victim,
+          targetPlayerId: owner,
+          amount: 1,
+          element: "neutral",
+        },
+        {
+          itemId: "jn20602-victim-zero",
+          sourcePlayerId: owner,
+          targetPlayerId: victim,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+      1_000,
+    );
+
+    let transformation:
+      | {
+          readonly before: MatchState;
+          readonly event: Parameters<typeof reduceEvent>[1];
+        }
+      | undefined;
+    let pass = 0;
+    while (
+      state.dyingBatch?.status === "awaiting-rescue" &&
+      state.dyingBatch.currentTargetPlayerId === owner
+    ) {
+      const before = state;
+      const batch = state.dyingBatch;
+      const priority = batch.priorityOrder[batch.priorityIndex]!;
+      const result = applied(
+        state,
+        priority,
+        `jn20602-owner-pass-${pass}`,
+        { type: "pass-rescue", choiceId: state.pendingChoice!.choiceId },
+        2_000 + pass,
+      );
+      expect(result.accepted).toBe(true);
+      if (!result.accepted) throw new Error(result.reason);
+      const event = result.events.find(
+        (candidate) => candidate.type === "death.hero-transformed",
+      );
+      if (event !== undefined) transformation = { before, event };
+      state = result.state;
+      pass += 1;
+      if (pass > 6) throw new Error("JN20602 owner rescue did not converge.");
+    }
+
+    expect(transformation).toBeDefined();
+    expect(state.players[owner]).toMatchObject({
+      heroId: "xyy.hero.xj207",
+      alive: true,
+      hp: 5,
+      maxHp: 5,
+      strength: 8,
+      dexterity: 2,
+      handLimit: 3,
+      hand: ["xyy.card.jp01@1"],
+      equipment: { weapon: "xyy.card.wq01@47", armor: null },
+    });
+    expect(state.dyingBatch).toMatchObject({
+      currentTargetPlayerId: victim,
+      status: "awaiting-rescue",
+      deadPlayerIds: [],
+    });
+    expect(() =>
+      reduceEvent(transformation!.before, {
+        ...transformation!.event,
+        payload: {
+          ...transformation!.event.payload,
+          targetHeroId: "xyy.hero.xj201",
+        },
+      }),
+    ).toThrow();
+
+    state = passAllRescue(state, 3_000);
+    expect(state.players[victim]).toMatchObject({
+      alive: false,
+      hp: 0,
+      hand: [],
+    });
+    expect(state.players[owner]!.hand).toEqual(["xyy.card.jp01@1"]);
+    expect(state.players[owner]!.equipment.weapon).toBe("xyy.card.wq01@47");
+    expect(state.discardPile).not.toContain("xyy.card.jp01@1");
+    expect(state.discardPile).not.toContain("xyy.card.wq01@47");
+    expect(state.discardPile).toContain("xyy.card.zp01@16");
+    expect(state.dyingBatch).toBeNull();
+    expect(state.winner).toBeNull();
+  });
+
+  it("lets JN20602 transformation decide a simultaneous last-player death cycle", () => {
+    let state = playing("jn20602-last-player");
+    const ordered = Object.values(state.players).sort(
+      (left, right) => left.seat - right.seat,
+    );
+    const owner = ordered[0]!.id;
+    const opponent = ordered.find(
+      (player) => player.team !== state.players[owner]!.team,
+    )!.id;
+    state = arrange(state, {});
+    state = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId: player.id === owner ? "xyy.hero.xj206" : "xyy.hero.xj201",
+            alive: player.id === owner || player.id === opponent,
+            hp: player.id === owner || player.id === opponent ? 1 : 0,
+          },
+        ]),
+      ),
+    };
+    state = applyPlannedDamage(
+      state,
+      "jn20602-final-cycle",
+      planDamageBatch(state, [
+        {
+          itemId: "jn20602-final-owner",
+          sourcePlayerId: opponent,
+          targetPlayerId: owner,
+          amount: 1,
+          element: "neutral",
+        },
+        {
+          itemId: "jn20602-final-opponent",
+          sourcePlayerId: owner,
+          targetPlayerId: opponent,
+          amount: 1,
+          element: "neutral",
+        },
+      ]),
+      1_000,
+    );
+    while (state.dyingBatch !== null) state = passAllRescue(state, 2_000);
+
+    expect(state.players[owner]).toMatchObject({
+      heroId: "xyy.hero.xj207",
+      alive: true,
+      hp: 5,
+    });
+    expect(state.players[opponent]).toMatchObject({ alive: false, hp: 0 });
+    expect(state.phase).toBe("finished");
+    expect(state.winner).toBe(state.players[owner]!.team);
+  });
+
   it("uses JN50203 once per death batch to collect and optionally distribute every dead card", () => {
     let state = playing("jn50203-loot");
     const ordered = Object.values(state.players).sort(
@@ -906,7 +1089,7 @@ describe("M05 damage and dying core", () => {
     );
   });
 
-  it("lets the zero-HP owner discard FJ01 to cure and resume the dying batch", () => {
+  it("lets zero-HP XJ206 discard FJ01 to rescue before JN20602 can transform", () => {
     let state = playing("fj01-self-rescue");
     const actor = state.activePlayerId!;
     const target = state.turnOrder.find((playerId) => playerId !== actor)!;
@@ -924,7 +1107,15 @@ describe("M05 damage and dying core", () => {
       ...state,
       players: {
         ...state.players,
-        [target]: { ...state.players[target]!, hp: 2 },
+        [target]: {
+          ...state.players[target]!,
+          heroId: "xyy.hero.xj206",
+          hp: 2,
+          maxHp: 10,
+          strength: 4,
+          dexterity: 2,
+          handLimit: 3,
+        },
       },
     };
     state = accepted(
@@ -957,6 +1148,7 @@ describe("M05 damage and dying core", () => {
       3_000,
     );
     expect(state.players[target]).toMatchObject({
+      heroId: "xyy.hero.xj206",
       alive: true,
       hp: 3,
       equipment: { weapon: "xyy.card.wq02@48", armor: null },
@@ -1683,7 +1875,12 @@ describe("M05 damage and dying core", () => {
         Object.values(state.players).map((player) => [
           player.id,
           player.id === teamOne.id || player.id === teamTwo.id
-            ? { ...player, alive: true, hp: 1 }
+            ? {
+                ...player,
+                heroId: "xyy.hero.xj201",
+                alive: true,
+                hp: 1,
+              }
             : { ...player, alive: false, hp: 0 },
         ]),
       ),

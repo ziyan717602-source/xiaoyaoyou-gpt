@@ -161,6 +161,12 @@ const flowerDestroyingPlan = plan.items.find(
 const flowerDestroyingHeroPlan = plan.items.find(
   (item) => item.id === "xyy.hero.xj206",
 );
+const lifeSacrificePlan = plan.items.find(
+  (item) => item.id === "xyy.skill.jn20602",
+);
+const transformedHeroPlan = plan.items.find(
+  (item) => item.id === "xyy.hero.xj207",
+);
 assert(skillPlan?.state === "verified", "JN50402 must be verified in plan.");
 assert(
   giftSwordPlan?.state === "verified",
@@ -253,8 +259,24 @@ assert(
 assert(
   flowerDestroyingHeroPlan?.boundary.includes("JN20601") &&
     flowerDestroyingHeroPlan?.boundary.includes("JN20602") &&
-    flowerDestroyingHeroPlan?.boundary.includes("XJ207"),
+    flowerDestroyingHeroPlan?.boundary.includes("CS03"),
   "XJ206 boundary must name completed skill and pending transformation.",
+);
+assert(
+  lifeSacrificePlan?.state === "partial",
+  "JN20602 must remain partial until pet state exists.",
+);
+assert(
+  lifeSacrificePlan?.boundary.includes("XJ207") &&
+    lifeSacrificePlan?.boundary.includes("pet"),
+  "JN20602 boundary must name transformed identity and pending pets.",
+);
+assert(transformedHeroPlan?.state === "partial", "XJ207 must remain partial.");
+assert(
+  transformedHeroPlan?.boundary.includes("nonselectable") &&
+    transformedHeroPlan?.boundary.includes("JN20701") &&
+    transformedHeroPlan?.boundary.includes("JN20702"),
+  "XJ207 boundary must name transformation-only reachability and pending skills.",
 );
 for (const [source, token] of [
   [setupSource, "handLimit: handLimitForHero(heroId)"],
@@ -361,6 +383,14 @@ for (const [source, token] of [
   [replay, "replays JN20601 target memory"],
   [damageNetwork, "restarts JN20601 mid-response"],
   [damageNetwork, '"jn20601-repeat"'],
+  [damage, 'event.type === "death.hero-transformed"'],
+  [damage, 'heroHasSkill(player.heroId, "xyy.skill.jn20602")'],
+  [damageUnit, "uses JN20602 to transform before death"],
+  [damageUnit, "rescue before JN20602 can transform"],
+  [damageUnit, "JN20602 transformation decide a simultaneous"],
+  [damageReplay, "replays JN20602 death transformation"],
+  [damageNetwork, "restarts JN20602 mid-rescue"],
+  [damageNetwork, "jn20602-rescue-pass-${pass}"],
 ]) {
   assert(source.includes(token), `Missing CS02 verification token ${token}.`);
 }
@@ -380,14 +410,15 @@ for (const path of [
   "docs/verification/receipts/cs02-jn10501.md",
   "docs/verification/receipts/cs02-jn10502.md",
   "docs/verification/receipts/cs02-jn20601.md",
+  "docs/verification/receipts/cs02-jn20602-core.md",
 ]) {
   assert(existsSync(resolve(root, path)), `Missing ${path}.`);
 }
 assert(
-  Object.keys(contract.acceptanceMap).length === 109,
-  "Expected 109 CS02 acceptance items.",
+  Object.keys(contract.acceptanceMap).length === 117,
+  "Expected 117 CS02 acceptance items.",
 );
 
 console.log(
-  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20302/JN40401/JN50201/JN50202/JN50203 complete`,
+  `hero-skills verified: ${scopedHeroes.length} heroes, ${allEdges.length} ownership edges, JN50401/JN50402/JN50501/JN20202/JN40301/JN40302/JN10501/JN10502/JN20601/JN20302/JN40401/JN50201/JN50202/JN50203 complete; JN20602 core partial pending CS03 pets`,
 );

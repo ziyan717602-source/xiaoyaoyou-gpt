@@ -48,6 +48,10 @@ function baseline(item) {
       evidence: contract.baselinePartial.allStandardHeroes.evidence,
     };
   }
+  if (item.packages.includes("standard") && item.kind === "skill") {
+    const skill = contract.baselinePartial.skills?.[item.canonicalId];
+    if (skill !== undefined) return { state: "partial", ...skill };
+  }
   const card = contract.baselinePartial.cards[item.canonicalId];
   if (card !== undefined) {
     return { state: "partial", ...card };
