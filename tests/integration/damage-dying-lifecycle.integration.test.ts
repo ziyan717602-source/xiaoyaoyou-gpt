@@ -560,11 +560,17 @@ function injectJn50401(
         player.id,
         {
           ...player,
-          heroId: player.id === owner ? "xyy.hero.xj404" : player.heroId,
+          heroId:
+            player.id === owner
+              ? "xyy.hero.xj404"
+              : player.id === firstTarget
+                ? "xyy.hero.xj104"
+                : player.heroId,
           alive: true,
           hp: player.id === owner ? 6 : player.maxHp,
           maxHp: player.id === owner ? 6 : player.maxHp,
           handLimit: player.id === owner ? 5 : player.handLimit,
+          strength: player.id === firstTarget ? 3 : player.strength,
           hand: [],
           equipment:
             player.id === owner
@@ -3189,6 +3195,10 @@ describe("M05 damage/dying over six real WebSockets", () => {
       clients[0]!.latestView.players.find((player) => player.id === firstTarget)
         ?.equipment.weapon,
     ).toBe("xyy.card.wq01@47");
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === firstTarget)
+        ?.strength,
+    ).toBe(3);
     for (const player of ordered) {
       if (player.id === owner) continue;
       const serialized = JSON.stringify(
@@ -3217,6 +3227,10 @@ describe("M05 damage/dying over six real WebSockets", () => {
       cardInstanceIds: ["xyy.card.fj01@52"],
       targetPlayerIds: targets.filter((playerId) => playerId !== firstTarget),
     });
+    expect(
+      clients[0]!.latestView.players.find((player) => player.id === firstTarget)
+        ?.strength,
+    ).toBe(3);
 
     response = await send(
       clients[indexOf(owner)]!,

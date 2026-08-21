@@ -435,6 +435,8 @@ describe("M04 serializable reaction core", () => {
           player.id,
           {
             ...player,
+            heroId: player.id === target ? "xyy.hero.xj104" : player.heroId,
+            strength: player.id === target ? 3 : player.strength,
             hand:
               player.id === actor
                 ? ["xyy.card.jp06@13", "xyy.card.jp06@14"]
@@ -490,6 +492,7 @@ describe("M04 serializable reaction core", () => {
       3_000,
     );
     expect(state.players[target]!.equipment.weapon).toBeNull();
+    expect(state.players[target]!.strength).toBe(2);
     expect(state.discardPile).toContain("xyy.card.wq01@47");
 
     state = accepted(

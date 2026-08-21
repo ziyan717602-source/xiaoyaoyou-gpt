@@ -7,6 +7,7 @@ import {
   createSetupMatch,
   reduceEvent,
   SETUP_CARD_INSTANCES,
+  type CardInstanceId,
   type DomainEvent,
   type MatchState,
 } from "./index.js";
@@ -57,6 +58,90 @@ function started(seed = "m03-replay-restart-seed"): MatchState {
 }
 
 describe("M03 turn event replay", () => {
+  it("replays JN10401 weapon import, replacement, and pawn export", () => {
+    const base = started("jn10401-replay");
+    const actor = base.activePlayerId!;
+    const claimed = new Set<CardInstanceId>([
+      "xyy.card.wq01@47",
+      "xyy.card.wq04@50",
+    ]);
+    const initial: MatchState = {
+      ...base,
+      players: {
+        ...base.players,
+        [actor]: {
+          ...base.players[actor]!,
+          heroId: "xyy.hero.xj104",
+          strength: 2,
+          hand: ["xyy.card.wq01@47", "xyy.card.wq04@50"],
+          equipment: { weapon: null, armor: null },
+        },
+      },
+      drawPile: SETUP_CARD_INSTANCES.filter((card) => !claimed.has(card)),
+      discardPile: [],
+    };
+    const equip = {
+      type: "play-card" as const,
+      cardInstanceId: "xyy.card.wq01@47" as const,
+      targetPlayerIds: [actor],
+    };
+    const first = apply(initial, actor, "jn10401-equip", equip);
+    expect(
+      apply(
+        JSON.parse(JSON.stringify(initial)) as MatchState,
+        actor,
+        "jn10401-equip",
+        equip,
+      ),
+    ).toEqual(first);
+    expect(first.state.players[actor]!.strength).toBe(3);
+
+    const replace = {
+      type: "play-card" as const,
+      cardInstanceId: "xyy.card.wq04@50" as const,
+      targetPlayerIds: [actor],
+    };
+    const second = apply(first.state, actor, "jn10401-replace", replace);
+    expect(
+      apply(
+        JSON.parse(JSON.stringify(first.state)) as MatchState,
+        actor,
+        "jn10401-replace",
+        replace,
+      ),
+    ).toEqual(second);
+    expect(second.state.players[actor]!.strength).toBe(3);
+
+    const pawn = {
+      type: "play-card" as const,
+      cardInstanceId: "xyy.card.wq04@50" as const,
+      targetPlayerIds: [],
+      mode: "pawn" as const,
+    };
+    const third = apply(second.state, actor, "jn10401-pawn", pawn);
+    expect(
+      apply(
+        JSON.parse(JSON.stringify(second.state)) as MatchState,
+        actor,
+        "jn10401-pawn",
+        pawn,
+      ),
+    ).toEqual(third);
+
+    let replayed = initial;
+    for (const event of [...first.events, ...second.events, ...third.events]) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(third.state);
+    expect(third.state.players[actor]).toMatchObject({
+      strength: 2,
+      equipment: { weapon: null, armor: null },
+    });
+  });
+
   it("replays repeated JN10501 private teammate hand transfers across JSON restarts", () => {
     const base = started("jn10501-replay");
     const owner = base.activePlayerId!;

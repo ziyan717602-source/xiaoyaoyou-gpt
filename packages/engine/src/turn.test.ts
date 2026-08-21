@@ -1561,6 +1561,11 @@ describe("M03 deterministic turn core", () => {
           heroId: "xyy.hero.xj404",
           handLimit: 5,
         },
+        [firstTarget]: {
+          ...state.players[firstTarget]!,
+          heroId: "xyy.hero.xj104",
+          strength: 3,
+        },
       },
     };
     const firstDraw = state.drawPile.slice(0, 2);
@@ -1627,6 +1632,7 @@ describe("M03 deterministic turn core", () => {
     expect(state.players[firstTarget]!.equipment.weapon).toBe(
       "xyy.card.wq01@47",
     );
+    expect(state.players[firstTarget]!.strength).toBe(3);
     expect(state.discardPile).toContain("xyy.card.wq02@48");
     expect(state.turn?.usedSkillTargetIds).toEqual({
       "xyy.skill.jn50401": [firstTarget],
@@ -1806,6 +1812,101 @@ describe("M03 deterministic turn core", () => {
       targetPlayerIds: [actor],
     });
     expect(state.players[actor]!.equipment.armor).toBe("xyy.card.fj01@52");
+    expectConserved(state);
+  });
+
+  it("applies JN10401 exactly once across weapon import, replacement, armor, and pawn", () => {
+    let ordinary = playing("jn10401-non-native");
+    const ordinaryActor = ordinary.activePlayerId!;
+    ordinary = arrange(ordinary, {
+      [ordinaryActor]: ["xyy.card.wq03@49"],
+    });
+    ordinary = {
+      ...ordinary,
+      players: {
+        ...ordinary.players,
+        [ordinaryActor]: {
+          ...ordinary.players[ordinaryActor]!,
+          heroId: "xyy.hero.xj201",
+          strength: 2,
+        },
+      },
+    };
+    ordinary = dispatch(ordinary, ordinaryActor, "jn10401-non-native-equip", {
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq03@49",
+      targetPlayerIds: [ordinaryActor],
+    });
+    expect(ordinary.players[ordinaryActor]!.strength).toBe(2);
+
+    let state = playing("jn10401-weapon-modifier");
+    const actor = state.activePlayerId!;
+    state = arrange(state, {
+      [actor]: [
+        "xyy.card.wq01@47",
+        "xyy.card.wq02@48",
+        "xyy.card.wq04@50",
+        "xyy.card.fj01@52",
+      ],
+    });
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: {
+          ...state.players[actor]!,
+          heroId: "xyy.hero.xj104",
+          strength: 2,
+        },
+      },
+    };
+
+    state = dispatch(state, actor, "jn10401-equip-first", {
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq01@47",
+      targetPlayerIds: [actor],
+    });
+    expect(state.players[actor]).toMatchObject({
+      strength: 3,
+      equipment: { weapon: "xyy.card.wq01@47", armor: null },
+    });
+    expect(
+      createPlayerView(state, actor).players.find(
+        (player) => player.id === actor,
+      )?.strength,
+    ).toBe(3);
+
+    state = dispatch(state, actor, "jn10401-equip-armor", {
+      type: "play-card",
+      cardInstanceId: "xyy.card.fj01@52",
+      targetPlayerIds: [actor],
+    });
+    expect(state.players[actor]!.strength).toBe(3);
+
+    state = dispatch(state, actor, "jn10401-replace-first", {
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq02@48",
+      targetPlayerIds: [actor],
+    });
+    expect(state.players[actor]!.strength).toBe(3);
+    expect(state.discardPile).toContain("xyy.card.wq01@47");
+
+    state = dispatch(state, actor, "jn10401-replace-pawnable", {
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq04@50",
+      targetPlayerIds: [actor],
+    });
+    expect(state.players[actor]!.strength).toBe(3);
+    state = dispatch(state, actor, "jn10401-pawn-weapon", {
+      type: "play-card",
+      cardInstanceId: "xyy.card.wq04@50",
+      targetPlayerIds: [],
+      mode: "pawn",
+    });
+    expect(state.players[actor]).toMatchObject({
+      strength: 2,
+      equipment: { weapon: null, armor: "xyy.card.fj01@52" },
+    });
     expectConserved(state);
   });
 

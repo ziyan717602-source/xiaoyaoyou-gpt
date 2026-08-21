@@ -15,6 +15,7 @@ import { planDraw } from "./card-zones.js";
 import { planDamageBatch } from "./damage-dying.js";
 import type { MatchState, TeamId, TurnPhase } from "./index.js";
 import { planCureBatch, playersAfterCures } from "./healing.js";
+import { withJn10401Equipment } from "./hero-stats.js";
 import {
   beginDamageResponse,
   beginCancellableCardEffect,
@@ -331,15 +332,16 @@ export function reduceTurnEvent(
         players: {
           ...state.players,
           [playerId]: {
-            ...player,
+            ...withJn10401Equipment(
+              player,
+              sourceZone === "weapon" || sourceZone === "armor"
+                ? { ...player.equipment, [sourceZone]: null }
+                : player.equipment,
+            ),
             hand:
               sourceZone === "hand"
                 ? player.hand.filter((card) => card !== cardInstanceId)
                 : player.hand,
-            equipment:
-              sourceZone === "weapon" || sourceZone === "armor"
-                ? { ...player.equipment, [sourceZone]: null }
-                : player.equipment,
           },
         },
         discardPile: [...state.discardPile, cardInstanceId!],
@@ -574,12 +576,16 @@ export function reduceTurnEvent(
         players: {
           ...state.players,
           [playerId]: {
-            ...player,
-            equipment: { ...player.equipment, [sourceZone]: null },
+            ...withJn10401Equipment(player, {
+              ...player.equipment,
+              [sourceZone]: null,
+            }),
           },
           [target.id]: {
-            ...target,
-            equipment: { ...target.equipment, [slot!]: cardInstanceId! },
+            ...withJn10401Equipment(target, {
+              ...target.equipment,
+              [slot!]: cardInstanceId!,
+            }),
           },
         },
         discardPile:
@@ -714,13 +720,15 @@ export function reduceTurnEvent(
       players: {
         ...state.players,
         [playerId]: {
-          ...player,
+          ...withJn10401Equipment(
+            player,
+            fromWeapon
+              ? { ...player.equipment, weapon: null }
+              : player.equipment,
+          ),
           hand: fromHand
             ? player.hand.filter((card) => card !== cardInstanceId)
             : player.hand,
-          equipment: fromWeapon
-            ? { ...player.equipment, weapon: null }
-            : player.equipment,
         },
       },
       discardPile: [...state.discardPile, cardInstanceId],
@@ -755,9 +763,11 @@ export function reduceTurnEvent(
         players: {
           ...state.players,
           [playerId]: {
-            ...player,
+            ...withJn10401Equipment(player, {
+              ...player.equipment,
+              [slot]: cardInstanceId,
+            }),
             hand,
-            equipment: { ...player.equipment, [slot]: cardInstanceId },
           },
         },
         discardPile:

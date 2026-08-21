@@ -18,6 +18,7 @@ import type {
   TeamId,
 } from "./index.js";
 import { planCureBatch, playersAfterCures } from "./healing.js";
+import { withJn10401Equipment } from "./hero-stats.js";
 import {
   canonicalHpEvolutionMask,
   hasHpEvolutionFlag,
@@ -984,9 +985,8 @@ export function reduceDyingEvent(
     for (const playerId of batch.deadPlayerIds) {
       const player = players[playerId]!;
       players[playerId] = {
-        ...player,
+        ...withJn10401Equipment(player, { weapon: null, armor: null }),
         hand: [],
-        equipment: { weapon: null, armor: null },
       };
     }
     next = {
@@ -1024,9 +1024,8 @@ export function reduceDyingEvent(
     for (const playerId of batch.deadPlayerIds) {
       const player = players[playerId]!;
       players[playerId] = {
-        ...player,
+        ...withJn10401Equipment(player, { weapon: null, armor: null }),
         hand: [],
-        equipment: { weapon: null, armor: null },
       };
     }
     players[owner.id] = {

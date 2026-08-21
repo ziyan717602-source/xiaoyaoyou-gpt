@@ -195,6 +195,7 @@ describe("M05 damage and dying core", () => {
       },
       {
         [owner]: { weapon: "xyy.card.wq01@47", armor: null },
+        [victim]: { weapon: "xyy.card.wq02@48", armor: null },
       },
     );
     state = {
@@ -204,8 +205,14 @@ describe("M05 damage and dying core", () => {
           player.id,
           {
             ...player,
-            heroId: player.id === owner ? "xyy.hero.xj206" : "xyy.hero.xj201",
+            heroId:
+              player.id === owner
+                ? "xyy.hero.xj206"
+                : player.id === victim
+                  ? "xyy.hero.xj104"
+                  : "xyy.hero.xj201",
             hp: player.id === owner || player.id === victim ? 1 : 4,
+            strength: player.id === victim ? 3 : player.strength,
           },
         ]),
       ),
@@ -295,13 +302,16 @@ describe("M05 damage and dying core", () => {
     expect(state.players[victim]).toMatchObject({
       alive: false,
       hp: 0,
+      strength: 2,
       hand: [],
+      equipment: { weapon: null, armor: null },
     });
     expect(state.players[owner]!.hand).toEqual(["xyy.card.jp01@1"]);
     expect(state.players[owner]!.equipment.weapon).toBe("xyy.card.wq01@47");
     expect(state.discardPile).not.toContain("xyy.card.jp01@1");
     expect(state.discardPile).not.toContain("xyy.card.wq01@47");
     expect(state.discardPile).toContain("xyy.card.zp01@16");
+    expect(state.discardPile).toContain("xyy.card.wq02@48");
     expect(state.dyingBatch).toBeNull();
     expect(state.winner).toBeNull();
   });
@@ -390,7 +400,12 @@ describe("M05 damage and dying core", () => {
           heroId: "xyy.hero.xj402",
           hp: 3,
         },
-        [victim]: { ...state.players[victim]!, hp: 1 },
+        [victim]: {
+          ...state.players[victim]!,
+          heroId: "xyy.hero.xj104",
+          hp: 1,
+          strength: 3,
+        },
         [recipient]: {
           ...state.players[recipient]!,
           heroId: "xyy.hero.xj201",
@@ -411,6 +426,7 @@ describe("M05 damage and dying core", () => {
 
     expect(state.players[victim]).toMatchObject({
       alive: false,
+      strength: 2,
       hand: [],
       equipment: { weapon: null, armor: null },
     });

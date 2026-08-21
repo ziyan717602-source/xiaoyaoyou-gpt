@@ -216,6 +216,8 @@ export interface PublicPlayerView {
   readonly alive: boolean;
   readonly hp: number;
   readonly maxHp: number;
+  readonly strength: number;
+  readonly dexterity: number;
   readonly handLimit: number;
   readonly handCount: number;
   readonly hand: readonly CardInstanceId[] | null;
@@ -699,6 +701,8 @@ export function createPlayerView(
         alive: player.alive,
         hp: player.hp,
         maxHp: player.maxHp,
+        strength: player.strength,
+        dexterity: player.dexterity,
         handLimit: player.handLimit,
         handCount: player.hand.length,
         hand: player.id === viewerId ? player.hand : null,

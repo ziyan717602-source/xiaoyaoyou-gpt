@@ -18,6 +18,7 @@ import {
   type DamageIntent,
 } from "./damage-dying.js";
 import { planCureBatch, playersAfterCures } from "./healing.js";
+import { withJn10401Equipment } from "./hero-stats.js";
 import {
   hasHpEvolutionFlag,
   isCanonicalHpEvolutionMask,
@@ -1069,10 +1070,10 @@ export function reduceReactionEvent(
               ...target,
               hand: target.hand.filter((card) => card !== cardInstanceId),
             }
-          : {
-              ...target,
-              equipment: { ...target.equipment, [selected!.zone]: null },
-            };
+          : withJn10401Equipment(target, {
+              ...target.equipment,
+              [selected!.zone]: null,
+            });
       discardPile = [...state.discardPile, cardInstanceId];
     } else {
       players[source.id] = {

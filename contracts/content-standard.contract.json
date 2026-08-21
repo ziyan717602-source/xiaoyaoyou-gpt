@@ -135,6 +135,10 @@
     "xyy.skill.jn30201": {
       "boundary": "native XJ302 may privately discard one hand card after non-chain actual damage to another player and before dying to add canonical neutral damage to each distinct original damaged target, with recursive payment, timeout, replay and six-socket restart verified",
       "evidence": ["receipt:docs/verification/receipts/cs02-jn30201.md"]
+    },
+    "xyy.skill.jn10401": {
+      "boundary": "native XJ104 gains exactly one public strength while a weapon is equipped; import, replacement, pawn, discard, transfer, death cleanup, replay and six-socket restart are verified",
+      "evidence": ["receipt:docs/verification/receipts/cs02-jn10401.md"]
     }
   },
   "baselinePartial": {
@@ -169,6 +173,13 @@
         "evidence": [
           "M02-SETUP-AND-TEAMS",
           "receipt:docs/verification/receipts/cs02-jn30201.md"
+        ]
+      },
+      "xyy.hero.xj104": {
+        "boundary": "setup identity and base stats plus JN10401 weapon-dependent strength are verified; battle-loss JN10402 remains pending CS03",
+        "evidence": [
+          "M02-SETUP-AND-TEAMS",
+          "receipt:docs/verification/receipts/cs02-jn10401.md"
         ]
       },
       "xyy.hero.x3w04": {

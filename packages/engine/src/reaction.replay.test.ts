@@ -121,6 +121,8 @@ describe("M04 reaction event replay", () => {
           player.id,
           {
             ...player,
+            heroId: player.id === target ? "xyy.hero.xj104" : player.heroId,
+            strength: player.id === target ? 3 : player.strength,
             hand:
               player.id === actor
                 ? ["xyy.card.jp06@13"]
@@ -188,6 +190,7 @@ describe("M04 reaction event replay", () => {
     }
     expect(replayed).toEqual(primary.state);
     expect(primary.state.players[target]!.equipment.weapon).toBeNull();
+    expect(primary.state.players[target]!.strength).toBe(2);
     expect(primary.state.discardPile).toEqual(
       expect.arrayContaining(["xyy.card.jp06@13", "xyy.card.wq01@47"]),
     );

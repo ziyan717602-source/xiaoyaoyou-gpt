@@ -14,6 +14,14 @@
     "fengmingyushiSkills": 19
   },
   "items": {
+    "xyy.skill.jn10401": {
+      "name": "气剑指",
+      "owner": "xyy.hero.xj104",
+      "rule": "the native owner has exactly one additional strength while at least one weapon is equipped; weapon import adds one and weapon export removes one",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, public strength projection, weapon import and export, one-slot replacement without stacking, armor non-effect, WQ04 pawn, JP06 discard, JN50401 transfer, death cleanup, JSON event replay, SQLite restart and six-socket projection",
+      "linkedPending": ["xyy.skill.jn10402", "CS03 battle strength consumption"]
+    },
     "xyy.skill.jn50401": {
       "name": "赠剑",
       "owner": "xyy.hero.xj404",
@@ -199,7 +207,10 @@
     "psd.db3:Skill:JN30201 OCCURS G1TH PRIORS 160 ONCE 1 TERMINI 0 and description discard one hand card to make every player in the HP-loss result lose one additional HP",
     "PSDGamepkg/JNS/XJ405.cs:626-644 requires a positive actual non-CHAIN_INVAO result and, with optional prompts enabled, at least one target other than the owner; payment discards one arbitrary hand card then harms distinct still-alive result targets in source order",
     "PSDGamepkg/XIG.cs:1324-1369 applies G0OH HP changes before raising the actual G1TH result, while XIG.cs:157-166 defers ArticuloMortis to G1TH priority 200 after JN30201 priority 160",
-    "PSDBase/Card/FiveElement.cs:17-28 defines CHAIN_INVAO as preventing damage increase or new harm triggers"
+    "PSDBase/Card/FiveElement.cs:17-28 defines CHAIN_INVAO as preventing damage increase or new harm triggers",
+    "psd.db3:Skill:JN10401 OCCURS !G1IZ,!G1OZ PRIORS 120,70 ONCE 1,1 TERMINI 0,0 and description weapon-equipped strength plus one",
+    "PSDGamepkg/JNS/XJ405.cs:156-181 counts native-owner weapon imports and exports, adding or removing the same count from base strength",
+    "the scoped runtime has one physical weapon slot, so replacing one weapon with another is a one-to-one transition and must not stack JN10401"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -269,7 +280,11 @@
     "jn30201Eligibility": "the scoped runtime always exposes optional-skill prompts, so sole owner damage does not offer pursuit; at least one other actual non-CHAIN_INVAO target is required, while the owner remains in the stable distinct target list when the same result also damaged someone else",
     "jn30201PaymentAndDamage": "the owner privately selects exactly one current hand instance or passes; payment becomes public discard before one canonical ordinary neutral item is planned for each target, retaining TP03, equipment, response and dying behavior",
     "jn30201Recursion": "each nested pursuit result independently re-evaluates actual positive loss and remaining hand, so another card may fund another pursuit; HP zero or exhausted hand terminates the chain without an implicit counter or unbounded continuation",
-    "jn30201TimeoutAndPrivacy": "manual empty selection, 15-second timeout and disconnected auto-decision all pass without payment; only the owner receives option identities while other seats receive public waiting, hand count, discard and HP outcomes"
+    "jn30201TimeoutAndPrivacy": "manual empty selection, 15-second timeout and disconnected auto-decision all pass without payment; only the owner receives option identities while other seats receive public waiting, hand count, discard and HP outcomes",
+    "jn10401StateRepresentation": "the authoritative player strength contains the currently applied locked-skill modifier; every weapon-zone transition applies the signed occupied-slot delta in the same reducer event",
+    "jn10401Replacement": "a one-slot weapon replacement changes occupancy from one to one and therefore adds zero, matching legacy import/export counts without accumulating strength",
+    "jn10401Visibility": "strength and dexterity are public player-view fields because battle attributes and equipment are public; no available action or response window is created",
+    "jn10401Recovery": "snapshots persist both equipment and applied strength, while event replay deterministically derives identical import or export deltas without consulting time or randomness"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -413,6 +428,13 @@
     "CS02-139": "JN30201-nested-actual-damage-may-trigger-another-paid-choice-until-hand-or-positive-targets-end-the-chain",
     "CS02-140": "JN30201-pass-resumes-one-complete-dying-rescue-death-and-victory-cycle-over-current-zero-HP-players",
     "CS02-141": "JN30201-replays-from-JSON-and-rejects-forged-card-source-target-or-damage-payloads",
-    "CS02-142": "JN30201-private-payment-and-nested-response-survive-SQLite-restarts-over-six-WebSockets"
+    "CS02-142": "JN30201-private-payment-and-nested-response-survive-SQLite-restarts-over-six-WebSockets",
+    "CS02-143": "JN10401-applies-only-to-the-native-XJ104-owner-and-never-to-ordinary-heroes",
+    "CS02-144": "JN10401-adds-one-public-strength-on-an-empty-to-occupied-weapon-transition",
+    "CS02-145": "JN10401-removes-one-strength-on-weapon-pawn-discard-transfer-out-or-death-cleanup",
+    "CS02-146": "JN10401-does-not-stack-on-weapon-replacement-and-does-not-react-to-armor-transitions",
+    "CS02-147": "JN10401-covers-JN50401-transfer-in-JP06-export-and-death-loot-or-generic-cleanup-paths",
+    "CS02-148": "JN10401-import-replacement-and-export-replay-identically-from-JSON-events",
+    "CS02-149": "JN10401-public-strength-and-equipment-survive-SQLite-restart-over-six-WebSockets"
   }
 }
