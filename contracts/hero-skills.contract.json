@@ -101,6 +101,14 @@
       "status": "verified",
       "verifiedBoundary": "native empty-hand trigger, pre-reward ordering, living-team deterministic draws, all-other canonical neutral damage, TP03 prevention, dying/death continuation, nonempty skip, exact-once ordinary reward, JSON replay, SQLite response restart and six-socket privacy",
       "linkedPending": []
+    },
+    "xyy.skill.jn20601": {
+      "name": "辣手摧花",
+      "owner": "xyy.hero.xj206",
+      "rule": "during his own action phase while at HP two or more, the owner may choose one living female not previously chosen this phase; owner and target each take one ordinary neutral damage in one batch",
+      "status": "verified",
+      "verifiedBoundary": "native ownership, HP gate, living female teammate or opponent selection, zero payment, per-action target memory, owner-first dual canonical damage, TP03 local prevention, target dying and death, optional timeout, JSON replay, SQLite response restart and six-socket projection",
+      "linkedPending": ["xyy.skill.jn20602", "xyy.hero.xj207"]
     }
   },
   "legacyEvidence": [
@@ -138,7 +146,12 @@
     "PSDGamepkg/XIG.cs:1015-1042 G0HQ type 0 subtype 1 explicitly moves selected instances and exposes identities only to source and recipient",
     "psd.db3:Skill:JN10502 OCCURS !R#BC PRIORS -150 ONCE 1 and description empty-hand team draw one followed by one HP loss to every other character",
     "PSDGamepkg/JNS/XJ405.cs:238-246 JN10502 requires zero owner hand cards, draws one for every living teammate, then calls Harm against every other living player",
-    "PSDGamepkg/XIR.cs:622-630 runs BC mixed-stage skills before the ordinary priority-100 reward draw, placing JN10502 priority -150 before the owner's normal draw"
+    "PSDGamepkg/XIR.cs:622-630 runs BC mixed-stage skills before the ordinary priority-100 reward draw, placing JN10502 priority -150 before the owner's normal draw",
+    "psd.db3:Skill:JN20601 OCCURS R#GR PRIORS 0 ONCE 0 and description owner HP at least two, choose one in-play female, both lose one HP, and do not repeat the target in one turn",
+    "PSDGamepkg/JNS/XJ405.cs:569-591 JN20601 requires owner HP at least two, selects one living female absent from RAM harmed, calls one Harm batch ordered owner then target, and records the target",
+    "PSDGamepkg/JNS/JNSBase.cs Harm(IEnumerable) targets the source and ordered target sequence before emitting one ordinary Artiad.Harm batch",
+    "PSDGamepkg/XIR.cs:160-174 resets all player RAM on entry to the GR action period",
+    "psd.db3:Hero:XJ206 is selectable with JN20601/JN20602 while XJ207 is nonselectable and depends on JN20602 transformation"
   ],
   "decisions": {
     "ownershipRepresentation": "complete static hero-to-skill graph checked byte-for-byte against generated catalog dependencies",
@@ -186,7 +199,11 @@
     "jn10502Timing": "the empty-hand predicate is evaluated on entry to reward before any ordinary reward draw; living teammates draw first in deterministic seat order, then all-other damage resolves completely, and only then does the ordinary owner reward resume exactly once",
     "jn10502Continuation": "turn.rewardContinuation serializes drawing-team and resolving-damage steps plus remaining team draws across TP03/FJ05 responses, nested counters, dying rescue/death and SQLite restart; only quiescent resolving-damage completion emits reward-resumed and ordinary draw events under the same command version",
     "jn10502Damage": "every other living player receives one ordinary neutral damage item through the canonical batch pipeline, so TP03 removes only its owner's preventable item and unprevented items can open multi-target dying",
-    "jn10502Visibility": "each living teammate sees only the instance drawn into their own hand; other seats see public hand counts, while the later ordinary reward identity remains absent from every projection until the continuation resumes"
+    "jn10502Visibility": "each living teammate sees only the instance drawn into their own hand; other seats see public hand counts, while the later ordinary reward identity remains absent from every projection until the continuation resumes",
+    "jn20601TargetRepresentation": "the owner-only action lists every other living female teammate or opponent not already recorded for JN20601; activation requires zero cards and exactly one authoritative target while owner HP is at least two",
+    "jn20601DamageOrdering": "one canonical ordinary neutral batch contains owner first and selected female second, preserving the legacy enumerable order while reusing TP03, FJ05, FJ03, damage and dying mechanisms per item",
+    "jn20601TargetMemoryAndTimeout": "the selected target is appended to serialized turn.usedSkillTargetIds when damage starts, survives response and restart, resets on the next action turn, and optional action timeout performs no activation or damage",
+    "jn20601VisibilityAndDependency": "only the native XJ206 owner receives the available action; damage and HP are public, no private card identity changes, and XJ206 remains partial until JN20602 implements the death transformation that unlocks nonselectable XJ207"
   },
   "acceptanceMap": {
     "CS02-01": "all-34-setup-heroes-map-exactly-to-catalog-owned-skills",
@@ -289,6 +306,14 @@
     "CS02-98": "TP03-prevents-only-its-owner-JN10502-damage-item-while-the-other-items-resolve",
     "CS02-99": "JN10502-delays-and-resumes-the-ordinary-reward-exactly-once-after-response-and-dying-become-quiescent",
     "CS02-100": "JN10502-replays-identically-through-JSON-and-survives-response-and-dying-restarts",
-    "CS02-101": "JN10502-persists-its-window-and-private-team-draw-identities-through-SQLite-restart-with-six-WebSockets"
+    "CS02-101": "JN10502-persists-its-window-and-private-team-draw-identities-through-SQLite-restart-with-six-WebSockets",
+    "CS02-102": "JN20601-is-offered-only-to-native-XJ206-during-own-action-at-HP-two-or-more-with-zero-card-payment",
+    "CS02-103": "JN20601-targets-exactly-one-other-living-female-teammate-or-opponent-not-used-this-action-phase",
+    "CS02-104": "JN20601-rejects-male-dead-self-multiple-repeat-card-paying-and-forged-inputs",
+    "CS02-105": "JN20601-plans-owner-first-and-target-second-as-two-ordinary-neutral-items-in-one-canonical-batch",
+    "CS02-106": "TP03-prevents-only-its-owner-JN20601-item-while-the-other-item-and-normal-equipment-modifiers-continue",
+    "CS02-107": "JN20601-target-memory-is-serialized-repeatable-on-different-targets-reset-next-turn-and-optional-timeout-does-not-activate",
+    "CS02-108": "JN20601-replays-through-JSON-rejects-tampered-events-and-resumes-action-after-target-dying-or-death",
+    "CS02-109": "JN20601-persists-response-and-target-memory-through-SQLite-restart-with-owner-only-action-projection-over-six-WebSockets"
   }
 }

@@ -24,6 +24,7 @@ import { nextInt } from "./random.js";
 import {
   cardDefinition,
   cardIdOf,
+  heroDefinition,
   heroHasSkill,
   type CardInstanceId,
 } from "./setup-content.js";
@@ -173,7 +174,68 @@ export function reduceTurnEvent(
       throw new Error("Hero-skill event is not applicable.");
     }
     const cardInstanceId = cardInstanceIds[0];
-    if (skillId === "xyy.skill.jn10501") {
+    if (skillId === "xyy.skill.jn20601") {
+      const usedTargets =
+        state.turn.usedSkillTargetIds?.["xyy.skill.jn20601"] ?? [];
+      const sourceEffectId = stringPayload(event, "sourceEffectId");
+      const openedAt = numberPayload(event, "openedAt");
+      const expected = planDamageBatch(state, [
+        {
+          itemId: `${sourceEffectId}:damage:0`,
+          sourcePlayerId: playerId,
+          targetPlayerId: playerId,
+          amount: 1,
+          element: "neutral",
+        },
+        {
+          itemId: `${sourceEffectId}:damage:1`,
+          sourcePlayerId: playerId,
+          targetPlayerId: target?.id ?? "",
+          amount: 1,
+          element: "neutral",
+        },
+      ]);
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn20601") ||
+        player.hp < 2 ||
+        cardInstanceIds.length !== 0 ||
+        targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive ||
+        target.id === playerId ||
+        target.heroId === null ||
+        heroDefinition(target.heroId).gender !== "F" ||
+        usedTargets.includes(target.id) ||
+        sourceEffectId !==
+          `${state.matchId}:effect:${event.causationCommandId}` ||
+        state.pendingChoice !== null ||
+        state.reactionWindow !== null ||
+        state.dyingBatch !== null ||
+        state.effectStack.some(
+          (effect) => effect.effectId === `${sourceEffectId}:damage-batch`,
+        ) ||
+        JSON.stringify(event.payload.damageItems) !== JSON.stringify(expected)
+      ) {
+        throw new Error("JN20601 event is not applicable.");
+      }
+      const withTargetMemory: MatchState = {
+        ...state,
+        turn: {
+          ...state.turn,
+          usedSkillTargetIds: {
+            ...state.turn.usedSkillTargetIds,
+            "xyy.skill.jn20601": [...usedTargets, target.id],
+          },
+        },
+      };
+      next = beginDamageResponse(
+        withTargetMemory,
+        sourceEffectId,
+        playerId,
+        expected,
+        openedAt,
+      );
+    } else if (skillId === "xyy.skill.jn10501") {
       const selected = new Set<CardInstanceId>(cardInstanceIds);
       if (
         !heroHasSkill(player.heroId, "xyy.skill.jn10501") ||
@@ -1397,7 +1459,53 @@ export function applyTurnCommand(
       };
     }
     const nextEventId = `${input.matchId}:event:${input.eventSequence + 1}`;
-    if (command.skillId === "xyy.skill.jn10501") {
+    if (command.skillId === "xyy.skill.jn20601") {
+      const usedTargets =
+        input.turn.usedSkillTargetIds?.["xyy.skill.jn20601"] ?? [];
+      if (
+        !heroHasSkill(player.heroId, "xyy.skill.jn20601") ||
+        player.hp < 2 ||
+        cardInstanceIds.length !== 0 ||
+        command.targetPlayerIds.length !== 1 ||
+        target === undefined ||
+        !target.alive ||
+        target.id === envelope.playerId ||
+        target.heroId === null ||
+        heroDefinition(target.heroId).gender !== "F" ||
+        usedTargets.includes(target.id)
+      ) {
+        return {
+          accepted: false,
+          reason: "forbidden",
+          currentVersion: input.version,
+        };
+      }
+      const sourceEffectId = `${input.matchId}:effect:${envelope.commandId}`;
+      builder.append("turn.hero-skill-activated", {
+        playerId: envelope.playerId,
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn20601",
+        targetPlayerIds: [target.id],
+        sourceEffectId,
+        openedAt: serverReceivedAt,
+        damageItems: planDamageBatch(input, [
+          {
+            itemId: `${sourceEffectId}:damage:0`,
+            sourcePlayerId: envelope.playerId,
+            targetPlayerId: envelope.playerId,
+            amount: 1,
+            element: "neutral",
+          },
+          {
+            itemId: `${sourceEffectId}:damage:1`,
+            sourcePlayerId: envelope.playerId,
+            targetPlayerId: target.id,
+            amount: 1,
+            element: "neutral",
+          },
+        ]),
+      });
+    } else if (command.skillId === "xyy.skill.jn10501") {
       const selected = new Set<CardInstanceId>(cardInstanceIds);
       if (
         !heroHasSkill(player.heroId, "xyy.skill.jn10501") ||

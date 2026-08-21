@@ -6,9 +6,9 @@
 - 共享核心前置：28
 - 总跟踪：205
 - 当前 partial：37
-- 当前 verified：20
+- 当前 verified：21
 - 当前 deferred：0
-- 当前 unstarted：148
+- 当前 unstarted：147
 
 ## 执行切片
 
@@ -41,6 +41,7 @@
 | `xyy.skill.jn10502` | 万蛊蚀天   | native empty-hand reward-phase trigger draws one for each living teammate before canonical all-other neutral damage, then resumes the ordinary reward exactly once through response, dying, JSON replay and six-socket restart | receipt:docs/verification/receipts/cs02-jn10502.md                                                                                                                              |
 | `xyy.skill.jn20202` | 拒绝       | native XJ202 TP-category hand-card conversion into the canonical TP01 counter-chain is verified through replay and six-socket restart                                                                                          | receipt:docs/verification/receipts/cs02-jn20202.md                                                                                                                              |
 | `xyy.skill.jn20302` | 元灵归心术 | native XJ203 repeatable technique-card discard to direct cure any living player is verified through replay and six-socket restart                                                                                              | receipt:docs/verification/receipts/cs02-jn20302.md                                                                                                                              |
+| `xyy.skill.jn20601` | 辣手摧花   | native XJ206 repeatable living-female dual neutral damage with per-action target memory is verified through canonical response, dying, replay and six-socket restart                                                           | receipt:docs/verification/receipts/cs02-jn20601.md                                                                                                                              |
 | `xyy.skill.jn40301` | 烹饪       | native X3W03 two-hand-card conversion into TP02 action healing and dying rescue is verified through replay and six-socket restart                                                                                              | receipt:docs/verification/receipts/cs02-jn40301.md                                                                                                                              |
 | `xyy.skill.jn40302` | 兄弟       | native X3W03 once-per-action collection of all living teammate hands and optional private subset redistribution is verified through timeout, replay and six-socket restart                                                     | receipt:docs/verification/receipts/cs02-jn40302.md                                                                                                                              |
 | `xyy.skill.jn40401` | 饕餮       | native X3W04 repeatable own hand-or-equipment discard before direct self-cure is verified through replay and six-socket restart                                                                                                | receipt:docs/verification/receipts/cs02-jn40401.md                                                                                                                              |
@@ -82,7 +83,7 @@
 | `xyy.hero.xj201` | 王小虎      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj202` | 苏媚        | setup identity and base stats plus JN20202 TP-card conversion are verified; JN20201 remains pending                                                                            | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn20202.md |
 | `xyy.hero.xj203` | 沈欺霜      | setup identity and base stats plus JN20302 repeatable direct healing are verified; JN20301 remains pending                                                                     | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn20302.md |
-| `xyy.hero.xj206` | 孔璘        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
+| `xyy.hero.xj206` | 孔璘        | setup identity and base stats plus JN20601 repeatable female-target dual damage are verified; JN20602 death transformation and dependent XJ207 remain pending                  | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn20601.md |
 | `xyy.hero.xj207` | 魔尊        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj302` | 唐雪见      | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |
 | `xyy.hero.xj305` | 紫萱        | setup identity, base stats, selectability and private offer only; hero skills are not implemented                                                                              | M02-SETUP-AND-TEAMS                                                     |

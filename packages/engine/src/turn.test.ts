@@ -347,6 +347,288 @@ describe("M03 deterministic turn core", () => {
     expectConserved(state);
   });
 
+  it("uses JN20601 to damage self and each living female target at most once per turn", () => {
+    let state = playing("jn20601-harm-women");
+    const actor = state.activePlayerId!;
+    const others = Object.values(state.players)
+      .filter((player) => player.id !== actor)
+      .sort((left, right) => left.seat - right.seat);
+    const firstFemale = others[0]!.id;
+    const secondFemale = others[1]!.id;
+    const male = others[2]!.id;
+    const deadFemale = others[3]!.id;
+    state = arrange(state, {});
+    state = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId:
+              player.id === actor
+                ? "xyy.hero.xj206"
+                : player.id === firstFemale
+                  ? "xyy.hero.xj105"
+                  : player.id === secondFemale || player.id === deadFemale
+                    ? "xyy.hero.xj202"
+                    : "xyy.hero.xj201",
+            alive: player.id !== deadFemale,
+            hp: player.id === deadFemale ? 0 : 4,
+          },
+        ]),
+      ),
+    };
+
+    expect(createPlayerView(state, actor).availableActions).toContainEqual({
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      requiredCardCount: 0,
+      skillId: "xyy.skill.jn20601",
+      targetPlayerIds: [firstFemale, secondFemale],
+      requiredTargetCount: 1,
+    });
+    const timeoutStart = JSON.parse(JSON.stringify(state)) as MatchState;
+    const deadline = collectSystemDeadlines(timeoutStart).find((candidate) =>
+      candidate.targetId.startsWith("turn:"),
+    )!;
+    const timedOut = applyCommand(timeoutStart, {
+      origin: "system-timeout",
+      commandId: "jn20601-timeout",
+      matchId: timeoutStart.matchId,
+      expectedVersion: timeoutStart.version,
+      deadlineAt: deadline.deadlineAt,
+      targetId: deadline.targetId,
+    });
+    expect(timedOut.accepted).toBe(true);
+    if (!timedOut.accepted) throw new Error(timedOut.reason);
+    expect(timedOut.state.players[actor]!.hp).toBe(
+      timeoutStart.players[actor]!.hp,
+    );
+    expect(timedOut.state.players[firstFemale]!.hp).toBe(
+      timeoutStart.players[firstFemale]!.hp,
+    );
+    expect(
+      timedOut.state.turn?.usedSkillTargetIds?.["xyy.skill.jn20601"],
+    ).toBeUndefined();
+    const lowHp: MatchState = {
+      ...state,
+      players: {
+        ...state.players,
+        [actor]: { ...state.players[actor]!, hp: 1 },
+      },
+    };
+    expect(
+      createPlayerView(lowHp, actor).availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn20601",
+      ),
+    ).toBe(false);
+    expect(
+      applyCommand(lowHp, {
+        origin: "player",
+        serverReceivedAt: 0,
+        envelope: envelope(lowHp, actor, "jn20601-low-hp", {
+          type: "activate-hero-skill",
+          cardInstanceIds: [],
+          skillId: "xyy.skill.jn20601",
+          targetPlayerIds: [firstFemale],
+        }),
+      }),
+    ).toMatchObject({ accepted: false, reason: "forbidden" });
+    for (const [commandId, cardInstanceIds, targetPlayerIds] of [
+      ["jn20601-card-cost", ["xyy.card.jp01@1"], [firstFemale]],
+      ["jn20601-male", [], [male]],
+      ["jn20601-dead", [], [deadFemale]],
+      ["jn20601-self", [], [actor]],
+      ["jn20601-no-target", [], []],
+      ["jn20601-many-targets", [], [firstFemale, secondFemale]],
+    ] as const) {
+      expect(
+        applyCommand(state, {
+          origin: "player",
+          serverReceivedAt: 0,
+          envelope: envelope(state, actor, commandId, {
+            type: "activate-hero-skill",
+            cardInstanceIds,
+            skillId: "xyy.skill.jn20601",
+            targetPlayerIds,
+          }),
+        }),
+      ).toMatchObject({ accepted: false, reason: "forbidden" });
+    }
+
+    const planned = applyCommand(state, {
+      origin: "player",
+      serverReceivedAt: 0,
+      envelope: envelope(state, actor, "jn20601-tamper-source", {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn20601",
+        targetPlayerIds: [firstFemale],
+      }),
+    });
+    expect(planned.accepted).toBe(true);
+    if (!planned.accepted) throw new Error(planned.reason);
+    const activationEvent = planned.events[0]!;
+    expect(() =>
+      reduceEvent(state, {
+        ...activationEvent,
+        payload: {
+          ...activationEvent.payload,
+          sourceEffectId: "forged-jn20601-effect",
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      reduceEvent(state, {
+        ...activationEvent,
+        payload: {
+          ...activationEvent.payload,
+          damageItems: [
+            ...(activationEvent.payload.damageItems as readonly unknown[]),
+          ].reverse(),
+        },
+      }),
+    ).toThrow();
+
+    const actorHp = state.players[actor]!.hp;
+    const firstHp = state.players[firstFemale]!.hp;
+    state = dispatch(state, actor, "jn20601-first", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn20601",
+      targetPlayerIds: [firstFemale],
+    });
+    expect(state.turn?.usedSkillTargetIds?.["xyy.skill.jn20601"]).toEqual([
+      firstFemale,
+    ]);
+    expect(state.reactionWindow).not.toBeNull();
+    expect(
+      state.effectStack.find((effect) => effect.kind === "damage-batch")
+        ?.payload.damageItems,
+    ).toMatchObject([
+      { targetPlayerId: actor, amount: 1, element: "neutral" },
+      { targetPlayerId: firstFemale, amount: 1, element: "neutral" },
+    ]);
+    state = passAllReactions(state, "jn20601-first-pass");
+    expect(state.players[actor]!.hp).toBe(actorHp - 1);
+    expect(state.players[firstFemale]!.hp).toBe(firstHp - 1);
+    expect(state.turn).toMatchObject({ number: 1, phase: "action" });
+    expect(createPlayerView(state, actor).availableActions).toContainEqual(
+      expect.objectContaining({
+        type: "activate-hero-skill",
+        skillId: "xyy.skill.jn20601",
+        targetPlayerIds: [secondFemale],
+      }),
+    );
+    expect(
+      applyCommand(state, {
+        origin: "player",
+        serverReceivedAt: 0,
+        envelope: envelope(state, actor, "jn20601-repeat", {
+          type: "activate-hero-skill",
+          cardInstanceIds: [],
+          skillId: "xyy.skill.jn20601",
+          targetPlayerIds: [firstFemale],
+        }),
+      }),
+    ).toMatchObject({ accepted: false, reason: "forbidden" });
+
+    state = dispatch(state, actor, "jn20601-second", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn20601",
+      targetPlayerIds: [secondFemale],
+    });
+    state = passAllReactions(state, "jn20601-second-pass");
+    expect(state.turn?.usedSkillTargetIds?.["xyy.skill.jn20601"]).toEqual([
+      firstFemale,
+      secondFemale,
+    ]);
+    expect(
+      createPlayerView(state, actor).availableActions.some(
+        (action) =>
+          action.type === "activate-hero-skill" &&
+          action.skillId === "xyy.skill.jn20601",
+      ),
+    ).toBe(false);
+
+    state = dispatch(state, actor, "jn20601-end-action", {
+      type: "end-action",
+    });
+    expect(state.turn).toMatchObject({ number: 2, phase: "action" });
+    expect(state.turn?.usedSkillTargetIds).toBeUndefined();
+    expectConserved(state);
+  });
+
+  it("lets TP03 prevent only its owner's JN20601 damage item", () => {
+    let state = playing("jn20601-tp03");
+    const actor = state.activePlayerId!;
+    const target = state.turnOrder.find((playerId) => playerId !== actor)!;
+    state = arrange(state, { [actor]: ["xyy.card.tp03@39"] });
+    state = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId:
+              player.id === actor
+                ? "xyy.hero.xj206"
+                : player.id === target
+                  ? "xyy.hero.xj105"
+                  : "xyy.hero.xj201",
+            hp: 4,
+          },
+        ]),
+      ),
+    };
+    const actorHp = state.players[actor]!.hp;
+    const targetHp = state.players[target]!.hp;
+    state = dispatch(state, actor, "jn20601-tp03-start", {
+      type: "activate-hero-skill",
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn20601",
+      targetPlayerIds: [target],
+    });
+    let passes = 0;
+    while (
+      state.reactionWindow !== null &&
+      state.reactionWindow.priorityOrder[state.reactionWindow.priorityIndex] !==
+        actor
+    ) {
+      const window = state.reactionWindow;
+      const priority = window.priorityOrder[window.priorityIndex]!;
+      state = dispatch(state, priority, `jn20601-before-tp03-${passes}`, {
+        type: "pass-reaction",
+        windowId: window.windowId,
+      });
+      passes += 1;
+    }
+    const prevention = createPlayerView(state, actor).availableActions.find(
+      (action) =>
+        action.type === "play-reaction-card" &&
+        action.cardInstanceId === "xyy.card.tp03@39",
+    );
+    expect(prevention).toBeDefined();
+    state = dispatch(state, actor, "jn20601-use-tp03", {
+      type: "play-reaction-card",
+      cardInstanceId: "xyy.card.tp03@39",
+      targetEffectId: prevention!.targetEffectId,
+    });
+    state = passAllReactions(state, "jn20601-after-tp03");
+    expect(state.players[actor]!.hp).toBe(actorHp);
+    expect(state.players[target]!.hp).toBe(targetHp - 1);
+    expect(state.discardPile).toContain("xyy.card.tp03@39");
+    expect(state.turn?.usedSkillTargetIds?.["xyy.skill.jn20601"]).toEqual([
+      target,
+    ]);
+    expectConserved(state);
+  });
+
   it("uses JN40302 once to collect teammate hands and optionally redistribute the whole hand", () => {
     let state = playing("jn40302-brothers");
     const actor = state.activePlayerId!;

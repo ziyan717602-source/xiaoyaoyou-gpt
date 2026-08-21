@@ -743,6 +743,57 @@ function injectJn10502(state: MatchState, owner: PlayerId): MatchState {
   };
 }
 
+function injectJn20601(
+  state: MatchState,
+  owner: PlayerId,
+  firstTarget: PlayerId,
+  secondTarget: PlayerId,
+): MatchState {
+  return {
+    ...state,
+    phase: "playing",
+    activePlayerId: owner,
+    turn: {
+      ...(state.turn ?? {
+        number: 1,
+        openedAt: 0,
+        deadlineAt: 15_000,
+      }),
+      number: state.turn?.number ?? 1,
+      phase: "action",
+      usedSkillIds: [],
+      usedSkillTargetIds: {},
+    },
+    winner: null,
+    players: Object.fromEntries(
+      Object.values(state.players).map((player) => [
+        player.id,
+        {
+          ...player,
+          heroId:
+            player.id === owner
+              ? "xyy.hero.xj206"
+              : player.id === firstTarget
+                ? "xyy.hero.xj105"
+                : player.id === secondTarget
+                  ? "xyy.hero.xj202"
+                  : "xyy.hero.xj201",
+          alive: true,
+          hp: 4,
+          hand: [],
+          equipment: { weapon: null, armor: null },
+        },
+      ]),
+    ),
+    drawPile: SETUP_CARD_INSTANCES,
+    discardPile: [],
+    effectStack: [],
+    reactionWindow: null,
+    pendingChoice: null,
+    dyingBatch: null,
+  };
+}
+
 async function passReactions(
   clients: readonly Client[],
   sessions: readonly RoomSession[],
@@ -2066,6 +2117,135 @@ describe("M05 damage/dying over six real WebSockets", () => {
         (player) => player.id === owner,
       )?.hand,
     ).toEqual(["xyy.card.zp01@16", "xyy.card.jp03@3"]);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+  });
+
+  it("restarts JN20601 mid-response and preserves target memory over six sockets", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jn20601-integration-"));
+    roots.push(root);
+    const databasePath = join(root, "jn20601.sqlite");
+    let running = await start(databasePath);
+    const created = await createPlaying(running);
+    let { sessions, clients } = created;
+    const ordered = clients[0]!.latestView.players
+      .slice()
+      .sort((left, right) => left.seat - right.seat);
+    const owner = ordered[0]!.id;
+    const firstTarget = ordered[1]!.id;
+    const secondTarget = ordered[2]!.id;
+    const indexOf = (playerId: PlayerId) =>
+      sessions.findIndex((session) => session.playerId === playerId);
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    rewriteSnapshot(databasePath, created.roomId, (state) =>
+      injectJn20601(state, owner, firstTarget, secondTarget),
+    );
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    let version = clients[0]!.latestView.version;
+    expect(clients[indexOf(owner)]!.latestView.availableActions).toContainEqual(
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        requiredCardCount: 0,
+        skillId: "xyy.skill.jn20601",
+        targetPlayerIds: [firstTarget, secondTarget],
+        requiredTargetCount: 1,
+      },
+    );
+    for (const player of ordered) {
+      if (player.id === owner) continue;
+      expect(
+        clients[indexOf(player.id)]!.latestView.availableActions,
+      ).not.toContainEqual(
+        expect.objectContaining({
+          type: "activate-hero-skill",
+          skillId: "xyy.skill.jn20601",
+        }),
+      );
+    }
+    const hpBefore = Object.fromEntries(
+      clients[0]!.latestView.players.map((player) => [player.id, player.hp]),
+    );
+
+    const response = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn20601-first",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn20601",
+        targetPlayerIds: [firstTarget],
+      },
+    );
+    expect(response.type).toBe("command-accepted");
+    version += 1;
+    await waitVersion(clients, version);
+    expect(clients[0]!.latestView.reactionWindow).not.toBeNull();
+    expect(
+      clients[0]!.latestView.turn?.usedSkillTargetIds?.["xyy.skill.jn20601"],
+    ).toEqual([firstTarget]);
+    const persistedWindow = JSON.parse(
+      JSON.stringify(clients[0]!.latestView.reactionWindow),
+    );
+
+    for (const client of clients) client.socket.close();
+    await running.server.closeGracefully();
+    running = await start(databasePath);
+    clients = await Promise.all(
+      sessions.map((session) => connect(running.wsUrl, session)),
+    );
+    version = clients[0]!.latestView.version;
+    expect(clients[0]!.latestView.reactionWindow).toEqual(persistedWindow);
+    expect(
+      clients[0]!.latestView.turn?.usedSkillTargetIds?.["xyy.skill.jn20601"],
+    ).toEqual([firstTarget]);
+
+    version = await passReactions(clients, sessions, version, "jn20601-pass");
+    expect(clients[0]!.latestView.reactionWindow).toBeNull();
+    expect(clients[0]!.latestView.turn).toMatchObject({
+      number: 1,
+      phase: "action",
+    });
+    for (const player of clients[0]!.latestView.players) {
+      expect(player.hp).toBe(
+        player.id === owner || player.id === firstTarget
+          ? hpBefore[player.id]! - 1
+          : hpBefore[player.id],
+      );
+      expect(player.handCount).toBe(0);
+    }
+    expect(clients[indexOf(owner)]!.latestView.availableActions).toContainEqual(
+      expect.objectContaining({
+        type: "activate-hero-skill",
+        skillId: "xyy.skill.jn20601",
+        targetPlayerIds: [secondTarget],
+      }),
+    );
+    const repeated = await send(
+      clients[indexOf(owner)]!,
+      sessions[indexOf(owner)]!,
+      "jn20601-repeat",
+      version,
+      {
+        type: "activate-hero-skill",
+        cardInstanceIds: [],
+        skillId: "xyy.skill.jn20601",
+        targetPlayerIds: [firstTarget],
+      },
+    );
+    expect(repeated).toMatchObject({
+      type: "command-rejected",
+      reason: "forbidden",
+      currentVersion: version,
+    });
 
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();

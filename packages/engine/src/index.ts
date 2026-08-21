@@ -7,7 +7,12 @@ import type {
   WindowId,
 } from "@xiaoyaoyou/protocol";
 import { PROTOCOL_VERSION } from "@xiaoyaoyou/protocol";
-import { cardDefinition, cardIdOf, heroHasSkill } from "./setup-content.js";
+import {
+  cardDefinition,
+  cardIdOf,
+  heroDefinition,
+  heroHasSkill,
+} from "./setup-content.js";
 import type { CardInstanceId, HeroId } from "./setup-content.js";
 
 export const MATCH_SCHEMA_VERSION = 6 as const;
@@ -299,6 +304,14 @@ export type AvailableAction =
       readonly skillId: "xyy.skill.jn50202";
       readonly targetPlayerIds: readonly PlayerId[];
       readonly requiredTargetCount: 0;
+    }
+  | {
+      readonly type: "activate-hero-skill";
+      readonly cardInstanceIds: readonly CardInstanceId[];
+      readonly requiredCardCount: 0;
+      readonly skillId: "xyy.skill.jn20601";
+      readonly targetPlayerIds: readonly PlayerId[];
+      readonly requiredTargetCount: 1;
     }
   | { readonly type: "end-action" }
   | {
@@ -1360,6 +1373,35 @@ function turnActions(
           },
         ]
       : [];
+  const harmedTargets =
+    state.turn.usedSkillTargetIds?.["xyy.skill.jn20601"] ?? [];
+  const harmFemaleTargets = Object.values(state.players)
+    .filter(
+      (candidate) =>
+        candidate.alive &&
+        candidate.id !== viewerId &&
+        candidate.heroId !== null &&
+        heroDefinition(candidate.heroId).gender === "F" &&
+        !harmedTargets.includes(candidate.id),
+    )
+    .sort((left, right) => left.seat - right.seat)
+    .map((candidate) => candidate.id);
+  const harmFemaleActions =
+    player.heroId !== null &&
+    heroHasSkill(player.heroId, "xyy.skill.jn20601") &&
+    player.hp >= 2 &&
+    harmFemaleTargets.length > 0
+      ? [
+          {
+            type: "activate-hero-skill" as const,
+            cardInstanceIds: [],
+            requiredCardCount: 0 as const,
+            skillId: "xyy.skill.jn20601" as const,
+            targetPlayerIds: harmFemaleTargets,
+            requiredTargetCount: 1 as const,
+          },
+        ]
+      : [];
   const brothersActions =
     player.heroId !== null &&
     heroHasSkill(player.heroId, "xyy.skill.jn40302") &&
@@ -1391,6 +1433,7 @@ function turnActions(
     ...drawDiscardActions,
     ...presentSwordActions,
     ...giftHandActions,
+    ...harmFemaleActions,
     ...brothersActions,
     { type: "end-action" },
   ];

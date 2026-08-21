@@ -796,6 +796,126 @@ describe("M03 turn event replay", () => {
     expect(uninterrupted.state.discardPile).toContain("xyy.card.wq04@50");
   });
 
+  it("replays JN20601 target memory through damage response and dying checkpoints", () => {
+    const base = started("jn20601-replay");
+    const owner = base.activePlayerId!;
+    const target = Object.values(base.players)
+      .filter(
+        (player) =>
+          player.id !== owner && player.team !== base.players[owner]!.team,
+      )
+      .sort((left, right) => left.seat - right.seat)[0]!.id;
+    const initial: MatchState = {
+      ...base,
+      players: Object.fromEntries(
+        Object.values(base.players).map((player) => [
+          player.id,
+          {
+            ...player,
+            heroId:
+              player.id === owner
+                ? "xyy.hero.xj206"
+                : player.id === target
+                  ? "xyy.hero.xj105"
+                  : "xyy.hero.xj201",
+            hp: player.id === owner ? 2 : player.id === target ? 1 : 4,
+            hand: [],
+            equipment: { weapon: null, armor: null },
+          },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES,
+      discardPile: [],
+    };
+    const activationCommand = {
+      type: "activate-hero-skill" as const,
+      cardInstanceIds: [],
+      skillId: "xyy.skill.jn20601",
+      targetPlayerIds: [target],
+    };
+    const activation = apply(
+      initial,
+      owner,
+      "jn20601-replay-activate",
+      activationCommand,
+    );
+    expect(
+      apply(
+        JSON.parse(JSON.stringify(initial)) as MatchState,
+        owner,
+        "jn20601-replay-activate",
+        activationCommand,
+      ),
+    ).toEqual(activation);
+    expect(activation.state.reactionWindow).not.toBeNull();
+    expect(
+      activation.state.turn?.usedSkillTargetIds?.["xyy.skill.jn20601"],
+    ).toEqual([target]);
+
+    const allEvents: DomainEvent[] = [...activation.events];
+    let state = JSON.parse(JSON.stringify(activation.state)) as MatchState;
+    let commandIndex = 0;
+    while (state.reactionWindow !== null || state.dyingBatch !== null) {
+      const before = state;
+      const command =
+        state.reactionWindow !== null
+          ? {
+              playerId:
+                state.reactionWindow.priorityOrder[
+                  state.reactionWindow.priorityIndex
+                ]!,
+              value: {
+                type: "pass-reaction" as const,
+                windowId: state.reactionWindow.windowId,
+              },
+            }
+          : {
+              playerId:
+                state.dyingBatch!.priorityOrder[
+                  state.dyingBatch!.priorityIndex
+                ]!,
+              value: {
+                type: "pass-rescue" as const,
+                choiceId: state.pendingChoice!.choiceId,
+              },
+            };
+      const result = apply(
+        before,
+        command.playerId,
+        `jn20601-replay-continue-${commandIndex}`,
+        command.value,
+      );
+      expect(
+        apply(
+          JSON.parse(JSON.stringify(before)) as MatchState,
+          command.playerId,
+          `jn20601-replay-continue-${commandIndex}`,
+          command.value,
+        ),
+      ).toEqual(result);
+      allEvents.push(...result.events);
+      state = JSON.parse(JSON.stringify(result.state)) as MatchState;
+      commandIndex += 1;
+      if (commandIndex > 24)
+        throw new Error("JN20601 replay fixture did not converge.");
+    }
+
+    expect(state.players[owner]).toMatchObject({ alive: true, hp: 1 });
+    expect(state.players[target]).toMatchObject({ alive: false, hp: 0 });
+    expect(state.turn).toMatchObject({ number: 1, phase: "action" });
+    expect(state.turn?.usedSkillTargetIds?.["xyy.skill.jn20601"]).toEqual([
+      target,
+    ]);
+    let replayed = initial;
+    for (const event of allEvents) {
+      replayed = reduceEvent(
+        replayed,
+        JSON.parse(JSON.stringify(event)) as DomainEvent,
+      );
+    }
+    expect(replayed).toEqual(state);
+  });
+
   it("replays JN10502 through a restarted damage window and delayed reward", () => {
     const base = started("jn10502-replay");
     const actor = base.activePlayerId!;
