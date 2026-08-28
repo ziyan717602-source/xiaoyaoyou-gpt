@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS03-BATTLE-DECKS`
-- 最近验证完成：`CS03-03C-01-DEBUT / 六类怪物登场、怪物来源伤害、净衣咒/冰心诀、追打/濒死/救援/死亡后自伤、临时属性、父子来源与六连接重启通过。战牌/胜败及正式回合未闭合，不计为 55 项内容完成。`
+- 最近验证完成：`CS03-03C-01-DEBUT / 六类怪物登场、怪物来源伤害、隐蛊/冰心诀、追打/濒死/救援/死亡后自伤、临时属性、父子来源与六连接重启通过。战牌/胜败及正式回合未闭合，不计为 55 项内容完成。`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`

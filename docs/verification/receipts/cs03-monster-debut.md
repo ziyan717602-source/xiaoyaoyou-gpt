@@ -7,7 +7,7 @@
 ## 行为验收
 
 - 六种实际登场效果：GS01 整手交换、GH03 支援者火伤害、GH04 全体火伤害、GL02 本场战力、GT02 非参战者按手牌受伤、GT03 本场怪物战力。十四种无登场方法的怪物明确交接战牌，不伪造胜负。
-- 真实净衣咒防伤与冰心诀反制，保留原怪物伤害；多人濒死全员死亡一次清理持有怪物、真实仙丹救援、行动者死亡但双方仍存活、孔璘变身、玄霄火免疫均有直接结果断言。
+- 真实隐蛊（TP03）防伤与冰心诀（TP01）反制，保留原怪物伤害；多人濒死全员死亡一次清理持有怪物、真实仙丹救援、行动者死亡但双方仍存活、孔璘变身、玄霄火免疫均有直接结果断言。
 - 唐雪见支付手牌触发追打、韩菱纱死亡后选牌/放弃及自伤均实际执行，不仅覆盖“全部放弃技能”。父子来源图在消耗原效果栈帧后仍可恢复，拒绝循环或外来来源。
 - 新增 9 项单元与 22 项重放/隐私/损坏状态场景，其中属性测试含 60 组固定种子可收缩混合手动/超时序列。每条命令正常执行、JSON 恢复后执行与领域事件重放相同；每个等待点验证 56 手牌类实体、46 遭遇实体和 34 角色分区守恒。
 - 已自动模式玩家在窗口起点默认放弃，不消费 RNG；重复超时拒绝。非当前席无可用动作；等量不同私密手牌不改变其他五人的视图、动作或响应时序。
@@ -30,7 +30,7 @@
 - `npm run monster-debut:verify`：通过，82 项相关单元/重放、严格类型及 8 项真实时间恢复网络场景。
 - `npm run check:full`：通过，包含快速检查、构建、206 项单元、87 项重放、6 项 Bot、30 项网络、3 项既有 E2E 和本地六连接烟测。数量仅定位证据，不代表完整内容验收。
 - `npm run oracle:inventory`：通过，1558 文件，摘要 `c32a3e5e72e2b15da2891b8a04fe6856c030ac61e15345b4b196afc4e8a2df30` 不变。
-- 绿色提交后的 `goal:preflight` 在干净工作区另行执行，见本地 `artifacts/cs03-debut-preflight.txt`；本收据不预先声称它已经通过。
+- `npm run goal:preflight`：已在绿色提交 `5dc84c32229bbf3c4dbd37cb5da5a402226a3691` 的干净工作区通过，包含再次完整回归，见本地 `artifacts/cs03-debut-preflight.txt`。随后仅修正文档将 TP03 误称为净衣咒的名称错误，代码与测试始终是目录中的隐蛊。
 - 忽略目录中的失败产物：`cs03-debut-first.txt`、`cs03-debut-replay-red.txt`、`cs03-debut-replay-scenarios-red.txt`、`cs03-debut-aftermath-red.txt`、`cs03-debut-aftermath-green.txt`（文件名虽带 green，实际仍是失败日志）、`cs03-debut-network-first.txt`。
 - 通过产物：`cs03-debut-cross-effects-verified.txt`、`cs03-debut-network-built.txt`、`cs03-debut-node-first.txt`、`cs03-debut-check-full-first.txt`、`cs03-debut-reference-inventory.txt`。可公开复现以提交测试为准，不包含完整旧源码或本地 SQLite。
 
