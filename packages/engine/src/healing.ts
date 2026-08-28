@@ -6,6 +6,7 @@ import {
   type HpEvolutionFlag,
 } from "./hp-evolution.js";
 import { cardDefinition, type CardInstanceId } from "./setup-content.js";
+import { weaponEffectsEnabled } from "./pet-effects.js";
 
 export interface CureIntent {
   readonly itemId: string;
@@ -53,7 +54,9 @@ export function planCureBatch(
     const hpEvoMask = canonicalHpEvolutionMask(intent.hpEvoMask);
     let amount = intent.amount;
     const appliedModifierCardInstanceIds: CardInstanceId[] = [];
-    const wq02 = activeWq02(target);
+    const wq02 = weaponEffectsEnabled(state, target.id)
+      ? activeWq02(target)
+      : null;
     if (
       amount > 0 &&
       !hasHpEvolutionFlag(hpEvoMask, "termin-at") &&

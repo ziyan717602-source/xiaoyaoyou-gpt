@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
-import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -25,13 +24,16 @@ import {
   buildRoomServer,
   type RoomAppServer,
 } from "../../apps/server/src/room-server.js";
+import { startFetchableServer } from "../helpers/fetchable-server.js";
 
 const require = createRequire(import.meta.url);
 const Database =
   require("../../apps/server/node_modules/better-sqlite3") as typeof import("better-sqlite3").default;
 const roots: string[] = [];
+const activeServers = new Set<RoomAppServer>();
 
-afterEach(() => {
+afterEach(async () => {
+  for (const server of [...activeServers]) await server.closeGracefully();
   for (const root of roots.splice(0))
     rmSync(root, { recursive: true, force: true });
 });
@@ -41,17 +43,28 @@ async function start(path: string): Promise<{
   httpUrl: string;
   wsUrl: string;
 }> {
-  const server = await buildRoomServer({
-    databasePath: path,
-    logger: false,
-    allowedOrigins: ["https://game.local"],
-  });
-  await server.listen(0, "127.0.0.1");
-  const address = server.app.server.address() as AddressInfo;
+  const { server, httpUrl } = await startFetchableServer(() =>
+    buildRoomServer({
+      databasePath: path,
+      logger: false,
+      allowedOrigins: ["https://game.local"],
+    }),
+  );
+  let closed = false;
+  const tracked: RoomAppServer = {
+    ...server,
+    closeGracefully: async () => {
+      if (closed) return;
+      closed = true;
+      await server.closeGracefully();
+      activeServers.delete(tracked);
+    },
+  };
+  activeServers.add(tracked);
   return {
-    server,
-    httpUrl: `http://127.0.0.1:${address.port}`,
-    wsUrl: `ws://127.0.0.1:${address.port}/ws`,
+    server: tracked,
+    httpUrl,
+    wsUrl: httpUrl.replace("http", "ws") + "/ws",
   };
 }
 
@@ -850,7 +863,9 @@ function injectJn20602(state: MatchState, owner: PlayerId): MatchState {
     pendingChoice: null,
     dyingBatch: null,
   };
-  return beginDyingBatch(transformed, "jn20602-network-dying", 1_000);
+  // This is a live 15-second rescue, not an intentionally expired snapshot.
+  // A literal 1000 races the recovery timer and can finish before sockets join.
+  return beginDyingBatch(transformed, "jn20602-network-dying", Date.now());
 }
 
 function injectJn20701(

@@ -26,11 +26,16 @@ import { beginDamageResponse } from "./reaction.js";
 import { nextInt } from "./random.js";
 import { ACTION_DEADLINE_MS } from "./time-recovery.js";
 import type { CardInstanceId } from "./setup-content.js";
+import {
+  exchangePet,
+  petWeaponDisableReasons,
+  type WeaponDisableReasons,
+} from "./pet-effects.js";
 
 interface NpcExecution {
   readonly effectId: string;
   readonly actionId: NpcActionId;
-  readonly stage: "target" | "donor" | "recipient" | "card" | "damage";
+  readonly stage: "target" | "donor" | "recipient" | "card" | "pet" | "damage";
   readonly targets: readonly PlayerId[];
 }
 export interface EncounterRuntimeState {
@@ -38,9 +43,16 @@ export interface EncounterRuntimeState {
   readonly pets: Readonly<Partial<Record<PlayerId, readonly MonsterId[]>>>;
   readonly companions: Readonly<Partial<Record<PlayerId, readonly NpcId[]>>>;
   readonly npc: NpcExecution | null;
+  readonly weaponDisabledReasons: WeaponDisableReasons;
 }
 export function emptyEncounterRuntime(): EncounterRuntimeState {
-  return { resolution: null, pets: {}, companions: {}, npc: null };
+  return {
+    resolution: null,
+    pets: {},
+    companions: {},
+    npc: null,
+    weaponDisabledReasons: {},
+  };
 }
 const IMPLEMENTED_ACTIONS: readonly NpcActionId[] = [
   "xyy.npc-action.nj02",
@@ -48,6 +60,7 @@ const IMPLEMENTED_ACTIONS: readonly NpcActionId[] = [
   "xyy.npc-action.nj04",
   "xyy.npc-action.nj05",
   "xyy.npc-action.nj06",
+  "xyy.npc-action.nj07",
   "xyy.npc-action.nj08",
   "xyy.npc-action.nj09",
 ];
@@ -76,6 +89,19 @@ export function validateEncounterRuntime(state: MatchState): void {
     if (state.players[owner] === undefined || !Array.isArray(cards))
       throw new Error("Invalid encounter owner.");
   }
+  const reasons = runtime.weaponDisabledReasons;
+  const expectedReasons = petWeaponDisableReasons(state, runtime.pets);
+  if (
+    reasons === null ||
+    typeof reasons !== "object" ||
+    Array.isArray(reasons) ||
+    Object.keys(reasons).length !== Object.keys(expectedReasons).length ||
+    Object.entries(expectedReasons).some(
+      ([id, expected]) =>
+        JSON.stringify(reasons[id]) !== JSON.stringify(expected),
+    )
+  )
+    throw new Error("Invalid persisted weapon disable reasons.");
   const flow = runtime.resolution;
   if (
     flow !== null &&
@@ -138,12 +164,16 @@ export function validateEncounterRuntime(state: MatchState): void {
       flow.pendingEffect.actionId !== npc.actionId ||
       !Array.isArray(npc.targets) ||
       npc.targets.some((id) => state.players[id] === undefined) ||
-      !["target", "donor", "recipient", "card", "damage"].includes(npc.stage)
+      !["target", "donor", "recipient", "card", "pet", "damage"].includes(
+        npc.stage,
+      )
     )
       throw new Error("Invalid NPC execution.");
-    const transfer = npc.actionId === "xyy.npc-action.nj06";
+    const transfer =
+      npc.actionId === "xyy.npc-action.nj06" ||
+      npc.actionId === "xyy.npc-action.nj07";
     const expectedTargets =
-      npc.stage === "card"
+      npc.stage === "card" || npc.stage === "pet"
         ? 2
         : npc.stage === "recipient" || npc.stage === "damage"
           ? 1
@@ -153,10 +183,28 @@ export function validateEncounterRuntime(state: MatchState): void {
       (npc.stage === "damage"
         ? !["xyy.npc-action.nj03", "xyy.npc-action.nj05"].includes(npc.actionId)
         : transfer
-          ? !["donor", "recipient", "card"].includes(npc.stage)
+          ? ![
+              "donor",
+              "recipient",
+              npc.actionId === "xyy.npc-action.nj07" ? "pet" : "card",
+            ].includes(npc.stage)
           : npc.stage !== "target")
     )
       throw new Error("Invalid NPC execution step.");
+    if (
+      transfer &&
+      npc.targets.length > 0 &&
+      (!selectionOptions(state, {
+        ...npc,
+        stage: "donor",
+        targets: [],
+      }).includes(npc.targets[0]!) ||
+        (npc.targets.length === 2 &&
+          !selectionOptions(state, { ...npc, stage: "recipient" }).includes(
+            npc.targets[1]!,
+          )))
+    )
+      throw new Error("Invalid NPC transfer participants.");
     const choice = state.pendingChoice;
     if (npc.stage === "damage") {
       if (choice?.continuation.resumeWith === "resolve-npc-choice")
@@ -219,7 +267,9 @@ function selectionOptions(
   if (execution.stage === "donor")
     return living.filter(
       (id) =>
-        state.players[id]!.hand.length > 0 &&
+        (execution.actionId === "xyy.npc-action.nj07"
+          ? (state.encounterState.pets[id]?.length ?? 0) > 0
+          : state.players[id]!.hand.length > 0) &&
         living.some(
           (other) =>
             other !== id &&
@@ -235,6 +285,10 @@ function selectionOptions(
   if (execution.stage === "card")
     return state.players[donor]?.alive === true
       ? state.players[donor]!.hand
+      : [];
+  if (execution.stage === "pet")
+    return state.players[donor]?.alive === true
+      ? [...(state.encounterState.pets[donor] ?? [])].sort()
       : [];
   return [];
 }
@@ -289,6 +343,7 @@ function finish(state: MatchState, at: number): MatchState {
     encounterDeck: result.zones.encounterDeck,
     encounterDiscard: result.zones.encounterDiscard,
     encounterState: {
+      ...runtime,
       resolution:
         state.phase === "finished"
           ? { ...result.flow, rewardDrawCount: 0, scoreTiming: "none" }
@@ -389,7 +444,11 @@ function transition(
         {
           effectId: effect.effectId,
           actionId: effect.actionId,
-          stage: effect.actionId === "xyy.npc-action.nj06" ? "donor" : "target",
+          stage: ["xyy.npc-action.nj06", "xyy.npc-action.nj07"].includes(
+            effect.actionId,
+          )
+            ? "donor"
+            : "target",
           targets: [],
         },
         at,
@@ -449,12 +508,25 @@ function transition(
         state,
         {
           ...execution,
-          stage: "card",
+          stage: execution.actionId === "xyy.npc-action.nj07" ? "pet" : "card",
           targets: [...execution.targets, selected],
         },
         at,
       );
-    else if (execution.stage === "card") {
+    else if (execution.stage === "pet") {
+      const [donor, recipient] = execution.targets as readonly [
+        PlayerId,
+        PlayerId,
+      ];
+      state = exchangePet(state, donor, recipient, selected as MonsterId);
+      report.petTransfer = {
+        donor,
+        recipient,
+        selected,
+        petsAfter: state.encounterState.pets,
+      };
+      state = finish(state, at);
+    } else if (execution.stage === "card") {
       const [donor, recipient] = execution.targets as readonly [
         PlayerId,
         PlayerId,

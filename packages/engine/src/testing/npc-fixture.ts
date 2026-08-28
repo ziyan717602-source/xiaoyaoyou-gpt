@@ -7,6 +7,8 @@ import {
   heroDefinition,
 } from "../index.js";
 import { inspectionFixture } from "./inspection-fixture.js";
+import { withPetOwnership } from "../pet-effects.js";
+import type { MonsterId } from "../encounter-content.js";
 import {
   beginEncounterResolution,
   openNpcDecision,
@@ -97,6 +99,7 @@ export function npcFixture(
           ),
     encounterDiscard: [],
     encounterState: {
+      weaponDisabledReasons: {},
       resolution: selected.flow,
       pets: {},
       companions: {},
@@ -149,6 +152,25 @@ export function npcCommand(
       command,
     },
   };
+}
+
+export function grantPets(
+  state: MatchState,
+  owner: string,
+  cards: readonly MonsterId[],
+) {
+  return withPetOwnership(
+    {
+      ...state,
+      encounterDeck: state.encounterDeck.filter(
+        (id) => !cards.includes(id as MonsterId),
+      ),
+    },
+    {
+      ...state.encounterState.pets,
+      [owner]: [...(state.encounterState.pets[owner] ?? []), ...cards],
+    },
+  );
 }
 export function acceptNpcCommand(
   state: MatchState,

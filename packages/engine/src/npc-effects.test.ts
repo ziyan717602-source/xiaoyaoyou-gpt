@@ -13,6 +13,7 @@ import {
   acceptNpcCommand,
   npcCommand,
   npcFixture,
+  grantPets,
 } from "./testing/npc-fixture.js";
 
 const start = (state: MatchState) => beginNpcAction(state, "start-npc", 1_001);
@@ -102,6 +103,7 @@ describe("CS03-03B concrete NPC effects through MatchState and command/event pip
         companions: { [actor]: [companion as `xyy.npc.${string}`] },
       },
     };
+    input = grantPets(input, actor, ["xyy.monster.gs04", "xyy.monster.gl04"]);
     let state = acceptNpcCommand(start(input).state, actor, [owner]).state;
     for (
       let step = 0;
@@ -129,7 +131,22 @@ describe("CS03-03B concrete NPC effects through MatchState and command/event pip
       expect(result.events.reduce(reduceEvent, state)).toEqual(result.state);
       state = migrateMatchState(JSON.parse(JSON.stringify(result.state)));
     }
-    expect(state.encounterDiscard).toEqual([companion]);
+    expect(state.encounterState.pets[actor]).toBeUndefined();
+    expect(state.encounterDiscard).toEqual(
+      expect.arrayContaining(["xyy.monster.gs04", "xyy.monster.gl04"]),
+    );
+    expect(state.players[actor]!.strength).toBe(
+      input.players[actor]!.strength - 1,
+    );
+    expect(state.players[actor]!.dexterity).toBe(
+      input.players[actor]!.dexterity - 1,
+    );
+    expect(state.encounterState.weaponDisabledReasons).toEqual({});
+    expect(state.encounterDiscard).toEqual([
+      "xyy.monster.gs04",
+      "xyy.monster.gl04",
+      companion,
+    ]);
     expect(state.encounterState.companions[actor]).toBeUndefined();
     expect(state.encounterState.resolution!.heldCardId).toBe(
       input.encounterState.resolution!.heldCardId,
@@ -154,6 +171,8 @@ describe("CS03-03B concrete NPC effects through MatchState and command/event pip
     ]);
     expect(finished.players[owner]!.hp).toBe(2);
     expect(finished.encounterDiscard).toEqual([
+      "xyy.monster.gs04",
+      "xyy.monster.gl04",
       companion,
       input.encounterState.resolution!.heldCardId,
     ]);
@@ -182,14 +201,23 @@ describe("CS03-03B concrete NPC effects through MatchState and command/event pip
         },
       },
     };
+    input = grantPets(input, actor, ["xyy.monster.gt04"]);
     const waiting = acceptNpcCommand(start(input).state, actor, [other]).state;
     const finished = passDamageAndRescue(waiting);
     expect(finished.encounterState.companions[actor] ?? []).toEqual([]);
     expect(finished.encounterState.companions[other]).toEqual([companions[1]]);
     expect(finished.encounterDiscard).toEqual([
+      "xyy.monster.gt04",
       companions[0],
       input.encounterState.resolution!.heldCardId,
     ]);
+    expect(finished.encounterState.pets[actor]).toBeUndefined();
+    expect(finished.players[actor]!.strength).toBe(
+      input.players[actor]!.strength - 2,
+    );
+    expect(finished.players[actor]!.dexterity).toBe(
+      input.players[actor]!.dexterity - 1,
+    );
   });
   it("NJ05 completes real damage/death/victory and disposes its held NPC even when victory clears the active player", () => {
     let input = npcFixture("xyy.npc-action.nj05");
@@ -277,7 +305,7 @@ describe("CS03-03B concrete NPC effects through MatchState and command/event pip
       "not implemented",
     );
     expect(() => start(npcFixture("xyy.npc-action.nj07"))).toThrow(
-      "not implemented",
+      "no legal target",
     );
   });
   it("NJ04 actually draws one, closes the held NPC once, and replays the authoritative event", () => {

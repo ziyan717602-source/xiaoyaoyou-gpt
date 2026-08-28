@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
-import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -22,6 +21,7 @@ import {
   buildRoomServer,
   type RoomAppServer,
 } from "../../apps/server/src/room-server.js";
+import { startFetchableServer } from "../helpers/fetchable-server.js";
 
 const require = createRequire(import.meta.url);
 const Database =
@@ -39,17 +39,17 @@ async function start(path: string): Promise<{
   httpUrl: string;
   wsUrl: string;
 }> {
-  const server = await buildRoomServer({
-    databasePath: path,
-    logger: false,
-    allowedOrigins: ["https://game.local"],
-  });
-  await server.listen(0, "127.0.0.1");
-  const address = server.app.server.address() as AddressInfo;
+  const { server, httpUrl } = await startFetchableServer(() =>
+    buildRoomServer({
+      databasePath: path,
+      logger: false,
+      allowedOrigins: ["https://game.local"],
+    }),
+  );
   return {
     server,
-    httpUrl: `http://127.0.0.1:${address.port}`,
-    wsUrl: `ws://127.0.0.1:${address.port}/ws`,
+    httpUrl,
+    wsUrl: httpUrl.replace("http", "ws") + "/ws",
   };
 }
 

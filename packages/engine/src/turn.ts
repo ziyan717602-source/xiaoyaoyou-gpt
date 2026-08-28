@@ -6,6 +6,7 @@ import {
   type CommandId,
   type PlayerId,
 } from "@xiaoyaoyou/protocol";
+import { weaponEffectsEnabled } from "./pet-effects.js";
 import type {
   ApplyCommandResult,
   DomainEvent,
@@ -704,6 +705,7 @@ export function reduceTurnEvent(
       sourceZone === "hand" && player?.hand.includes(cardInstanceId) === true;
     const fromWeapon =
       sourceZone === "weapon" &&
+      weaponEffectsEnabled(state, playerId) &&
       pawnAction?.type === "pawn-draw-two" &&
       player?.equipment.weapon === cardInstanceId;
     if (
@@ -1507,6 +1509,7 @@ export function applyTurnCommand(
       const sourceZone = player.hand.includes(cardInstanceId)
         ? "hand"
         : pawnAction?.type === "pawn-draw-two" &&
+            weaponEffectsEnabled(input, player.id) &&
             player.equipment.weapon === cardInstanceId
           ? "weapon"
           : null;

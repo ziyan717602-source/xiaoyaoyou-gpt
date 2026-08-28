@@ -14,6 +14,7 @@ import {
   npcFixture,
   npcCommand,
   acceptNpcCommand,
+  grantPets,
 } from "./testing/npc-fixture.js";
 import { inspectionFixture } from "./testing/inspection-fixture.js";
 
@@ -83,7 +84,7 @@ describe("CS03 NPC persistence and event integrity", () => {
     ]) {
       const corrupt = JSON.parse(JSON.stringify(state));
       mutate(corrupt);
-      expect(() => migrateMatchState(corrupt)).toThrow("schema v9");
+      expect(() => migrateMatchState(corrupt)).toThrow("schema v10");
     }
     expect(restore(state)).toEqual(state);
   });
@@ -98,13 +99,14 @@ describe("CS03 NPC persistence and event integrity", () => {
       npc: null,
       pets: {},
       companions: {},
+      weaponDisabledReasons: {},
     });
     expect(restored.encounterDeck).toEqual(initial.encounterDeck);
     expect(restored.encounterInspections).toEqual(initial.encounterInspections);
     expect(restored.rng).toEqual(initial.rng);
     expect(() =>
       migrateMatchState({ ...restored, encounterState: undefined }),
-    ).toThrow("schema v9");
+    ).toThrow("schema v10");
   });
   it("recomputes authoritative NPC event results and rejects changed reports, actors and timestamps", () => {
     const initial = npcFixture("xyy.npc-action.nj02");
@@ -139,6 +141,7 @@ describe("CS03 NPC persistence and event integrity", () => {
           "xyy.npc-action.nj02",
           "xyy.npc-action.nj04",
           "xyy.npc-action.nj06",
+          "xyy.npc-action.nj07",
           "xyy.npc-action.nj08",
           "xyy.npc-action.nj09",
         ),
@@ -156,6 +159,17 @@ describe("CS03 NPC persistence and event integrity", () => {
             players,
             drawPile: initial.drawPile.slice(12),
           };
+          if (action === "xyy.npc-action.nj07") {
+            for (const [i, pet] of (
+              [
+                "xyy.monster.gs04",
+                "xyy.monster.gs01",
+                "xyy.monster.gt04",
+                "xyy.monster.gl04",
+              ] as const
+            ).entries())
+              initial = grantPets(initial, initial.turnOrder[i]!, [pet]);
+          }
           const begun = beginNpcAction(initial, "start", 1_001);
           expect(beginNpcAction(restore(initial), "start", 1_001)).toEqual(
             begun,

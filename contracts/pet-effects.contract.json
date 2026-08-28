@@ -1,0 +1,31 @@
+{
+  "id": "CS03-03B-02-PETS",
+  "dependsOn": ["CS03-03B-01", "M06"],
+  "scope": "NJ07 actual three-choice execution, pet ownership/passive deltas, GL04 weapon enablement and death cleanup",
+  "stateSchemaVersion": 10,
+  "rules": [
+    "NJ07 actor selects a living donor with pets and another living teammate, that teammate, then one donor pet; all three waits belong to the encounter actor",
+    "KOKAN same-element replacement returns the previous pet to the donor; no retention prompt, discard or duplication",
+    "Apply gain/loss STR/DEX deltas once; preserve unrelated modifiers; GT03 loss clears its participating slot",
+    "GL04 persists weapon disable reason on every opposing player; physical equipment, armor and hand pawn are not disabled",
+    "Both death cleanup routes discard pets and companions independently of hand/equipment loot",
+    "Mandatory waits are 15 seconds; sorted legal options and recorded RNG resolve timeout, auto owners use the opening instant",
+    "v9 migration applies previously absent pet passives once, preserving deadlines, deck, RNG and private knowledge"
+  ],
+  "remainingDependencies": [
+    "NJ01 and aggregate NPC legality",
+    "monster debut/win/loss/consume effects and pet seals/ROM/burst flags",
+    "weapon battle STR/DEX",
+    "production encounter turn integration",
+    "complete browser play"
+  ],
+  "verification": "npm run pet-effects:verify",
+  "evidence": [
+    "PSDGamepkg/JNS/NC303.cs:184-236 NJ07",
+    "PSDGamepkg/Artiad/Kitty.cs:10-268 HarvestPet KOKAN; 371-550 Obtain/Lose/Join/Collapse",
+    "PSDGamepkg/JNS/FG04.cs:94-684 standard pet IncrAction/DecrAction",
+    "PSDGamepkg/Artiad/Procedure.cs:295-375 reason-based weapon disable",
+    "PSDGamepkg/JNS/CZ02.cs:61-92 hand vs equipped pawn",
+    "PSDGamepkg/XI.cs:766-794 equipment effect availability"
+  ]
+}

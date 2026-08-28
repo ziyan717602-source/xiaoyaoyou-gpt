@@ -20,11 +20,15 @@ import {
   type MatchState,
   type PlayerView,
 } from "@xiaoyaoyou/engine";
-import { npcFixture } from "../../packages/engine/src/testing/npc-fixture.js";
+import {
+  npcFixture,
+  grantPets,
+} from "../../packages/engine/src/testing/npc-fixture.js";
 import {
   buildRoomServer,
   type RoomAppServer,
 } from "../../apps/server/src/room-server.js";
+import { startFetchableServer } from "../helpers/fetchable-server.js";
 
 const require = createRequire(import.meta.url);
 const Database =
@@ -44,8 +48,9 @@ interface Running {
 }
 
 async function start(databasePath: string): Promise<Running> {
-  const server = await buildRoomServer({ databasePath, logger: false });
-  const address = await server.listen(0);
+  const { server, httpUrl: address } = await startFetchableServer(() =>
+    buildRoomServer({ databasePath, logger: false }),
+  );
   return {
     server,
     httpUrl: address,
@@ -315,180 +320,226 @@ function systemTimeoutCount(databasePath: string, matchId: string): number {
 }
 
 describe("M06 time/recovery over six real WebSockets", () => {
-  it("preserves NJ06 donor-private choices through SQLite restart, rejects other players and deduplicates the transfer", async () => {
-    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-npc-integration-"));
-    roots.push(root);
-    const databasePath = join(root, "npc.sqlite");
-    let running = await start(databasePath);
-    let clients: Client[] = [];
-    let stopped = false;
-    const stop = async () => {
-      for (const client of clients) client.socket.close();
-      await running.server.closeGracefully();
-      stopped = true;
-      clients = [];
-    };
-    try {
-      const created = await createPlaying(running);
-      clients = [...created.clients];
-      await stop();
-      const base = latestSnapshotState(databasePath, created.roomId);
-      let input = npcFixture("xyy.npc-action.nj06", "npc-network", {
-        base,
-        at: Date.now(),
-      });
-      const actor = input.activePlayerId!;
-      const donor = input.turnOrder.find((id) => id !== actor)!;
-      const recipient = input.turnOrder.find(
-        (id) =>
-          id !== donor &&
-          input.players[id]!.team === input.players[donor]!.team,
-      )!;
-      const hand = input.drawPile.slice(0, 2);
-      input = {
-        ...input,
-        drawPile: input.drawPile.slice(2),
-        players: {
-          ...input.players,
-          [donor]: { ...input.players[donor]!, hand },
-        },
+  it.each(["xyy.npc-action.nj06", "xyy.npc-action.nj07"] as const)(
+    "preserves %s choices through SQLite restart, rejects other players and deduplicates the transfer",
+    async (actionId) => {
+      const petExchange = actionId === "xyy.npc-action.nj07";
+      const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-npc-integration-"));
+      roots.push(root);
+      const databasePath = join(root, "npc.sqlite");
+      let running = await start(databasePath);
+      let clients: Client[] = [];
+      let stopped = false;
+      const stop = async () => {
+        for (const client of clients) client.socket.close();
+        await running.server.closeGracefully();
+        stopped = true;
+        clients = [];
       };
-      const prepared = beginNpcAction(
-        input,
-        "npc-fixture-entry",
-        input.turn!.openedAt + 1,
-      ).state;
-      // Only the starting scenario is injected. All following selections,
-      // disconnects, persistence, restart and deduplication use the real actor.
-      const stateJson = JSON.stringify({
-        ...prepared,
-        version: base.version,
-        eventSequence: base.eventSequence,
-      });
-      const database = new Database(databasePath);
       try {
-        database
-          .prepare(
-            "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE match_id = ? AND event_sequence = ?",
-          )
-          .run(
-            stateJson,
-            createHash("sha256").update(stateJson).digest("hex"),
-            created.roomId,
-            base.eventSequence,
-          );
-      } finally {
-        database.close();
-      }
-      const reconnect = async () => {
-        running = await start(databasePath);
-        stopped = false;
-        clients = await Promise.all(
-          created.sessions.map((session) => connect(running.wsUrl, session)),
-        );
-        const version = Math.max(...clients.map((c) => c.latestView.version));
-        await waitUntil(() =>
-          clients.every((c) => c.latestView.version === version),
-        );
-      };
-      const indexOf = (id: PlayerId) =>
-        created.sessions.findIndex((s) => s.playerId === id);
-      const submit = async (
-        id: PlayerId,
-        commandId: string,
-        selections: readonly string[],
-        choiceId?: string,
-      ) => {
-        const i = indexOf(id),
-          client = clients[i]!;
-        const response = await send(client, created.sessions[i]!, commandId, {
-          type: "submit-choice",
-          choiceId: choiceId ?? client.latestView.pendingChoice!.choiceId,
-          selections,
+        const created = await createPlaying(running);
+        clients = [...created.clients];
+        await stop();
+        const base = latestSnapshotState(databasePath, created.roomId);
+        let input = npcFixture(actionId, "npc-network", {
+          base,
+          at: Date.now(),
         });
-        if (response.type === "command-accepted") {
+        const actor = input.activePlayerId!;
+        const donor = input.turnOrder.find((id) => id !== actor)!;
+        const recipient = input.turnOrder.find(
+          (id) =>
+            id !== donor &&
+            input.players[id]!.team === input.players[donor]!.team,
+        )!;
+        const hand = input.drawPile.slice(0, 2);
+        input = {
+          ...input,
+          drawPile: input.drawPile.slice(2),
+          players: {
+            ...input.players,
+            [donor]: { ...input.players[donor]!, hand },
+          },
+        };
+        if (petExchange) {
+          input = grantPets(input, donor, [
+            "xyy.monster.gs04",
+            "xyy.monster.gl04",
+          ]);
+          input = grantPets(input, recipient, ["xyy.monster.gs01"]);
+        }
+        const prepared = beginNpcAction(
+          input,
+          "npc-fixture-entry",
+          input.turn!.openedAt + 1,
+        ).state;
+        // Only the starting scenario is injected. All following selections,
+        // disconnects, persistence, restart and deduplication use the real actor.
+        const stateJson = JSON.stringify({
+          ...prepared,
+          version: base.version,
+          eventSequence: base.eventSequence,
+        });
+        const database = new Database(databasePath);
+        try {
+          database
+            .prepare(
+              "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE match_id = ? AND event_sequence = ?",
+            )
+            .run(
+              stateJson,
+              createHash("sha256").update(stateJson).digest("hex"),
+              created.roomId,
+              base.eventSequence,
+            );
+        } finally {
+          database.close();
+        }
+        const reconnect = async () => {
+          running = await start(databasePath);
+          stopped = false;
+          clients = await Promise.all(
+            created.sessions.map((session) => connect(running.wsUrl, session)),
+          );
+          const version = Math.max(...clients.map((c) => c.latestView.version));
           await waitUntil(() =>
-            clients.every((c) => c.latestView.version >= response.version),
+            clients.every((c) => c.latestView.version === version),
+          );
+        };
+        const indexOf = (id: PlayerId) =>
+          created.sessions.findIndex((s) => s.playerId === id);
+        const submit = async (
+          id: PlayerId,
+          commandId: string,
+          selections: readonly string[],
+          choiceId?: string,
+        ) => {
+          const i = indexOf(id),
+            client = clients[i]!;
+          const response = await send(client, created.sessions[i]!, commandId, {
+            type: "submit-choice",
+            choiceId: choiceId ?? client.latestView.pendingChoice!.choiceId,
+            selections,
+          });
+          if (response.type === "command-accepted") {
+            await waitUntil(() =>
+              clients.every((c) => c.latestView.version >= response.version),
+            );
+          }
+          return response;
+        };
+        await reconnect();
+        expect((await submit(actor, "npc-donor", [donor])).type).toBe(
+          "command-accepted",
+        );
+        expect((await submit(actor, "npc-recipient", [recipient])).type).toBe(
+          "command-accepted",
+        );
+        const choiceOwner = petExchange ? actor : donor;
+        const options = petExchange
+          ? ["xyy.monster.gl04", "xyy.monster.gs04"]
+          : hand;
+        const checkPrivacy = () => {
+          for (const [i, client] of clients.entries()) {
+            if (created.sessions[i]!.playerId === choiceOwner) {
+              expect(client.latestView.pendingChoice!.optionIds).toEqual(
+                options,
+              );
+              expect(
+                client.latestView.availableActions.some(
+                  (a) => a.type === "submit-choice",
+                ),
+              ).toBe(true);
+            } else {
+              expect(client.latestView.pendingChoice).toBeNull();
+              expect(client.latestView.availableActions).toEqual([]);
+            }
+            if (created.sessions[i]!.playerId !== donor)
+              for (const card of hand)
+                expect(JSON.stringify(client.latestView)).not.toContain(card);
+          }
+        };
+        checkPrivacy();
+        const choice = clients[indexOf(choiceOwner)]!.latestView.pendingChoice!;
+        const stateBefore = latestSnapshotState(databasePath, created.roomId);
+        await stop();
+        await reconnect();
+        checkPrivacy();
+        expect(clients[indexOf(choiceOwner)]!.latestView.pendingChoice).toEqual(
+          choice,
+        );
+        expect(latestSnapshotState(databasePath, created.roomId).rng).toEqual(
+          stateBefore.rng,
+        );
+        const denied = await submit(
+          petExchange ? donor : actor,
+          "npc-forged-owner",
+          [options[0]!],
+          choice.choiceId,
+        );
+        expect(denied.type).toBe("command-rejected");
+        const receipt = await submit(choiceOwner, "npc-transfer", [
+          options[1]!,
+        ]);
+        expect(receipt.type).toBe("command-accepted");
+        const finished = latestSnapshotState(databasePath, created.roomId);
+        expect(finished.players[donor]!.hand).toEqual(
+          petExchange ? hand : [hand[0]],
+        );
+        expect(finished.players[recipient]!.hand).toEqual(
+          petExchange ? [] : [hand[1]],
+        );
+        if (petExchange) {
+          expect(finished.encounterState.pets[donor]).toEqual([
+            "xyy.monster.gs01",
+            "xyy.monster.gl04",
+          ]);
+          expect(finished.encounterState.pets[recipient]).toEqual([
+            "xyy.monster.gs04",
+          ]);
+          expect(finished.players[donor]!.dexterity).toBe(
+            input.players[donor]!.dexterity - 1,
+          );
+          expect(finished.players[recipient]!.dexterity).toBe(
+            input.players[recipient]!.dexterity + 1,
+          );
+          expect(finished.encounterState.weaponDisabledReasons).toEqual(
+            input.encounterState.weaponDisabledReasons,
           );
         }
-        return response;
-      };
-      await reconnect();
-      expect((await submit(actor, "npc-donor", [donor])).type).toBe(
-        "command-accepted",
-      );
-      expect((await submit(actor, "npc-recipient", [recipient])).type).toBe(
-        "command-accepted",
-      );
-      const checkPrivacy = () => {
-        for (const [i, client] of clients.entries()) {
-          if (created.sessions[i]!.playerId === donor) {
-            expect(client.latestView.pendingChoice!.optionIds).toEqual(hand);
-            expect(
-              client.latestView.availableActions.some(
-                (a) => a.type === "submit-choice",
-              ),
-            ).toBe(true);
-          } else {
-            expect(client.latestView.pendingChoice).toBeNull();
-            expect(client.latestView.availableActions).toEqual([]);
-            for (const card of hand)
-              expect(JSON.stringify(client.latestView)).not.toContain(card);
-          }
-        }
-      };
-      checkPrivacy();
-      const choice = clients[indexOf(donor)]!.latestView.pendingChoice!;
-      const stateBefore = latestSnapshotState(databasePath, created.roomId);
-      await stop();
-      await reconnect();
-      checkPrivacy();
-      expect(clients[indexOf(donor)]!.latestView.pendingChoice).toEqual(choice);
-      expect(latestSnapshotState(databasePath, created.roomId).rng).toEqual(
-        stateBefore.rng,
-      );
-      const denied = await submit(
-        actor,
-        "npc-forged-owner",
-        [hand[0]!],
-        choice.choiceId,
-      );
-      expect(denied.type).toBe("command-rejected");
-      const receipt = await submit(donor, "npc-transfer", [hand[1]!]);
-      expect(receipt.type).toBe("command-accepted");
-      const finished = latestSnapshotState(databasePath, created.roomId);
-      expect(finished.players[donor]!.hand).toEqual([hand[0]]);
-      expect(finished.players[recipient]!.hand).toEqual([hand[1]]);
-      expect(finished.encounterState.npc).toBeNull();
-      expect(finished.encounterDiscard).toEqual([
-        input.encounterState.resolution!.heldCardId,
-      ]);
-      expect(finished.drawPile).toEqual(input.drawPile);
-      const duplicate = await submit(
-        donor,
-        "npc-transfer",
-        [hand[1]!],
-        choice.choiceId,
-      );
-      expect(duplicate).toMatchObject({
-        type: "command-accepted",
-        duplicate: true,
-      });
-      expect(latestSnapshotState(databasePath, created.roomId)).toEqual(
-        finished,
-      );
-      await stop();
-      await reconnect();
-      const afterRestart = latestSnapshotState(databasePath, created.roomId);
-      expect(afterRestart.players).toEqual(finished.players);
-      expect(afterRestart.encounterState).toEqual(finished.encounterState);
-      expect(afterRestart.encounterDiscard).toEqual(finished.encounterDiscard);
-      expect(afterRestart.drawPile).toEqual(finished.drawPile);
-      expect(afterRestart.rng).toEqual(finished.rng);
-    } finally {
-      if (!stopped) await stop();
-    }
-  });
+        expect(finished.encounterState.npc).toBeNull();
+        expect(finished.encounterDiscard).toEqual([
+          input.encounterState.resolution!.heldCardId,
+        ]);
+        expect(finished.drawPile).toEqual(input.drawPile);
+        const duplicate = await submit(
+          choiceOwner,
+          "npc-transfer",
+          [options[1]!],
+          choice.choiceId,
+        );
+        expect(duplicate).toMatchObject({
+          type: "command-accepted",
+          duplicate: true,
+        });
+        expect(latestSnapshotState(databasePath, created.roomId)).toEqual(
+          finished,
+        );
+        await stop();
+        await reconnect();
+        const afterRestart = latestSnapshotState(databasePath, created.roomId);
+        expect(afterRestart.players).toEqual(finished.players);
+        expect(afterRestart.encounterState).toEqual(finished.encounterState);
+        expect(afterRestart.encounterDiscard).toEqual(
+          finished.encounterDiscard,
+        );
+        expect(afterRestart.drawPile).toEqual(finished.drawPile);
+        expect(afterRestart.rng).toEqual(finished.rng);
+      } finally {
+        if (!stopped) await stop();
+      }
+    },
+  );
   it("enters auto, resolves through the actor, reconnects, and times out once after restart", async () => {
     const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-time-integration-"));
     roots.push(root);

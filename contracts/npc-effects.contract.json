@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "contractId": "xiaoyaoyou-cs03-npc-effects-v1",
   "scope": "CONTENT-STANDARD/CS03-03B-01",
-  "matchSchemaVersion": 9,
+  "matchSchemaVersion": 10,
   "authority": "C# source with scoped NPC action metadata; SEM-010 is provisional, not black-box equivalence",
   "implementedOperations": {
     "NJ02": "active selects living target; null-source neutral FROM_NMB cure one with existing cure modifiers",
@@ -10,6 +10,7 @@
     "NJ04": "active draws one through deterministic card-zone planner",
     "NJ05": "active selects living target; one FROM_NMB damage through real response/rescue/death pipeline",
     "NJ06": "active chooses living donor with hand and another living teammate; active chooses that teammate; donor privately chooses one hand card to transfer",
+    "NJ07": "CS03-03B-02-PETS: active chooses donor, living teammate and donor pet; KOKAN forces same-element exchange, with actual passive deltas",
     "NJ08": "active chooses living hand-holder; seeded random discard one; legacy dummy anonymous confirmation has no effect on card choice",
     "NJ09": "move held NPC to active player's companion zone; companion consumption during battle remains CS03-03C"
   },
@@ -18,14 +19,14 @@
     "cursor": "MatchState.encounterState.npc; no closures or private card IDs in public effect stack",
     "choice": "mandatory generic submit-choice, exactly 15000ms, canonical option order for seeded timeout",
     "damageContinuation": "held NPC remains until nested response/rescue/death and loot finish; terminal cleanup still works after activePlayerId becomes null",
-    "upgrade": "schema 8 to 9 adds empty encounter runtime without reshuffle or new private knowledge",
+    "upgrade": "schema 8 adds empty encounter runtime; schema 9 to 10 applies previously absent pet passives and reason-based weapon disable without changing waits or RNG",
     "validation": "reject invalid ownership, stage, target arity, held NPC/action link, choice owner, options, deadline or resume step"
   },
   "privacy": "only donor sees card options; all six views may see action/stage/waiting owner/deadline; no card identities or target list in public NPC execution summary",
-  "death": "owned companions are discarded at death-batch cleanup, also on JN50203 hand/equipment-loot branch; held resolving NPC is not an owned companion",
+  "death": "per dead owner discard pets in elemental slot order, remove passives, then discard companions; both normal and JN50203 cleanup; held resolving NPC is not owned",
   "boundaries": [
-    "NJ01 and NJ07 are explicitly unsupported, not silently skipped",
-    "complete NPC action availability and monster/pet effects remain unimplemented",
+    "NJ01 is explicitly unsupported, not silently skipped; NJ07 is covered by pet-effects.contract.json",
+    "complete NPC action availability and monster debut/win/loss/consume effects remain unimplemented",
     "entry consumes an already selected held NPC; production end-action still skips encounter until CS03-03D",
     "NJ08 protected-hand integration awaits the protected-card substrate",
     "rewardDrawCount is handed to future turn continuation, not already drawn",

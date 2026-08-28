@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS03-BATTLE-DECKS`
-- 最近验证完成：`CS03-03B-01 / NJ02/03/04/05/06/08 与 NJ09 收为同伴的真实状态效果；伤害/救援/遗物嵌套续算、私密给牌六连接重启、事件重放与 56/46 实体守恒通过。NJ01/NJ07、怪物效果与正式回合仍未闭合，不计为 55 项内容完成。`
+- 最近验证完成：`CS03-03B-02-PETS / NJ07 真实三步宠物交换、同属性强制互换、20 种宠物获得/失去被动、GL04 持久武器失效、死亡清理、schema 10、六连接重启和确定性超时通过。NJ01、怪物效果与正式回合仍未闭合，不计为 55 项内容完成。`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -28,8 +28,9 @@
 - CS03 遭遇/战斗基线证据：`contracts/encounter-deck.contract.json`、`contracts/encounter-flow.contract.json`、`docs/content-standard/cs03-encounter-deck.md`、`docs/content-standard/cs03-encounter-flow.md`、`docs/rules-semantics/cs03-encounter-deck-gap.md`、`docs/verification/receipts/cs03-encounter-deck.md`、`docs/verification/receipts/cs03-encounter-flow.md`
 - CS03-03A 证据：`contracts/encounter-resolution.contract.json`、`docs/content-standard/cs03-encounter-resolution.md`、`docs/verification/receipts/cs03-encounter-resolution.md`；`check:full` 通过（单元 131、重放 47、Bot 6、集成 19、既有 E2E 3）。
 - CS03-03B-01 证据：`contracts/npc-effects.contract.json`、`docs/content-standard/cs03-npc-effects.md`、`docs/verification/receipts/cs03-npc-effects.md`；`check:full` 通过（单元 142、重放 52、Bot 6、集成 20、既有 E2E 3）。
-- 当前工作：七个 NPC 基础处理器已接入实际状态和网络命令；继续闭合 NJ01/NJ07 与全量合法性，不得因为缺处理器跳过 NPC。
-- 下一 ready 节点：`CS03-03B-02 / NPC 角色加入与宠物交换`，先实现 NJ07 同队宠物转移/同属性强制交换，再实现 NJ01 手牌代价、角色替换/复活、可加入角色约束与 NPC 合法选项。
+- CS03-03B-02-PETS 证据：`contracts/pet-effects.contract.json`、`docs/content-standard/cs03-pet-effects.md`、`docs/verification/receipts/cs03-pet-effects.md`；`check:full` 通过（单元 167、重放 57、Bot 6、集成 25、既有 E2E 3）。修复测试的 Fetch 随机受限端口与 JN20602 过期 fixture 时刻，不放宽规则断言。
+- 当前工作：八个 NPC 基础处理器已接入实际状态和网络命令；宠物前置闭合，继续 NJ01 与全量合法性，不得因为缺处理器跳过 NPC。
+- 下一 ready 节点：`CS03-03B-02-JOIN / NPC 角色加入`，实现 NJ01 手牌代价、角色替换/复活、可加入角色约束与 NPC 合法选项；复用宠物增减与武器失效入口处理换角色后的被动恢复载入。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-010`，见 `docs/rules-semantics/decisions.md`。
 

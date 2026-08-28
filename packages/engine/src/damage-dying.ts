@@ -33,6 +33,7 @@ import {
 } from "./setup-content.js";
 import { beginDamageResponse } from "./reaction.js";
 import { reduceTurnEvent } from "./turn.js";
+import { discardOwnedPets } from "./pet-effects.js";
 
 export const RESCUE_DEADLINE_MS = 15_000;
 
@@ -63,16 +64,25 @@ function deadBatchCards(
   );
 }
 
-/** G0ZW priority 200: NPC companions leave with the dead owner, independently
- * of JN50203's hand/equipment loot. The currently resolving NPC is not owned. */
-function discardDeadCompanions(state: MatchState, batch: DyingBatch) {
-  const companions = { ...state.encounterState.companions };
-  const discarded = batch.deadPlayerIds.flatMap((id) => companions[id] ?? []);
-  for (const id of batch.deadPlayerIds) delete companions[id];
-  return {
-    encounterState: { ...state.encounterState, companions },
-    encounterDiscard: [...state.encounterDiscard, ...discarded],
-  };
+/** G0ZW priority 200: per owner, pets in elemental slot order then companions,
+ * independently of JN50203 loot. The resolving NPC is still unowned. */
+function discardDeadEncounters(
+  state: MatchState,
+  batch: DyingBatch,
+): MatchState {
+  let result = state;
+  for (const owner of batch.deadPlayerIds) {
+    result = discardOwnedPets(result, [owner]);
+    const companions = { ...result.encounterState.companions };
+    const discarded = companions[owner] ?? [];
+    delete companions[owner];
+    result = {
+      ...result,
+      encounterState: { ...result.encounterState, companions },
+      encounterDiscard: [...result.encounterDiscard, ...discarded],
+    };
+  }
+  return result;
 }
 
 function jn50203Owner(
@@ -1009,7 +1019,8 @@ export function reduceDyingEvent(
     ) {
       throw new Error("Death batch cleanup is not applicable.");
     }
-    const players = { ...state.players };
+    const cleaned = discardDeadEncounters(state, batch);
+    const players = { ...cleaned.players };
     for (const playerId of batch.deadPlayerIds) {
       const player = players[playerId]!;
       players[playerId] = {
@@ -1019,7 +1030,7 @@ export function reduceDyingEvent(
     }
     next = {
       ...state,
-      ...discardDeadCompanions(state, batch),
+      ...cleaned,
       players,
       discardPile: [...state.discardPile, ...cardInstanceIds],
       dyingBatch: null,
@@ -1049,7 +1060,8 @@ export function reduceDyingEvent(
     ) {
       throw new Error("JN50203 loot opening is not applicable.");
     }
-    const players = { ...state.players };
+    const cleaned = discardDeadEncounters(state, batch);
+    const players = { ...cleaned.players };
     for (const playerId of batch.deadPlayerIds) {
       const player = players[playerId]!;
       players[playerId] = {
@@ -1063,7 +1075,7 @@ export function reduceDyingEvent(
     };
     next = {
       ...state,
-      ...discardDeadCompanions(state, batch),
+      ...cleaned,
       players,
       dyingBatch: {
         ...batch,

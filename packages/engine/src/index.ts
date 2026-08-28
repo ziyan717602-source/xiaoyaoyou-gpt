@@ -22,8 +22,9 @@ import {
   type EncounterRuntimeState,
 } from "./npc-effects.js";
 import { projectEncounterResolution } from "./encounter-resolution.js";
+import { withPetOwnership, weaponEffectsEnabled } from "./pet-effects.js";
 
-export const MATCH_SCHEMA_VERSION = 9 as const;
+export const MATCH_SCHEMA_VERSION = 10 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -465,6 +466,7 @@ export interface PlayerView {
     readonly resolution?: ReturnType<typeof projectEncounterResolution>;
     readonly pets?: EncounterRuntimeState["pets"];
     readonly companions?: EncounterRuntimeState["companions"];
+    readonly weaponDisabledReasons?: EncounterRuntimeState["weaponDisabledReasons"];
     readonly npcOperation?: {
       readonly actionId: NonNullable<EncounterRuntimeState["npc"]>["actionId"];
       readonly stage: NonNullable<EncounterRuntimeState["npc"]>["stage"];
@@ -661,14 +663,32 @@ export function migrateMatchState(value: unknown): MatchState {
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v9 snapshot is missing required fields.");
+      throw new Error("Match schema v10 snapshot is missing required fields.");
     }
     try {
       validateEncounterRuntime(current);
     } catch {
-      throw new Error("Match schema v9 has invalid encounter state.");
+      throw new Error("Match schema v10 has invalid encounter state.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 9) {
+    const legacy = value as MatchState;
+    // v9 stored ownership but never applied pet gain/loss passives. Add them
+    // once, without changing any waiting choice, deadline, card order or RNG.
+    const upgraded = withPetOwnership(
+      {
+        ...legacy,
+        schemaVersion: MATCH_SCHEMA_VERSION,
+        encounterState: {
+          ...legacy.encounterState,
+          pets: {},
+          weaponDisabledReasons: {},
+        },
+      },
+      legacy.encounterState.pets,
+    );
+    return migrateMatchState(upgraded);
   }
   if (raw.schemaVersion === 8) {
     return migrateMatchState({
@@ -879,6 +899,11 @@ export function createPlayerView(
       ...(Object.keys(state.encounterState.companions).length === 0
         ? {}
         : { companions: state.encounterState.companions }),
+      ...(Object.keys(state.encounterState.weaponDisabledReasons).length === 0
+        ? {}
+        : {
+            weaponDisabledReasons: state.encounterState.weaponDisabledReasons,
+          }),
       ...(state.encounterState.npc === null
         ? {}
         : {
@@ -1445,6 +1470,7 @@ function turnActions(
     return alternate;
   });
   const equippedPawn =
+    weaponEffectsEnabled(state, player.id) &&
     player.equipment.weapon !== null &&
     cardDefinition(player.equipment.weapon).alternateActions?.some(
       (action) => action.type === "pawn-draw-two",
