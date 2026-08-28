@@ -8,9 +8,9 @@
     "sharedCore": 28,
     "total": 205,
     "partial": 39,
-    "verified": 28,
+    "verified": 29,
     "deferred": 0,
-    "unstarted": 138
+    "unstarted": 137
   },
   "executionQueue": [
     {
@@ -244,9 +244,9 @@
       "kind": "card",
       "packages": ["standard"],
       "slice": "CS01B-ACTION-TRICKS",
-      "state": "unstarted",
-      "boundary": null,
-      "evidence": [],
+      "state": "verified",
+      "boundary": "cancellable main-encounter inspection, optional top-two swap, single-card immediate result, owner-only history, timeout pass and six-socket restart are verified",
+      "evidence": ["receipt:docs/verification/receipts/cs01b-jp02.md"],
       "dependencies": {
         "contentIds": [],
         "primitives": [

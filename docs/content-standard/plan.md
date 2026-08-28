@@ -6,9 +6,9 @@
 - 共享核心前置：28
 - 总跟踪：205
 - 当前 partial：39
-- 当前 verified：28
+- 当前 verified：29
 - 当前 deferred：0
-- 当前 unstarted：138
+- 当前 unstarted：137
 
 ## 执行切片
 
@@ -32,6 +32,7 @@
 | ------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `xyy.card.fj02`     | 天帝祭服   | equip/replacement and owner-only arbitrary hand-card conversion into the normal TP03 counter-chain are fully verified                                                                                                                                               | receipt:docs/verification/receipts/cs01d-fj02.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md                                                                  |
 | `xyy.card.fj03`     | 龙魂战铠   | equip/replacement and masked per-item damage minus-one are fully verified                                                                                                                                                                                           | receipt:docs/verification/receipts/cs01d-fj03-fj04.md, receipt:docs/verification/receipts/cs01d-dependency-audit.md                                                             |
+| `xyy.card.jp02`     | 窥测天机   | cancellable main-encounter inspection, optional top-two swap, single-card immediate result, owner-only history, timeout pass and six-socket restart are verified                                                                                                    | receipt:docs/verification/receipts/cs01b-jp02.md                                                                                                                                |
 | `xyy.card.jp03`     | 五气朝元   | primary living-team heal-one and alternate pawn draw-one modes are fully verified                                                                                                                                                                                   | receipt:docs/verification/receipts/cs01b-jp03.md                                                                                                                                |
 | `xyy.hero.x3w03`    | 星璇       | setup identity, base stats and both native skills JN40301/JN40302 are fully verified                                                                                                                                                                                | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn40301.md, receipt:docs/verification/receipts/cs02-jn40302.md                                                     |
 | `xyy.hero.xj105`    | 阿奴       | setup identity, base stats and both native skills JN10501/JN10502 are fully verified                                                                                                                                                                                | M02-SETUP-AND-TEAMS, receipt:docs/verification/receipts/cs02-jn10501.md, receipt:docs/verification/receipts/cs02-jn10502.md                                                     |

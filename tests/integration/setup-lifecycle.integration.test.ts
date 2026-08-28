@@ -250,7 +250,11 @@ describe("M02/M03 six-player setup and first turn over the real network", () => 
     const initialViews = clients.map((client) => client.latestView);
     expect(initialViews.every((view) => view.phase === "setup")).toBe(true);
     for (const [viewerIndex, view] of initialViews.entries()) {
-      expect(view.encounter).toEqual({ deckCount: 30, discardPile: [] });
+      expect(view.encounter).toEqual({
+        deckCount: 30,
+        discardPile: [],
+        lastInspection: null,
+      });
       for (const hiddenId of [...SETUP_MONSTER_IDS, ...SETUP_NPC_IDS]) {
         expect(JSON.stringify(view)).not.toContain(hiddenId);
       }

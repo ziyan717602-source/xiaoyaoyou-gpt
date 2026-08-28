@@ -37,7 +37,7 @@
     "sixViewsDerivedIndependently": true
   },
   "persistence": {
-    "matchSchema": 7,
+    "matchSchema": 8,
     "migratesFrom": 6,
     "stores": [
       "encounter-deck",
@@ -65,8 +65,8 @@
     "CS03-01-04": "SEM-009-records-the-legacy-zero-based-off-by-one-and-the-entity-conserving-provisional-decision",
     "CS03-01-05": "same-seed-reproduces-both-orders-and-different-seeds-diverge",
     "CS03-01-06": "encounter-shuffling-is-domain-separated-and-does-not-consume-gameplay-RNG",
-    "CS03-01-07": "six-player-views-show-only-main-count-and-revealed-discard-identities",
-    "CS03-01-08": "JSON-round-trip-and-v6-to-v7-migration-preserve-decks-without-changing-gameplay-cursor",
+    "CS03-01-07": "without-an-authorized-inspection-six-player-views-show-only-main-count-and-revealed-discard-identities",
+    "CS03-01-08": "JSON-round-trip-and-v6-to-current-migration-preserve-decks-without-changing-gameplay-cursor",
     "CS03-01-09": "SQLite-restart-over-six-real-WebSockets-preserves-count-and-hidden-identities",
     "CS03-01-10": "all-CS03-content-items-remain-unstarted-until-their-behavioral-rules-are-verified"
   }

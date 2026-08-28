@@ -57,7 +57,7 @@
     "room:contract": "node scripts/verify-room-lifecycle.mjs",
     "rooms:verify": "npm run room:contract && npm run test:rooms",
     "test:architecture": "vitest run apps/server/src/architecture.test.ts packages/protocol/src/index.test.ts",
-    "test:action-tricks": "vitest run packages/engine/src/reaction.test.ts packages/engine/src/reaction.replay.test.ts && node --disable-warning=ExperimentalWarning node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts tests/integration/reaction-lifecycle.integration.test.ts",
+    "test:action-tricks": "vitest run packages/engine/src/reaction.test.ts packages/engine/src/reaction.replay.test.ts packages/engine/src/inspection.test.ts packages/engine/src/inspection.replay.test.ts && node --disable-warning=ExperimentalWarning node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts tests/integration/reaction-lifecycle.integration.test.ts",
     "test:core-cards": "vitest run packages/engine/src/reaction.test.ts packages/engine/src/reaction.replay.test.ts packages/engine/src/damage-dying.test.ts packages/engine/src/testing/damage-dying-engine.bot.test.ts && node --disable-warning=ExperimentalWarning node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts tests/integration/reaction-lifecycle.integration.test.ts tests/integration/damage-dying-lifecycle.integration.test.ts",
     "semantics:verify": "node scripts/verify-semantics.mjs",
     "setup:contract": "node scripts/verify-setup.mjs",

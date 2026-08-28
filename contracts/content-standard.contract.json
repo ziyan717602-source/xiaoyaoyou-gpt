@@ -17,6 +17,10 @@
     "catalogRemainsGeneratedSourceEvidence": true
   },
   "baselineVerified": {
+    "xyy.card.jp02": {
+      "boundary": "cancellable main-encounter inspection, optional top-two swap, single-card immediate result, owner-only history, timeout pass and six-socket restart are verified",
+      "evidence": ["receipt:docs/verification/receipts/cs01b-jp02.md"]
+    },
     "xyy.card.jp03": {
       "boundary": "primary living-team heal-one and alternate pawn draw-one modes are fully verified",
       "evidence": ["receipt:docs/verification/receipts/cs01b-jp03.md"]

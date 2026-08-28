@@ -17,7 +17,7 @@ import type { CardInstanceId, HeroId } from "./setup-content.js";
 import { createEncounterDecks } from "./encounter-content.js";
 import type { EncounterCardId, NpcId } from "./encounter-content.js";
 
-export const MATCH_SCHEMA_VERSION = 7 as const;
+export const MATCH_SCHEMA_VERSION = 8 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -198,6 +198,13 @@ export interface RngState {
   readonly cursor: number;
 }
 
+/** Private historical knowledge, not a live projection of the deck top. */
+export interface EncounterInspection {
+  readonly effectId: EffectId;
+  readonly inspectedAt: number;
+  readonly cardIds: readonly EncounterCardId[];
+}
+
 export interface MatchState {
   readonly schemaVersion: typeof MATCH_SCHEMA_VERSION;
   readonly persistenceVersion: typeof PERSISTENCE_VERSION;
@@ -217,6 +224,9 @@ export interface MatchState {
   readonly discardPile: readonly CardInstanceId[];
   readonly encounterDeck: readonly EncounterCardId[];
   readonly encounterDiscard: readonly EncounterCardId[];
+  readonly encounterInspections: Readonly<
+    Partial<Record<PlayerId, EncounterInspection>>
+  >;
   readonly reserveNpcDeck: readonly NpcId[];
   readonly reserveNpcDiscard: readonly NpcId[];
   readonly setup: SetupState | null;
@@ -444,6 +454,7 @@ export interface PlayerView {
   readonly encounter: {
     readonly deckCount: number;
     readonly discardPile: readonly EncounterCardId[];
+    readonly lastInspection: EncounterInspection | null;
   };
   readonly setup: SetupView | null;
   readonly availableActions: readonly AvailableAction[];
@@ -519,6 +530,7 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     drawPile: [],
     discardPile: [],
     ...encounterDecks,
+    encounterInspections: {},
     setup: null,
     effectStack: [],
     reactionWindow: null,
@@ -533,6 +545,7 @@ type MatchStateV6 = Omit<
   | "schemaVersion"
   | "encounterDeck"
   | "encounterDiscard"
+  | "encounterInspections"
   | "reserveNpcDeck"
   | "reserveNpcDiscard"
 > & { readonly schemaVersion: 6 };
@@ -543,6 +556,7 @@ function upgradeEncounterDecksFromV6(legacy: MatchStateV6): MatchState {
     ...legacy,
     schemaVersion: MATCH_SCHEMA_VERSION,
     ...createEncounterDecks(legacy.rng.seed),
+    encounterInspections: {},
   };
 }
 
@@ -600,6 +614,22 @@ export function migrateMatchState(value: unknown): MatchState {
       !Array.isArray(current.encounterDiscard) ||
       !Array.isArray(current.reserveNpcDeck) ||
       !Array.isArray(current.reserveNpcDiscard) ||
+      current.encounterInspections === null ||
+      typeof current.encounterInspections !== "object" ||
+      Array.isArray(current.encounterInspections) ||
+      Object.entries(current.encounterInspections).some(
+        ([playerId, inspection]) =>
+          current.players[playerId] === undefined ||
+          inspection === undefined ||
+          inspection === null ||
+          typeof inspection.effectId !== "string" ||
+          !Number.isSafeInteger(inspection.inspectedAt) ||
+          inspection.inspectedAt < 0 ||
+          !Array.isArray(inspection.cardIds) ||
+          inspection.cardIds.length < 1 ||
+          inspection.cardIds.length > 2 ||
+          inspection.cardIds.some((id) => typeof id !== "string"),
+      ) ||
       (current.turn !== null &&
         (typeof current.turn.openedAt !== "number" ||
           typeof current.turn.deadlineAt !== "number")) ||
@@ -612,9 +642,16 @@ export function migrateMatchState(value: unknown): MatchState {
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v7 snapshot is missing required fields.");
+      throw new Error("Match schema v8 snapshot is missing required fields.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 7) {
+    return migrateMatchState({
+      ...raw,
+      schemaVersion: MATCH_SCHEMA_VERSION,
+      encounterInspections: {},
+    });
   }
   if (raw.schemaVersion === 6) {
     return upgradeEncounterDecksFromV6(value as MatchStateV6);
@@ -796,6 +833,7 @@ export function createPlayerView(
     encounter: {
       deckCount: state.encounterDeck.length,
       discardPile: state.encounterDiscard,
+      lastInspection: state.encounterInspections[viewerId] ?? null,
     },
     setup:
       state.setup === null
@@ -1233,6 +1271,18 @@ function turnActions(
           targetPlayerIds: [viewerId],
         },
       ];
+    }
+    if (definition.coreAction?.type === "inspect-encounter") {
+      return state.encounterDeck.length === 0
+        ? alternate
+        : [
+            ...alternate,
+            {
+              type: "play-card" as const,
+              cardInstanceId: instanceId,
+              targetPlayerIds: [viewerId],
+            },
+          ];
     }
     if (definition.coreAction?.type === "draw-two") {
       return [

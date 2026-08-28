@@ -61,7 +61,11 @@ describe("CS03-01 deterministic encounter deck substrate", () => {
 
     for (const player of players) {
       const view = createPlayerView(first, player.id);
-      expect(view.encounter).toEqual({ deckCount: 30, discardPile: [] });
+      expect(view.encounter).toEqual({
+        deckCount: 30,
+        discardPile: [],
+        lastInspection: null,
+      });
       for (const hiddenId of [
         ...first.encounterDeck,
         ...first.reserveNpcDeck,
@@ -85,7 +89,7 @@ describe("CS03-01 deterministic encounter deck substrate", () => {
 
     const migrated = migrateMatchState(legacy);
     const expected = createEncounterDecks(current.rng.seed);
-    expect(migrated).toMatchObject({ schemaVersion: 7, ...expected });
+    expect(migrated).toMatchObject({ schemaVersion: 8, ...expected });
     expect(migrated.rng).toEqual(current.rng);
     expect(JSON.parse(JSON.stringify(migrated))).toEqual(migrated);
   });

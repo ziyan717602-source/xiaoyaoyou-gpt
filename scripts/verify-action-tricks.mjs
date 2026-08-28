@@ -33,7 +33,7 @@ for (const id of Object.keys(contract.items)) {
   assert(item !== undefined, `Missing planned item ${id}.`);
   assert(item.slice === "CS01B-ACTION-TRICKS", `Wrong slice for ${id}.`);
   const expected =
-    id === "xyy.card.jp03"
+    id === "xyy.card.jp03" || id === "xyy.card.jp02"
       ? "verified"
       : id === "xyy.card.jp01" || id === "xyy.card.jp06"
         ? "partial"
@@ -120,6 +120,9 @@ for (const token of [
 for (const file of [
   "docs/content-standard/cs01b-action-tricks.md",
   "docs/verification/receipts/cs01b-jp01.md",
+  "docs/verification/receipts/cs01b-jp02.md",
+  "packages/engine/src/inspection.test.ts",
+  "packages/engine/src/inspection.replay.test.ts",
   "docs/verification/receipts/cs01b-jp03.md",
   "docs/verification/receipts/cs01b-jp06.md",
 ]) {
@@ -127,5 +130,5 @@ for (const file of [
 }
 
 console.log(
-  "Action-trick contract passed: JP03 verified, JP01/JP06 partial, JP02 pending CS03.",
+  "Action-trick contract passed: JP02/JP03 verified, JP01/JP06 partial; behavioral evidence requires test:action-tricks.",
 );

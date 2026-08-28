@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS03-BATTLE-DECKS`
-- 最近验证完成：`CS03-02 / 支援或放弃、对应位敌方妨碍、15 秒默认选择、玩家/宠物/特殊参与者和揭牌守恒已形成可序列化决策内核；尚未接管正式回合`
+- 最近验证完成：`CS01B-JP02 / 窥测天机已接入正式命令与冰心诀响应；私密查看/可选换序/单张直结/超时保序/六连接重启通过。CS03-02 的支援妨碍决策仍待接管正式回合。`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -21,7 +21,7 @@
 - M06 时间/恢复证据：`contracts/time-recovery.contract.json`、`docs/time-recovery/m06-time-recovery.md`、`docs/verification/receipts/m06-time-recovery.md`
 - CS00 内容图证据：`contracts/content-standard.contract.json`、`content/standard-plan.json`、`docs/content-standard/plan.md`、`docs/verification/receipts/cs00-content-graph.md`
 - CS01A 核心四牌证据：`contracts/core-card-audit.contract.json`、`docs/content-standard/cs01a-core-cards.md`、`docs/verification/receipts/cs01a-core-card-audit.md`
-- CS01B 行动技牌证据：`contracts/action-tricks.contract.json`、`docs/content-standard/cs01b-action-tricks.md`、`docs/verification/receipts/cs01b-jp01.md`、`docs/verification/receipts/cs01b-jp03.md`、`docs/verification/receipts/cs01b-jp06.md`
+- CS01B 行动技牌证据：`contracts/action-tricks.contract.json`、`docs/content-standard/cs01b-action-tricks.md`、`docs/verification/receipts/cs01b-jp01.md`、`docs/verification/receipts/cs01b-jp02.md`、`docs/verification/receipts/cs01b-jp03.md`、`docs/verification/receipts/cs01b-jp06.md`
 - CS01C 防御/战力牌证据：`contracts/defense-buffs.contract.json`、`docs/content-standard/cs01c-defense-buffs.md`、`docs/verification/receipts/cs01c-tp03.md`
 - CS01D 装备证据：`contracts/equipment-effects.contract.json`、`docs/content-standard/cs01d-equipment-effects.md`、`docs/verification/receipts/cs01d-wq04.md`、`docs/verification/receipts/cs01d-wq02.md`、`docs/verification/receipts/cs01d-fj03-fj04.md`、`docs/verification/receipts/cs01d-fj01.md`、`docs/verification/receipts/cs01d-fj05.md`、`docs/verification/receipts/cs01d-fj02.md`、`docs/verification/receipts/cs01d-dependency-audit.md`
 - CS02 英雄技能证据：`contracts/hero-skills.contract.json`、`docs/content-standard/cs02-hero-skills.md`、`docs/verification/receipts/cs02-jn50401.md`、`docs/verification/receipts/cs02-jn50402.md`、`docs/verification/receipts/cs02-jn50501.md`、`docs/verification/receipts/cs02-jn20202.md`、`docs/verification/receipts/cs02-jn40301.md`、`docs/verification/receipts/cs02-jn40302.md`、`docs/verification/receipts/cs02-jn10501.md`、`docs/verification/receipts/cs02-jn10502.md`、`docs/verification/receipts/cs02-jn20601.md`、`docs/verification/receipts/cs02-jn20602-core.md`、`docs/verification/receipts/cs02-jn20701.md`、`docs/verification/receipts/cs02-jn20702.md`、`docs/verification/receipts/cs02-jn30201.md`、`docs/verification/receipts/cs02-jn10401.md`、`docs/verification/receipts/cs02-jn10601.md`、`docs/verification/receipts/cs02-duel-dice.md`、`docs/verification/receipts/cs02-jn20302.md`、`docs/verification/receipts/cs02-jn40401.md`、`docs/verification/receipts/cs02-jn50201.md`、`docs/verification/receipts/cs02-jn50202.md`、`docs/verification/receipts/cs02-jn50203.md`

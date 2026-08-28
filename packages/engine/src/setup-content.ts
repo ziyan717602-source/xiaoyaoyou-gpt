@@ -18,6 +18,7 @@ export type CoreCardAction =
   | { readonly type: "equip"; readonly slot: EquipmentSlot }
   | { readonly type: "steal-one" }
   | { readonly type: "discard-one" }
+  | { readonly type: "inspect-encounter" }
   | { readonly type: "draw-two" }
   | { readonly type: "damage-two"; readonly element: "thunder" }
   | { readonly type: "heal-two" }
@@ -469,7 +470,11 @@ const CARD_SERIALS: Readonly<Record<CardId, readonly number[]>> = {
 
 export const SETUP_CARDS: readonly CardDefinition[] = [
   { id: "xyy.card.jp01", name: "偷盗", coreAction: { type: "steal-one" } },
-  { id: "xyy.card.jp02", name: "窥测天机", coreAction: null },
+  {
+    id: "xyy.card.jp02",
+    name: "窥测天机",
+    coreAction: { type: "inspect-encounter" },
+  },
   {
     id: "xyy.card.jp03",
     name: "五气朝元",

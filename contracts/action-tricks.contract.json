@@ -13,8 +13,9 @@
     },
     "xyy.card.jp02": {
       "name": "窥测天机",
-      "rule": "inspect the top two monster cards and optionally reorder them; with exactly one monster card only inspect it; illegal with an empty monster deck",
-      "status": "pending-CS03-monster-deck"
+      "rule": "after cancellable responses privately inspect up to two main encounter cards (monster or NPC); optionally swap two, immediately finish with one, reject an empty deck; timeout keeps original order without RNG",
+      "status": "verified",
+      "verifiedBoundary": "owner-only historical inspection, optional swap, cancellation/counter, seeded replay, schema-7 upgrade and six-socket mid-choice restart"
     },
     "xyy.card.jp03": {
       "name": "五气朝元",
@@ -33,6 +34,8 @@
     "psd.db3:Tux:JP01-JP02-JP03-JP06 description-target-special",
     "PSDGamepkg/JNS/JP06.cs:294-316 JP01 target-hidden-slot-transfer",
     "PSDGamepkg/JNS/JP06.cs:318-327 JP02 monster-top-inspect-reorder",
+    "PSDGamepkg/XIG.cs:1645-1724 G0XZ maps dice type 2 to MonPiles, private top inspection and optional permutation",
+    "PSDBase/Utils/Rueue.cs:53-64 PushBack places the selected order at the front",
     "PSDGamepkg/JNS/JP06.cs:330-335 JP03 living-team-water-heal-one",
     "PSDGamepkg/JNS/JP06.cs:365-412 JP06 target-hidden-hand-or-visible-equipment-discard",
     "PSDGamepkg/Artiad/ContentRule.cs:189-196 JP03 pawn-price-one"
@@ -40,7 +43,9 @@
   "decisions": {
     "jp01SelfTarget": "forbidden",
     "jp01ProtectedCards": "excluded-from-validity-and-choice",
-    "jp02CrossSlice": "keep-item-unstarted-until-CS03-monster-deck-exists",
+    "jp02CrossSlice": "CS03-01 verified main encounter deck unlocks JP02 independently of battle resolution",
+    "jp02OneCard": "persist owner-only historical inspection without blocking turn for acknowledgement",
+    "jp02Timeout": "optional keep-order with no random consumption",
     "jp03FullHp": "primary-remains-legal-and-card-is-paid",
     "jp03TeamTarget": "all-living-same-team-players-in-seat-order",
     "jp03Pawn": "explicit-mode-pawn-no-response-discard-one-draw-one",
@@ -58,7 +63,7 @@
     "CS01B-06": "JP03-pawn-discards-the-card-and-draws-one-without-a-response-window",
     "CS01B-07": "JP03-private-hand-and-both-modes-work-over-six-real-WebSockets",
     "CS01B-08": "JP01-uses-private-opaque-choice-and-authoritative-transfer",
-    "CS01B-09": "JP02-inspects-and-optionally-reorders-one-or-two-monster-cards",
+    "CS01B-09": "JP02-privately-inspects-one-or-two-main-encounter-cards-and-optionally-swaps-two-with-restart-and-timeout",
     "CS01B-10": "JP06-private-and-visible-zone-choices-discard-the-authoritative-card",
     "CS01B-11": "all-completed-modes-conserve-the-56-card-action-deck",
     "CS01B-12": "full-fast-and-specialty-verification-pass"

@@ -255,6 +255,42 @@ function injectReactionFixture(
   }
 }
 
+function injectJp02Fixture(
+  databasePath: string,
+  matchId: string,
+  actor: PlayerId,
+): MatchState {
+  const database = new Database(databasePath);
+  try {
+    const row = database
+      .prepare(
+        "SELECT rowid, state_json FROM snapshots WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1",
+      )
+      .get(matchId) as { rowid: number; state_json: string };
+    const state = JSON.parse(row.state_json) as MatchState;
+    const fixture: MatchState = {
+      ...state,
+      players: Object.fromEntries(
+        Object.values(state.players).map((p) => [
+          p.id,
+          { ...p, hand: p.id === actor ? ["xyy.card.jp02@3"] : [] },
+        ]),
+      ),
+      drawPile: SETUP_CARD_INSTANCES.filter((id) => id !== "xyy.card.jp02@3"),
+      discardPile: [],
+    };
+    const json = JSON.stringify(fixture);
+    database
+      .prepare(
+        "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE rowid = ?",
+      )
+      .run(json, createHash("sha256").update(json).digest("hex"), row.rowid);
+    return fixture;
+  } finally {
+    database.close();
+  }
+}
+
 function injectTp02Fixture(
   databasePath: string,
   matchId: string,
@@ -778,6 +814,205 @@ function injectWq04Fixture(
 }
 
 describe("M04 reaction lifecycle over six real WebSockets", () => {
+  it("JP02 privately inspects over six sockets, restarts the same choice and applies a duplicate swap only once", async () => {
+    const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-jp02-integration-"));
+    roots.push(root);
+    const path = join(root, "inspection.sqlite");
+    let running: Awaited<ReturnType<typeof start>> | undefined;
+    let clients: ReactionClient[] = [];
+    try {
+      running = await start(path);
+      const created = await request<RoomSession>(
+        `${running.httpUrl}/api/rooms`,
+        "POST",
+        { nickname: "JP02 owner" },
+      );
+      expect(created.status).toBe(201);
+      const sessions = [created.body];
+      for (let i = 1; i < 6; i++)
+        sessions.push(
+          (
+            await request<RoomSession>(
+              `${running.httpUrl}/api/rooms/join`,
+              "POST",
+              {
+                inviteCode: created.body.room.inviteCode,
+                nickname: `JP02 ${i}`,
+              },
+            )
+          ).body,
+        );
+      let room = sessions.at(-1)!.room;
+      for (const [i, session] of sessions.entries()) {
+        const ready = await request<{ room: RoomView }>(
+          `${running.httpUrl}/api/rooms/${room.roomId}/ready`,
+          "POST",
+          {
+            playerId: session.playerId,
+            commandId: `jp02-ready-${i}`,
+            expectedVersion: room.version,
+            ready: true,
+          },
+          session.reconnectToken,
+        );
+        expect(ready.status).toBe(200);
+        room = ready.body.room;
+      }
+      const started = await request(
+        `${running.httpUrl}/api/rooms/${room.roomId}/start`,
+        "POST",
+        {
+          playerId: created.body.playerId,
+          commandId: "jp02-start",
+          expectedVersion: room.version,
+        },
+        created.body.reconnectToken,
+      );
+      expect(started.status).toBe(200);
+      const reconnect = async () => {
+        clients = await Promise.all(
+          sessions.map((session) => connect(running!.wsUrl, session)),
+        );
+        // Authentication queues presence events; wait for all six projections at the actual server head.
+        await waitForVersion(
+          clients,
+          running!.server.matchService.view(room.roomId, sessions[0]!.playerId)
+            .version,
+        );
+      };
+      await reconnect();
+      const send = async (
+        playerId: PlayerId,
+        id: string,
+        command: ClientCommand,
+        version = clients[0]!.latestView.version,
+      ) => {
+        const index = sessions.findIndex((s) => s.playerId === playerId);
+        const response = await sendCommand(
+          clients[index]!,
+          sessions[index]!,
+          id,
+          version,
+          command,
+        );
+        if (response.type === "command-accepted")
+          await waitForVersion(clients, response.version);
+        return response;
+      };
+      for (const [i, session] of sessions.entries()) {
+        expect(
+          (
+            await send(session.playerId, `jp02-hero-${i}`, {
+              type: "choose-hero",
+              heroId:
+                clients[i]!.latestView.setup!.ownOffer!.candidateHeroIds[0]!,
+            })
+          ).type,
+        ).toBe("command-accepted");
+      }
+      const actor = clients[0]!.latestView.activePlayerId!;
+      const actorIndex = sessions.findIndex((s) => s.playerId === actor);
+      await running.server.closeGracefully();
+      running = undefined;
+      const fixture = injectJp02Fixture(path, room.roomId, actor);
+      running = await start(path);
+      await reconnect();
+      expect(
+        (
+          await send(actor, "network-jp02-play", {
+            type: "play-card",
+            cardInstanceId: "xyy.card.jp02@3",
+            targetPlayerIds: [actor],
+          })
+        ).type,
+      ).toBe("command-accepted");
+      for (const client of clients)
+        expect(client.latestView.encounter.lastInspection).toBeNull();
+      let guard = 0;
+      while (clients[0]!.latestView.reactionWindow !== null) {
+        if (++guard > 6) throw new Error("JP02 response failed to terminate");
+        const w = clients[0]!.latestView.reactionWindow!;
+        expect(
+          (
+            await send(w.priorityPlayerId!, `jp02-pass-${guard}`, {
+              type: "pass-reaction",
+              windowId: w.windowId,
+            })
+          ).type,
+        ).toBe("command-accepted");
+      }
+      const assertPrivate = () => {
+        for (const [i, client] of clients.entries()) {
+          if (i === actorIndex) {
+            expect(client.latestView.encounter.lastInspection?.cardIds).toEqual(
+              fixture.encounterDeck.slice(0, 2),
+            );
+          } else {
+            expect(client.latestView.encounter.lastInspection).toBeNull();
+            expect(client.latestView.pendingChoice).toBeNull();
+            for (const id of fixture.encounterDeck)
+              expect(JSON.stringify(client.latestView)).not.toContain(id);
+          }
+        }
+      };
+      assertPrivate();
+      const pending = clients[actorIndex]!.latestView.pendingChoice!;
+      expect(pending.deadlineAt - pending.openedAt).toBe(15_000);
+      const choose: ClientCommand = {
+        type: "submit-choice",
+        choiceId: pending.choiceId,
+        selections: ["swap-top-two"],
+      };
+      const intruder = sessions.find((s) => s.playerId !== actor)!;
+      expect(
+        (await send(intruder.playerId, "network-jp02-forbidden", choose)).type,
+      ).toBe("command-rejected");
+      await running.server.closeGracefully();
+      running = undefined;
+      running = await start(path);
+      await reconnect();
+      expect(clients[actorIndex]!.latestView.pendingChoice).toEqual(pending);
+      assertPrivate();
+      const beforeSwap = clients[0]!.latestView.version;
+      const first = await send(actor, "network-jp02-swap", choose);
+      expect(first).toMatchObject({
+        type: "command-accepted",
+        duplicate: false,
+      });
+      expect(
+        await send(actor, "network-jp02-swap", choose, beforeSwap),
+      ).toMatchObject({ type: "command-accepted", duplicate: true });
+      expect(
+        await send(actor, "network-jp02-stale-choice", choose),
+      ).toMatchObject({ type: "command-rejected" });
+      expect(clients[actorIndex]!.latestView.pendingChoice).toBeNull();
+      assertPrivate();
+      await running.server.closeGracefully();
+      running = undefined;
+      const database = new Database(path, { readonly: true });
+      try {
+        const row = database
+          .prepare(
+            "SELECT state_json FROM snapshots WHERE match_id = ? ORDER BY event_sequence DESC LIMIT 1",
+          )
+          .get(room.roomId) as { state_json: string };
+        const persisted = JSON.parse(row.state_json) as MatchState;
+        expect(persisted.encounterDeck).toEqual([
+          fixture.encounterDeck[1],
+          fixture.encounterDeck[0],
+          ...fixture.encounterDeck.slice(2),
+        ]);
+        expect(persisted.rng).toEqual(fixture.rng);
+        expect(persisted.discardPile).toEqual(["xyy.card.jp02@3"]);
+      } finally {
+        database.close();
+      }
+    } finally {
+      if (running !== undefined) await running.server.closeGracefully();
+      for (const client of clients) client.socket.terminate();
+    }
+  });
+
   it("persists a child window across restart and completes a counter-chain", async () => {
     const root = mkdtempSync(
       join(tmpdir(), "xiaoyaoyou-reaction-integration-"),

@@ -1594,6 +1594,24 @@ export function applyTurnCommand(
         cardInstanceId,
         expectedTargets,
       );
+    } else if (definition.coreAction.type === "inspect-encounter") {
+      if (
+        input.encounterDeck.length === 0 ||
+        !sameValues(command.targetPlayerIds, [envelope.playerId])
+      ) {
+        return {
+          accepted: false,
+          reason: "not-available",
+          currentVersion: input.version,
+        };
+      }
+      return beginCancellableCardEffect(
+        input,
+        envelope,
+        serverReceivedAt,
+        cardInstanceId,
+        envelope.playerId,
+      );
     } else if (definition.coreAction.type === "steal-one") {
       const target = input.players[command.targetPlayerIds[0] ?? ""];
       if (

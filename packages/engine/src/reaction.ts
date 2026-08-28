@@ -31,6 +31,7 @@ import type {
   ReactionWindow,
 } from "./index.js";
 import { nextInt } from "./random.js";
+import { reduceInspectionEvent } from "./inspection.js";
 import {
   cardDefinition,
   cardIdOf,
@@ -476,12 +477,16 @@ export function reduceReactionEvent(
       ![
         "steal-one",
         "discard-one",
+        "inspect-encounter",
         "draw-two",
         "damage-two",
         "heal-two",
         "heal-team-one",
       ].includes(action?.type ?? "") ||
       !validTeamTargets ||
+      (action?.type === "inspect-encounter" &&
+        (state.encounterDeck.length === 0 ||
+          !sameValues(targetPlayerIds, [playerId]))) ||
       (action?.type === "steal-one" &&
         (targetPlayerIds.length !== 1 ||
           targetPlayerIds[0] === playerId ||
@@ -920,6 +925,11 @@ export function reduceReactionEvent(
         deadlineAt: openedAt + REACTION_DEADLINE_MS,
       },
     };
+  } else if (
+    event.type === "effect.encounter-inspected" ||
+    event.type === "effect.encounter-order-resolved"
+  ) {
+    next = reduceInspectionEvent(state, event);
   } else if (event.type === "effect.choice-opened") {
     const effectId = stringPayload(event, "effectId");
     const choiceId = stringPayload(event, "choiceId");
@@ -1468,6 +1478,12 @@ class EventBuilder {
           cardInstanceIds: planned.cards,
           rngCursor: planned.rng.cursor,
         });
+      } else if (effect.kind === "card:xyy.card.jp02") {
+        this.append("effect.encounter-inspected", {
+          effectId,
+          resolvedAt: this.serverReceivedAt,
+          cardIds: this.state.encounterDeck.slice(0, 2),
+        });
       } else if (
         effect.kind === "card:xyy.card.jp01" ||
         effect.kind === "card:xyy.card.jp06"
@@ -1697,6 +1713,45 @@ function resolvePendingCardChoice(
   return { accepted: true, state: builder.state, events: builder.events };
 }
 
+function resolveEncounterOrder(
+  input: Readonly<MatchState>,
+  commandId: CommandId,
+  playerId: PlayerId,
+  selectedOptionId: string,
+  resolvedAt: number,
+  timeout: boolean,
+): ApplyCommandResult {
+  const choice = input.pendingChoice;
+  if (
+    choice === null ||
+    !choice.playerIds.includes(playerId) ||
+    (selectedOptionId !== "keep-order" &&
+      selectedOptionId !== "swap-top-two") ||
+    resolvedAt < choice.openedAt
+  ) {
+    return {
+      accepted: false,
+      reason: "not-available",
+      currentVersion: input.version,
+    };
+  }
+  const builder = new EventBuilder(
+    input,
+    commandId,
+    input.version + 1,
+    resolvedAt,
+  );
+  builder.append("effect.encounter-order-resolved", {
+    effectId: choice.continuation.effectId,
+    choiceId: choice.choiceId,
+    playerId,
+    selectedOptionId,
+    resolvedAt,
+    timeout,
+  });
+  return { accepted: true, state: builder.state, events: builder.events };
+}
+
 export function applyPendingChoiceCommand(
   input: Readonly<MatchState>,
   envelope: Readonly<CommandEnvelope>,
@@ -1730,6 +1785,16 @@ export function applyPendingChoiceCommand(
       currentVersion: input.version,
     };
   }
+  if (choice.continuation.resumeWith === "resolve-encounter-order") {
+    return resolveEncounterOrder(
+      input,
+      envelope.commandId,
+      envelope.playerId,
+      command.selections[0]!,
+      serverReceivedAt,
+      false,
+    );
+  }
   return resolvePendingCardChoice(
     input,
     envelope.commandId,
@@ -1749,7 +1814,8 @@ export function applyPendingChoiceTimeout(
   if (
     choice === null ||
     choice.status !== "open" ||
-    choice.fallback !== "deterministic-random" ||
+    (choice.fallback !== "deterministic-random" &&
+      choice.continuation.resumeWith !== "resolve-encounter-order") ||
     command.deadlineAt < choice.openedAt ||
     command.deadlineAt > choice.deadlineAt ||
     !choice.playerIds.includes(playerId) ||
@@ -1760,6 +1826,16 @@ export function applyPendingChoiceTimeout(
       reason: "not-available",
       currentVersion: input.version,
     };
+  }
+  if (choice.continuation.resumeWith === "resolve-encounter-order") {
+    return resolveEncounterOrder(
+      input,
+      command.commandId,
+      playerId,
+      "keep-order",
+      command.deadlineAt,
+      true,
+    );
   }
   const planned = nextInt(input.rng, choice.optionIds.length);
   return resolvePendingCardChoice(
