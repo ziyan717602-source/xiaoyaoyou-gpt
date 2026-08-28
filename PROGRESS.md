@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS03-BATTLE-DECKS`
-- 最近验证完成：`CS03-03A / 揭牌路由、NPC 放弃/末牌强制、结算归属、同属性宠物保留、战力和宠物计分；JSON 恢复与守恒通过。具体怪物/NPC 效果及正式回合仍未接入，不计为 55 项内容完成。`
+- 最近验证完成：`CS03-03B-01 / NJ02/03/04/05/06/08 与 NJ09 收为同伴的真实状态效果；伤害/救援/遗物嵌套续算、私密给牌六连接重启、事件重放与 56/46 实体守恒通过。NJ01/NJ07、怪物效果与正式回合仍未闭合，不计为 55 项内容完成。`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -27,9 +27,10 @@
 - CS02 英雄技能证据：`contracts/hero-skills.contract.json`、`docs/content-standard/cs02-hero-skills.md`、`docs/verification/receipts/cs02-jn50401.md`、`docs/verification/receipts/cs02-jn50402.md`、`docs/verification/receipts/cs02-jn50501.md`、`docs/verification/receipts/cs02-jn20202.md`、`docs/verification/receipts/cs02-jn40301.md`、`docs/verification/receipts/cs02-jn40302.md`、`docs/verification/receipts/cs02-jn10501.md`、`docs/verification/receipts/cs02-jn10502.md`、`docs/verification/receipts/cs02-jn20601.md`、`docs/verification/receipts/cs02-jn20602-core.md`、`docs/verification/receipts/cs02-jn20701.md`、`docs/verification/receipts/cs02-jn20702.md`、`docs/verification/receipts/cs02-jn30201.md`、`docs/verification/receipts/cs02-jn10401.md`、`docs/verification/receipts/cs02-jn10601.md`、`docs/verification/receipts/cs02-duel-dice.md`、`docs/verification/receipts/cs02-jn20302.md`、`docs/verification/receipts/cs02-jn40401.md`、`docs/verification/receipts/cs02-jn50201.md`、`docs/verification/receipts/cs02-jn50202.md`、`docs/verification/receipts/cs02-jn50203.md`
 - CS03 遭遇/战斗基线证据：`contracts/encounter-deck.contract.json`、`contracts/encounter-flow.contract.json`、`docs/content-standard/cs03-encounter-deck.md`、`docs/content-standard/cs03-encounter-flow.md`、`docs/rules-semantics/cs03-encounter-deck-gap.md`、`docs/verification/receipts/cs03-encounter-deck.md`、`docs/verification/receipts/cs03-encounter-flow.md`
 - CS03-03A 证据：`contracts/encounter-resolution.contract.json`、`docs/content-standard/cs03-encounter-resolution.md`、`docs/verification/receipts/cs03-encounter-resolution.md`；`check:full` 通过（单元 131、重放 47、Bot 6、集成 19、既有 E2E 3）。
-- 当前工作：进入 NPC 具体行动与真实状态适配；不得把内部完成钩子视为已执行效果，也不得因缺处理器而跳过 NPC。
-- 下一 ready 节点：`CS03-03B / npc-concrete-effects-and-continuations`，先验证 NJ04 摸牌与 NJ02 治疗接入真实状态，再推进 NJ03/05 伤害濒死、转移与角色加入。
+- CS03-03B-01 证据：`contracts/npc-effects.contract.json`、`docs/content-standard/cs03-npc-effects.md`、`docs/verification/receipts/cs03-npc-effects.md`；`check:full` 通过（单元 142、重放 52、Bot 6、集成 20、既有 E2E 3）。
+- 当前工作：七个 NPC 基础处理器已接入实际状态和网络命令；继续闭合 NJ01/NJ07 与全量合法性，不得因为缺处理器跳过 NPC。
+- 下一 ready 节点：`CS03-03B-02 / NPC 角色加入与宠物交换`，先实现 NJ07 同队宠物转移/同属性强制交换，再实现 NJ01 手牌代价、角色替换/复活、可加入角色约束与 NPC 合法选项。
 - 阻塞：无。
-- 临时规则决定：`SEM-001` 至 `SEM-009`，见 `docs/rules-semantics/decisions.md`。
+- 临时规则决定：`SEM-001` 至 `SEM-010`，见 `docs/rules-semantics/decisions.md`。
 
 详细历史只查 Git 提交和 `docs/verification/receipts/`；本文件完成节点后覆盖更新。

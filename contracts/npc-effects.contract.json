@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-cs03-npc-effects-v1",
+  "scope": "CONTENT-STANDARD/CS03-03B-01",
+  "matchSchemaVersion": 9,
+  "authority": "C# source with scoped NPC action metadata; SEM-010 is provisional, not black-box equivalence",
+  "implementedOperations": {
+    "NJ02": "active selects living target; null-source neutral FROM_NMB cure one with existing cure modifiers",
+    "NJ03": "active selects living draw recipient; self takes one FROM_NMB damage; finish responses, dying and death before draw; SEM-010 skips dead recipient or finished match",
+    "NJ04": "active draws one through deterministic card-zone planner",
+    "NJ05": "active selects living target; one FROM_NMB damage through real response/rescue/death pipeline",
+    "NJ06": "active chooses living donor with hand and another living teammate; active chooses that teammate; donor privately chooses one hand card to transfer",
+    "NJ08": "active chooses living hand-holder; seeded random discard one; legacy dummy anonymous confirmation has no effect on card choice",
+    "NJ09": "move held NPC to active player's companion zone; companion consumption during battle remains CS03-03C"
+  },
+  "persistence": {
+    "event": "npc.operation with deterministic report verified during reduction",
+    "cursor": "MatchState.encounterState.npc; no closures or private card IDs in public effect stack",
+    "choice": "mandatory generic submit-choice, exactly 15000ms, canonical option order for seeded timeout",
+    "damageContinuation": "held NPC remains until nested response/rescue/death and loot finish; terminal cleanup still works after activePlayerId becomes null",
+    "upgrade": "schema 8 to 9 adds empty encounter runtime without reshuffle or new private knowledge",
+    "validation": "reject invalid ownership, stage, target arity, held NPC/action link, choice owner, options, deadline or resume step"
+  },
+  "privacy": "only donor sees card options; all six views may see action/stage/waiting owner/deadline; no card identities or target list in public NPC execution summary",
+  "death": "owned companions are discarded at death-batch cleanup, also on JN50203 hand/equipment-loot branch; held resolving NPC is not an owned companion",
+  "boundaries": [
+    "NJ01 and NJ07 are explicitly unsupported, not silently skipped",
+    "complete NPC action availability and monster/pet effects remain unimplemented",
+    "entry consumes an already selected held NPC; production end-action still skips encounter until CS03-03D",
+    "NJ08 protected-hand integration awaits the protected-card substrate",
+    "rewardDrawCount is handed to future turn continuation, not already drawn",
+    "network test injects only initial selected-NPC snapshot, then uses real HTTP/WebSocket/actor/SQLite"
+  ],
+  "verification": "npm run npc-effects:verify",
+  "legacyEvidence": [
+    "PSDGamepkg/JNS/NC303.cs:120-183 NJ02 through NJ06",
+    "PSDGamepkg/JNS/NC303.cs:237-269 NJ08 and NJ09",
+    "PSDGamepkg/JNS/NC303.cs:675-694 held NPC companion transfer",
+    "PSDGamepkg/JNS/NC303.cs:710-720 null-source FROM_NMB harm/cure",
+    "PSDGamepkg/XIG.cs:389-410 death companion cleanup",
+    "PSDGamepkg/XIG.cs:1218-1305 draw/random-discard and post-death draw ambiguity"
+  ]
+}

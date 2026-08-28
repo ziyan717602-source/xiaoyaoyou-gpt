@@ -50,7 +50,7 @@ assert(
   "Encounter RNG boundary drifted.",
 );
 assert(
-  contract.persistence.matchSchema === 8 &&
+  contract.persistence.matchSchema === 9 &&
     contract.persistence.migratesFrom === 6,
   "Encounter persistence boundary drifted.",
 );
@@ -73,7 +73,7 @@ for (const token of [
   );
 }
 for (const token of [
-  "MATCH_SCHEMA_VERSION = 8",
+  "MATCH_SCHEMA_VERSION = 9",
   "upgradeEncounterDecksFromV6",
   "deckCount: state.encounterDeck.length",
 ]) {

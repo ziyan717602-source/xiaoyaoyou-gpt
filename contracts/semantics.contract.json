@@ -302,6 +302,11 @@
       "id": "SEM-009",
       "status": "provisional-autonomous",
       "decision": "The standard encounter deck uses all twenty monsters and ten randomized NPCs; the other sixteen NPCs enter the reserve instead of reproducing legacy zero-based TakeRange(11) card loss."
+    },
+    {
+      "id": "SEM-010",
+      "status": "provisional-autonomous",
+      "decision": "NJ03 resumes its draw only after damage/rescue/death completes; if the chosen recipient is dead or the match has ended, the follow-up fizzles without consuming the draw pile. Legacy G0DH/G0IT permit dead recipients; this explicit provisional deviation preserves death cleanup pending a reproducible legacy trace."
     }
   ],
   "scenarios": [

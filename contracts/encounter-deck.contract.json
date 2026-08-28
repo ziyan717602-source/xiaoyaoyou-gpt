@@ -37,7 +37,7 @@
     "sixViewsDerivedIndependently": true
   },
   "persistence": {
-    "matchSchema": 8,
+    "matchSchema": 9,
     "migratesFrom": 6,
     "stores": [
       "encounter-deck",

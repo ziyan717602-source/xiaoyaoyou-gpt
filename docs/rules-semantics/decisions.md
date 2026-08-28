@@ -14,4 +14,6 @@
 | `SEM-008` | provisional-autonomous | JN40302 整手收取按来源座次、再按来源手牌顺序追加，不复刻旧进程随机排列          | 旧随机只改变牌序且不可稳定重放；确定顺序保留所有权、选择集合与隐私                                 |
 | `SEM-009` | provisional-autonomous | 主遭遇堆使用全部 20 张怪物与随机 10 张 NPC，剩余 16 张 NPC 全部进入后备堆       | C# `TakeRange(npcLst, 11, count)` 以零基索引漏掉第 11 张 NPC；修正该明显 off-by-one 才满足实体守恒 |
 
+`SEM-010`（provisional-autonomous）：NJ03 自伤后先完成伤害/濒死/死亡；摸牌目标仍存活且对局未结束才执行后续摸牌。源码底层允许给死亡目标加手牌，这是明确记录的临时偏离，问题、备选与影响见 [NJ03 死亡后摸牌](nj03-post-death-draw.md)。
+
 没有保持 `open` 的规则问题；以上均可在无人值守开发中执行。用户若否决其中任何一项，先改合同、场景和收据，再改实现。`SEM-009` 的完整缺陷证据与备选语义见 `cs03-encounter-deck-gap.md`。

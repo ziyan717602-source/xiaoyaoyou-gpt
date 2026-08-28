@@ -426,6 +426,9 @@ export function reduceReactionEvent(
   if (
     state.phase !== "playing" ||
     (state.turn?.phase !== "action" &&
+      !(
+        state.turn?.phase === "encounter" && state.encounterState.npc !== null
+      ) &&
       state.turn?.phase !== "reward" &&
       state.turn?.phase !== "turn-end")
   ) {

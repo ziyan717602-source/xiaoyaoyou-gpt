@@ -62,6 +62,12 @@ import {
   type SystemDeadline,
 } from "./time-recovery.js";
 
+import {
+  applyNpcChoiceCommand,
+  applyNpcChoiceTimeout,
+  continueNpcAfterDamage,
+  reduceNpcEvent,
+} from "./npc-effects.js";
 const PLAYER_COUNT = 6;
 const HERO_CHOICES = 3;
 const INITIAL_HAND_SIZE = 3;
@@ -229,6 +235,8 @@ export function reduceEvent(
   state: Readonly<MatchState>,
   eventToReduce: Readonly<DomainEvent>,
 ): MatchState {
+  if (eventToReduce.type.startsWith("npc."))
+    return reduceNpcEvent(state, eventToReduce);
   if (
     eventToReduce.type.startsWith("connection.") ||
     eventToReduce.type === "system.timeout-resolved"
@@ -390,6 +398,8 @@ function applyCommandOnce(
       return applyDyingCommand(input, envelope, serverReceivedAt);
     }
     if (input.pendingChoice !== null) {
+      if (input.pendingChoice.continuation.resumeWith === "resolve-npc-choice")
+        return applyNpcChoiceCommand(input, envelope, serverReceivedAt);
       if (input.pendingChoice.prompt === "hero-skill:xyy.skill.jn20102") {
         return applyDuelChoiceCommand(input, envelope, serverReceivedAt);
       }
@@ -546,11 +556,18 @@ export function applyCommand(
     ...rewardContinuation.events,
     ...turnEndContinuation.events,
   ];
+  const npcContinuation = continueNpcAfterDamage(
+    turnEndContinuation.state,
+    commandId,
+    resolvedAt,
+    continuationEvents.at(-1)?.eventId ?? result.events.at(-1)?.eventId ?? null,
+  );
+  continuationEvents.push(...npcContinuation.events);
   return continuationEvents.length === 0
     ? result
     : {
         accepted: true,
-        state: turnEndContinuation.state,
+        state: npcContinuation.state,
         events: [...result.events, ...continuationEvents],
       };
 }
@@ -687,6 +704,8 @@ function resolveTimeout(
     return applyDeathLootTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("choice:")) {
+    if (state.pendingChoice?.continuation.resumeWith === "resolve-npc-choice")
+      return applyNpcChoiceTimeout(state, command, deadline.playerId);
     if (state.pendingChoice?.prompt === "hero-skill:xyy.skill.jn20102") {
       return applyDuelChoiceTimeout(state, command, deadline.playerId);
     }

@@ -16,8 +16,14 @@ import {
 import type { CardInstanceId, HeroId } from "./setup-content.js";
 import { createEncounterDecks } from "./encounter-content.js";
 import type { EncounterCardId, NpcId } from "./encounter-content.js";
+import {
+  emptyEncounterRuntime,
+  validateEncounterRuntime,
+  type EncounterRuntimeState,
+} from "./npc-effects.js";
+import { projectEncounterResolution } from "./encounter-resolution.js";
 
-export const MATCH_SCHEMA_VERSION = 8 as const;
+export const MATCH_SCHEMA_VERSION = 9 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -224,6 +230,7 @@ export interface MatchState {
   readonly discardPile: readonly CardInstanceId[];
   readonly encounterDeck: readonly EncounterCardId[];
   readonly encounterDiscard: readonly EncounterCardId[];
+  readonly encounterState: EncounterRuntimeState;
   readonly encounterInspections: Readonly<
     Partial<Record<PlayerId, EncounterInspection>>
   >;
@@ -455,6 +462,15 @@ export interface PlayerView {
     readonly deckCount: number;
     readonly discardPile: readonly EncounterCardId[];
     readonly lastInspection: EncounterInspection | null;
+    readonly resolution?: ReturnType<typeof projectEncounterResolution>;
+    readonly pets?: EncounterRuntimeState["pets"];
+    readonly companions?: EncounterRuntimeState["companions"];
+    readonly npcOperation?: {
+      readonly actionId: NonNullable<EncounterRuntimeState["npc"]>["actionId"];
+      readonly stage: NonNullable<EncounterRuntimeState["npc"]>["stage"];
+      readonly ownerPlayerId: PlayerId | null;
+      readonly deadlineAt: number | null;
+    };
   };
   readonly setup: SetupView | null;
   readonly availableActions: readonly AvailableAction[];
@@ -531,6 +547,7 @@ export function createInitialMatch(input: CreateMatchInput): MatchState {
     discardPile: [],
     ...encounterDecks,
     encounterInspections: {},
+    encounterState: emptyEncounterRuntime(),
     setup: null,
     effectStack: [],
     reactionWindow: null,
@@ -546,6 +563,7 @@ type MatchStateV6 = Omit<
   | "encounterDeck"
   | "encounterDiscard"
   | "encounterInspections"
+  | "encounterState"
   | "reserveNpcDeck"
   | "reserveNpcDiscard"
 > & { readonly schemaVersion: 6 };
@@ -557,6 +575,7 @@ function upgradeEncounterDecksFromV6(legacy: MatchStateV6): MatchState {
     schemaVersion: MATCH_SCHEMA_VERSION,
     ...createEncounterDecks(legacy.rng.seed),
     encounterInspections: {},
+    encounterState: emptyEncounterRuntime(),
   };
 }
 
@@ -642,14 +661,26 @@ export function migrateMatchState(value: unknown): MatchState {
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v8 snapshot is missing required fields.");
+      throw new Error("Match schema v9 snapshot is missing required fields.");
+    }
+    try {
+      validateEncounterRuntime(current);
+    } catch {
+      throw new Error("Match schema v9 has invalid encounter state.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 8) {
+    return migrateMatchState({
+      ...raw,
+      schemaVersion: MATCH_SCHEMA_VERSION,
+      encounterState: emptyEncounterRuntime(),
+    });
   }
   if (raw.schemaVersion === 7) {
     return migrateMatchState({
       ...raw,
-      schemaVersion: MATCH_SCHEMA_VERSION,
+      schemaVersion: 8,
       encounterInspections: {},
     });
   }
@@ -834,6 +865,38 @@ export function createPlayerView(
       deckCount: state.encounterDeck.length,
       discardPile: state.encounterDiscard,
       lastInspection: state.encounterInspections[viewerId] ?? null,
+      ...(state.encounterState.resolution === null
+        ? {}
+        : {
+            resolution: projectEncounterResolution(
+              state.encounterState.resolution,
+              viewerId,
+            ),
+          }),
+      ...(Object.keys(state.encounterState.pets).length === 0
+        ? {}
+        : { pets: state.encounterState.pets }),
+      ...(Object.keys(state.encounterState.companions).length === 0
+        ? {}
+        : { companions: state.encounterState.companions }),
+      ...(state.encounterState.npc === null
+        ? {}
+        : {
+            npcOperation: {
+              actionId: state.encounterState.npc.actionId,
+              stage: state.encounterState.npc.stage,
+              ownerPlayerId:
+                state.pendingChoice?.continuation.resumeWith ===
+                "resolve-npc-choice"
+                  ? state.pendingChoice.playerIds[0]!
+                  : null,
+              deadlineAt:
+                state.pendingChoice?.continuation.resumeWith ===
+                "resolve-npc-choice"
+                  ? state.pendingChoice.deadlineAt
+                  : null,
+            },
+          }),
     },
     setup:
       state.setup === null
@@ -1683,6 +1746,11 @@ export {
   type EncounterZones,
 } from "./encounter.js";
 export { reduceDuelEvent } from "./duel.js";
+export {
+  beginNpcAction,
+  reduceNpcEvent,
+  type EncounterRuntimeState,
+} from "./npc-effects.js";
 export {
   ENCOUNTER_DEFINITIONS,
   encounterDefinition,

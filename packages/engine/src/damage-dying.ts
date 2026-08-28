@@ -63,6 +63,18 @@ function deadBatchCards(
   );
 }
 
+/** G0ZW priority 200: NPC companions leave with the dead owner, independently
+ * of JN50203's hand/equipment loot. The currently resolving NPC is not owned. */
+function discardDeadCompanions(state: MatchState, batch: DyingBatch) {
+  const companions = { ...state.encounterState.companions };
+  const discarded = batch.deadPlayerIds.flatMap((id) => companions[id] ?? []);
+  for (const id of batch.deadPlayerIds) delete companions[id];
+  return {
+    encounterState: { ...state.encounterState, companions },
+    encounterDiscard: [...state.encounterDiscard, ...discarded],
+  };
+}
+
 function jn50203Owner(
   state: Readonly<MatchState>,
   batch: Readonly<DyingBatch>,
@@ -654,6 +666,9 @@ export function reduceDyingEvent(
   if (
     state.phase !== "playing" ||
     (state.turn?.phase !== "action" &&
+      !(
+        state.turn?.phase === "encounter" && state.encounterState.npc !== null
+      ) &&
       state.turn?.phase !== "reward" &&
       state.turn?.phase !== "turn-end")
   ) {
@@ -1004,6 +1019,7 @@ export function reduceDyingEvent(
     }
     next = {
       ...state,
+      ...discardDeadCompanions(state, batch),
       players,
       discardPile: [...state.discardPile, ...cardInstanceIds],
       dyingBatch: null,
@@ -1047,6 +1063,7 @@ export function reduceDyingEvent(
     };
     next = {
       ...state,
+      ...discardDeadCompanions(state, batch),
       players,
       dyingBatch: {
         ...batch,
