@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { grantPets } from "./testing/npc-fixture.js";
 import type { CommandEnvelope, PlayerId } from "@xiaoyaoyou/protocol";
 import {
   applyCommand,
@@ -180,141 +181,149 @@ function passAllRescue(state: MatchState, now: number): MatchState {
 }
 
 describe("M05 damage and dying core", () => {
-  it("uses JN20602 to transform before death while preserving hand and equipment", () => {
-    let state = playing("jn20602-transform");
-    const ordered = Object.values(state.players).sort(
-      (left, right) => left.seat - right.seat,
-    );
-    const owner = ordered[0]!.id;
-    const victim = ordered[1]!.id;
-    state = arrange(
-      state,
-      {
-        [owner]: ["xyy.card.jp01@1"],
-        [victim]: ["xyy.card.zp01@16"],
-      },
-      {
-        [owner]: { weapon: "xyy.card.wq01@47", armor: null },
-        [victim]: { weapon: "xyy.card.wq02@48", armor: null },
-      },
-    );
-    state = {
-      ...state,
-      players: Object.fromEntries(
-        Object.values(state.players).map((player) => [
-          player.id,
+  it.each([false, true])(
+    "uses JN20602 to transform before death while preserving hand, equipment and pets (pets=%s)",
+    (pets) => {
+      let state = playing("jn20602-transform");
+      const ordered = Object.values(state.players).sort(
+        (left, right) => left.seat - right.seat,
+      );
+      const owner = ordered[0]!.id;
+      const victim = ordered[1]!.id;
+      state = arrange(
+        state,
+        {
+          [owner]: ["xyy.card.jp01@1"],
+          [victim]: ["xyy.card.zp01@16"],
+        },
+        {
+          [owner]: { weapon: "xyy.card.wq01@47", armor: null },
+          [victim]: { weapon: "xyy.card.wq02@48", armor: null },
+        },
+      );
+      state = {
+        ...state,
+        players: Object.fromEntries(
+          Object.values(state.players).map((player) => [
+            player.id,
+            {
+              ...player,
+              heroId:
+                player.id === owner
+                  ? "xyy.hero.xj206"
+                  : player.id === victim
+                    ? "xyy.hero.xj104"
+                    : "xyy.hero.xj201",
+              hp: player.id === owner || player.id === victim ? 1 : 4,
+              strength: player.id === victim ? 3 : player.strength,
+            },
+          ]),
+        ),
+      };
+      if (pets)
+        state = grantPets(state, owner, [
+          "xyy.monster.gs04",
+          "xyy.monster.gl03",
+        ]);
+      state = applyPlannedDamage(
+        state,
+        "jn20602-simultaneous-damage",
+        planDamageBatch(state, [
           {
-            ...player,
-            heroId:
-              player.id === owner
-                ? "xyy.hero.xj206"
-                : player.id === victim
-                  ? "xyy.hero.xj104"
-                  : "xyy.hero.xj201",
-            hp: player.id === owner || player.id === victim ? 1 : 4,
-            strength: player.id === victim ? 3 : player.strength,
+            itemId: "jn20602-owner-zero",
+            sourcePlayerId: victim,
+            targetPlayerId: owner,
+            amount: 1,
+            element: "neutral",
+          },
+          {
+            itemId: "jn20602-victim-zero",
+            sourcePlayerId: owner,
+            targetPlayerId: victim,
+            amount: 1,
+            element: "neutral",
           },
         ]),
-      ),
-    };
-    state = applyPlannedDamage(
-      state,
-      "jn20602-simultaneous-damage",
-      planDamageBatch(state, [
-        {
-          itemId: "jn20602-owner-zero",
-          sourcePlayerId: victim,
-          targetPlayerId: owner,
-          amount: 1,
-          element: "neutral",
-        },
-        {
-          itemId: "jn20602-victim-zero",
-          sourcePlayerId: owner,
-          targetPlayerId: victim,
-          amount: 1,
-          element: "neutral",
-        },
-      ]),
-      1_000,
-    );
-
-    let transformation:
-      | {
-          readonly before: MatchState;
-          readonly event: Parameters<typeof reduceEvent>[1];
-        }
-      | undefined;
-    let pass = 0;
-    while (
-      state.dyingBatch?.status === "awaiting-rescue" &&
-      state.dyingBatch.currentTargetPlayerId === owner
-    ) {
-      const before = state;
-      const batch = state.dyingBatch;
-      const priority = batch.priorityOrder[batch.priorityIndex]!;
-      const result = applied(
-        state,
-        priority,
-        `jn20602-owner-pass-${pass}`,
-        { type: "pass-rescue", choiceId: state.pendingChoice!.choiceId },
-        2_000 + pass,
+        1_000,
       );
-      expect(result.accepted).toBe(true);
-      if (!result.accepted) throw new Error(result.reason);
-      const event = result.events.find(
-        (candidate) => candidate.type === "death.hero-transformed",
-      );
-      if (event !== undefined) transformation = { before, event };
-      state = result.state;
-      pass += 1;
-      if (pass > 6) throw new Error("JN20602 owner rescue did not converge.");
-    }
 
-    expect(transformation).toBeDefined();
-    expect(state.players[owner]).toMatchObject({
-      heroId: "xyy.hero.xj207",
-      alive: true,
-      hp: 5,
-      maxHp: 5,
-      strength: 8,
-      dexterity: 2,
-      handLimit: 3,
-      hand: ["xyy.card.jp01@1"],
-      equipment: { weapon: "xyy.card.wq01@47", armor: null },
-    });
-    expect(state.dyingBatch).toMatchObject({
-      currentTargetPlayerId: victim,
-      status: "awaiting-rescue",
-      deadPlayerIds: [],
-    });
-    expect(() =>
-      reduceEvent(transformation!.before, {
-        ...transformation!.event,
-        payload: {
-          ...transformation!.event.payload,
-          targetHeroId: "xyy.hero.xj201",
-        },
-      }),
-    ).toThrow();
+      let transformation:
+        | {
+            readonly before: MatchState;
+            readonly event: Parameters<typeof reduceEvent>[1];
+          }
+        | undefined;
+      let pass = 0;
+      while (
+        state.dyingBatch?.status === "awaiting-rescue" &&
+        state.dyingBatch.currentTargetPlayerId === owner
+      ) {
+        const before = state;
+        const batch = state.dyingBatch;
+        const priority = batch.priorityOrder[batch.priorityIndex]!;
+        const result = applied(
+          state,
+          priority,
+          `jn20602-owner-pass-${pass}`,
+          { type: "pass-rescue", choiceId: state.pendingChoice!.choiceId },
+          2_000 + pass,
+        );
+        expect(result.accepted).toBe(true);
+        if (!result.accepted) throw new Error(result.reason);
+        const event = result.events.find(
+          (candidate) => candidate.type === "death.hero-transformed",
+        );
+        if (event !== undefined) transformation = { before, event };
+        state = result.state;
+        pass += 1;
+        if (pass > 6) throw new Error("JN20602 owner rescue did not converge.");
+      }
 
-    state = passAllRescue(state, 3_000);
-    expect(state.players[victim]).toMatchObject({
-      alive: false,
-      hp: 0,
-      strength: 2,
-      hand: [],
-      equipment: { weapon: null, armor: null },
-    });
-    expect(state.players[owner]!.hand).toEqual(["xyy.card.jp01@1"]);
-    expect(state.players[owner]!.equipment.weapon).toBe("xyy.card.wq01@47");
-    expect(state.discardPile).not.toContain("xyy.card.jp01@1");
-    expect(state.discardPile).not.toContain("xyy.card.wq01@47");
-    expect(state.discardPile).toContain("xyy.card.zp01@16");
-    expect(state.discardPile).toContain("xyy.card.wq02@48");
-    expect(state.dyingBatch).toBeNull();
-    expect(state.winner).toBeNull();
-  });
+      expect(transformation).toBeDefined();
+      expect(state.players[owner]).toMatchObject({
+        heroId: "xyy.hero.xj207",
+        alive: true,
+        hp: 5,
+        maxHp: 5,
+        strength: pets ? 9 : 8,
+        dexterity: pets ? 5 : 2,
+        handLimit: 3,
+        hand: ["xyy.card.jp01@1"],
+        equipment: { weapon: "xyy.card.wq01@47", armor: null },
+      });
+      expect(state.dyingBatch).toMatchObject({
+        currentTargetPlayerId: victim,
+        status: "awaiting-rescue",
+        deadPlayerIds: [],
+      });
+      expect(() =>
+        reduceEvent(transformation!.before, {
+          ...transformation!.event,
+          payload: {
+            ...transformation!.event.payload,
+            targetHeroId: "xyy.hero.xj201",
+          },
+        }),
+      ).toThrow();
+
+      state = passAllRescue(state, 3_000);
+      expect(state.players[victim]).toMatchObject({
+        alive: false,
+        hp: 0,
+        strength: 2,
+        hand: [],
+        equipment: { weapon: null, armor: null },
+      });
+      expect(state.players[owner]!.hand).toEqual(["xyy.card.jp01@1"]);
+      expect(state.players[owner]!.equipment.weapon).toBe("xyy.card.wq01@47");
+      expect(state.discardPile).not.toContain("xyy.card.jp01@1");
+      expect(state.discardPile).not.toContain("xyy.card.wq01@47");
+      expect(state.discardPile).toContain("xyy.card.zp01@16");
+      expect(state.discardPile).toContain("xyy.card.wq02@48");
+      expect(state.dyingBatch).toBeNull();
+      expect(state.winner).toBeNull();
+    },
+  );
 
   it("lets JN20602 transformation decide a simultaneous last-player death cycle", () => {
     let state = playing("jn20602-last-player");

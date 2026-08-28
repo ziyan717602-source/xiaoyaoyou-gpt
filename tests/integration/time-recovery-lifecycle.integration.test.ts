@@ -320,10 +320,15 @@ function systemTimeoutCount(databasePath: string, matchId: string): number {
 }
 
 describe("M06 time/recovery over six real WebSockets", () => {
-  it.each(["xyy.npc-action.nj06", "xyy.npc-action.nj07"] as const)(
+  it.each([
+    "xyy.npc-action.nj01",
+    "xyy.npc-action.nj06",
+    "xyy.npc-action.nj07",
+  ] as const)(
     "preserves %s choices through SQLite restart, rejects other players and deduplicates the transfer",
     async (actionId) => {
       const petExchange = actionId === "xyy.npc-action.nj07";
+      const heroJoin = actionId === "xyy.npc-action.nj01";
       const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-npc-integration-"));
       roots.push(root);
       const databasePath = join(root, "npc.sqlite");
@@ -344,12 +349,19 @@ describe("M06 time/recovery over six real WebSockets", () => {
         let input = npcFixture(actionId, "npc-network", {
           base,
           at: Date.now(),
+          ...(heroJoin ? { npcId: "xyy.npc.nc106" as const } : {}),
         });
         const actor = input.activePlayerId!;
-        const donor = input.turnOrder.find((id) => id !== actor)!;
+        const donor = input.turnOrder.find(
+          (id) =>
+            id !== actor &&
+            (!heroJoin ||
+              input.players[id]!.team === input.players[actor]!.team),
+        )!;
         const recipient = input.turnOrder.find(
           (id) =>
             id !== donor &&
+            (!heroJoin || id !== actor) &&
             input.players[id]!.team === input.players[donor]!.team,
         )!;
         const hand = input.drawPile.slice(0, 2);
@@ -367,6 +379,20 @@ describe("M06 time/recovery over six real WebSockets", () => {
             "xyy.monster.gl04",
           ]);
           input = grantPets(input, recipient, ["xyy.monster.gs01"]);
+        }
+        if (heroJoin) {
+          input = grantPets(input, donor, ["xyy.monster.gs04"]);
+          input = {
+            ...input,
+            players: {
+              ...input.players,
+              [recipient]: {
+                ...input.players[recipient]!,
+                alive: false,
+                hp: 0,
+              },
+            },
+          };
         }
         const prepared = beginNpcAction(
           input,
@@ -432,13 +458,19 @@ describe("M06 time/recovery over six real WebSockets", () => {
         expect((await submit(actor, "npc-donor", [donor])).type).toBe(
           "command-accepted",
         );
-        expect((await submit(actor, "npc-recipient", [recipient])).type).toBe(
-          "command-accepted",
-        );
-        const choiceOwner = petExchange ? actor : donor;
-        const options = petExchange
-          ? ["xyy.monster.gl04", "xyy.monster.gs04"]
-          : hand;
+        if (!heroJoin)
+          expect((await submit(actor, "npc-recipient", [recipient])).type).toBe(
+            "command-accepted",
+          );
+        const choiceOwner = petExchange || heroJoin ? actor : donor;
+        const options = heroJoin
+          ? Object.values(input.players)
+              .filter((p) => p.team === input.players[actor]!.team)
+              .sort((a, b) => a.seat - b.seat)
+              .map((p) => p.id)
+          : petExchange
+            ? ["xyy.monster.gl04", "xyy.monster.gs04"]
+            : hand;
         const checkPrivacy = () => {
           for (const [i, client] of clients.entries()) {
             if (created.sessions[i]!.playerId === choiceOwner) {
@@ -472,22 +504,21 @@ describe("M06 time/recovery over six real WebSockets", () => {
           stateBefore.rng,
         );
         const denied = await submit(
-          petExchange ? donor : actor,
+          petExchange || heroJoin ? donor : actor,
           "npc-forged-owner",
           [options[0]!],
           choice.choiceId,
         );
         expect(denied.type).toBe("command-rejected");
-        const receipt = await submit(choiceOwner, "npc-transfer", [
-          options[1]!,
-        ]);
+        const selected = heroJoin ? recipient : options[1]!;
+        const receipt = await submit(choiceOwner, "npc-transfer", [selected]);
         expect(receipt.type).toBe("command-accepted");
         const finished = latestSnapshotState(databasePath, created.roomId);
         expect(finished.players[donor]!.hand).toEqual(
-          petExchange ? hand : [hand[0]],
+          heroJoin ? [] : petExchange ? hand : [hand[0]],
         );
         expect(finished.players[recipient]!.hand).toEqual(
-          petExchange ? [] : [hand[1]],
+          petExchange || heroJoin ? [] : [hand[1]],
         );
         if (petExchange) {
           expect(finished.encounterState.pets[donor]).toEqual([
@@ -507,6 +538,26 @@ describe("M06 time/recovery over six real WebSockets", () => {
             input.encounterState.weaponDisabledReasons,
           );
         }
+        if (heroJoin) {
+          expect(finished.players[recipient]).toMatchObject({
+            heroId: "xyy.hero.xj106",
+            alive: true,
+            hp: 4,
+          });
+          expect(finished.encounterState.heroDiscards).toContain(
+            input.players[recipient]!.heroId,
+          );
+          expect(finished.discardPile).toEqual(hand);
+          expect(finished.encounterState.pets).toEqual(
+            input.encounterState.pets,
+          );
+          expect(finished.players[donor]!.strength).toBe(
+            input.players[donor]!.strength,
+          );
+          expect(finished.players[donor]!.dexterity).toBe(
+            input.players[donor]!.dexterity,
+          );
+        }
         expect(finished.encounterState.npc).toBeNull();
         expect(finished.encounterDiscard).toEqual([
           input.encounterState.resolution!.heldCardId,
@@ -515,7 +566,7 @@ describe("M06 time/recovery over six real WebSockets", () => {
         const duplicate = await submit(
           choiceOwner,
           "npc-transfer",
-          [options[1]!],
+          [selected],
           choice.choiceId,
         );
         expect(duplicate).toMatchObject({

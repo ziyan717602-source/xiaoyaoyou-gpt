@@ -2,9 +2,10 @@
   "schemaVersion": 1,
   "contractId": "xiaoyaoyou-cs03-npc-effects-v1",
   "scope": "CONTENT-STANDARD/CS03-03B-01",
-  "matchSchemaVersion": 10,
+  "matchSchemaVersion": 11,
   "authority": "C# source with scoped NPC action metadata; SEM-010 is provisional, not black-box equivalence",
   "implementedOperations": {
+    "NJ01": "CS03-03B-02-JOIN: active selects living hand-paying teammate then any teammate including dead/self; discard all hand, replace/revive with min(2*count, maxHP), reload equipment and pets",
     "NJ02": "active selects living target; null-source neutral FROM_NMB cure one with existing cure modifiers",
     "NJ03": "active selects living draw recipient; self takes one FROM_NMB damage; finish responses, dying and death before draw; SEM-010 skips dead recipient or finished match",
     "NJ04": "active draws one through deterministic card-zone planner",
@@ -25,8 +26,9 @@
   "privacy": "only donor sees card options; all six views may see action/stage/waiting owner/deadline; no card identities or target list in public NPC execution summary",
   "death": "per dead owner discard pets in elemental slot order, remove passives, then discard companions; both normal and JN50203 cleanup; held resolving NPC is not owned",
   "boundaries": [
-    "NJ01 is explicitly unsupported, not silently skipped; NJ07 is covered by pet-effects.contract.json",
-    "complete NPC action availability and monster debut/win/loss/consume effects remain unimplemented",
+    "NJ01 is covered by hero-join.contract.json; NJ07 by pet-effects.contract.json",
+    "all NPC Valid predicates are implemented and checked before execution; MatchState action-selection/pass/forced-last window remains a next node, separate from the pure routing substrate",
+    "monster debut/win/loss/consume effects remain unimplemented",
     "entry consumes an already selected held NPC; production end-action still skips encounter until CS03-03D",
     "NJ08 protected-hand integration awaits the protected-card substrate",
     "rewardDrawCount is handed to future turn continuation, not already drawn",

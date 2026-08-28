@@ -23,7 +23,9 @@ const STAT_PASSIVES: Readonly<Record<string, readonly [number, number]>> = {
   gt02: [0, 1],
   gt04: [2, 1],
 };
-function stats(cards: readonly MonsterId[]): readonly [number, number] {
+export function petStatBonuses(
+  cards: readonly MonsterId[],
+): readonly [number, number] {
   return cards.reduce<readonly [number, number]>(
     (sum, id) => {
       const delta = STAT_PASSIVES[id.slice("xyy.monster.".length)] ?? [0, 0];
@@ -86,8 +88,8 @@ export function withPetOwnership(
   });
   const players = { ...state.players };
   for (const player of Object.values(players)) {
-    const old = stats(before[player.id] ?? []),
-      next = stats(canonical[player.id] ?? []);
+    const old = petStatBonuses(before[player.id] ?? []),
+      next = petStatBonuses(canonical[player.id] ?? []);
     players[player.id] = {
       ...player,
       strength: player.strength + next[0] - old[0],

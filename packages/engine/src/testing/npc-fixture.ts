@@ -8,7 +8,7 @@ import {
 } from "../index.js";
 import { inspectionFixture } from "./inspection-fixture.js";
 import { withPetOwnership } from "../pet-effects.js";
-import type { MonsterId } from "../encounter-content.js";
+import type { MonsterId, NpcId } from "../encounter-content.js";
 import {
   beginEncounterResolution,
   openNpcDecision,
@@ -24,7 +24,11 @@ import {
 export function npcFixture(
   actionId: NpcActionId,
   seed = "npc-effects",
-  options: { readonly base?: MatchState; readonly at?: number } = {},
+  options: {
+    readonly base?: MatchState;
+    readonly at?: number;
+    readonly npcId?: NpcId;
+  } = {},
 ): MatchState {
   const base = options.base ?? inspectionFixture(seed);
   const at = options.at ?? 1_000;
@@ -32,11 +36,15 @@ export function npcFixture(
     ENCOUNTER_DEFINITIONS.find(
       (d) =>
         d.kind === "npc" &&
+        (options.npcId === undefined || d.id === options.npcId) &&
         d.actionIds.includes(actionId) &&
         base.encounterDeck.includes(d.id),
     ) ??
     ENCOUNTER_DEFINITIONS.find(
-      (d) => d.kind === "npc" && d.actionIds.includes(actionId),
+      (d) =>
+        d.kind === "npc" &&
+        d.actionIds.includes(actionId) &&
+        (options.npcId === undefined || d.id === options.npcId),
     )!;
   const actor = base.activePlayerId!;
   const swapped = base.encounterDeck.includes(npc.id)
@@ -99,6 +107,8 @@ export function npcFixture(
           ),
     encounterDiscard: [],
     encounterState: {
+      heroDiscards: [],
+      bannedHeroes: [],
       weaponDisabledReasons: {},
       resolution: selected.flow,
       pets: {},

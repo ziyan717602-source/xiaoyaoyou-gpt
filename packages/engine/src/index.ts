@@ -24,7 +24,7 @@ import {
 import { projectEncounterResolution } from "./encounter-resolution.js";
 import { withPetOwnership, weaponEffectsEnabled } from "./pet-effects.js";
 
-export const MATCH_SCHEMA_VERSION = 10 as const;
+export const MATCH_SCHEMA_VERSION = 11 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -663,14 +663,26 @@ export function migrateMatchState(value: unknown): MatchState {
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v10 snapshot is missing required fields.");
+      throw new Error("Match schema v11 snapshot is missing required fields.");
     }
     try {
       validateEncounterRuntime(current);
     } catch {
-      throw new Error("Match schema v10 has invalid encounter state.");
+      throw new Error("Match schema v11 has invalid encounter state.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 10) {
+    const legacy = value as MatchState;
+    return migrateMatchState({
+      ...legacy,
+      schemaVersion: MATCH_SCHEMA_VERSION,
+      encounterState: {
+        ...legacy.encounterState,
+        heroDiscards: [],
+        bannedHeroes: [],
+      },
+    });
   }
   if (raw.schemaVersion === 9) {
     const legacy = value as MatchState;
@@ -684,6 +696,8 @@ export function migrateMatchState(value: unknown): MatchState {
           ...legacy.encounterState,
           pets: {},
           weaponDisabledReasons: {},
+          heroDiscards: [],
+          bannedHeroes: [],
         },
       },
       legacy.encounterState.pets,

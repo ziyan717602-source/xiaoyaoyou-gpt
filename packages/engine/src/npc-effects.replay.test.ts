@@ -84,7 +84,7 @@ describe("CS03 NPC persistence and event integrity", () => {
     ]) {
       const corrupt = JSON.parse(JSON.stringify(state));
       mutate(corrupt);
-      expect(() => migrateMatchState(corrupt)).toThrow("schema v10");
+      expect(() => migrateMatchState(corrupt)).toThrow("schema v11");
     }
     expect(restore(state)).toEqual(state);
   });
@@ -100,13 +100,15 @@ describe("CS03 NPC persistence and event integrity", () => {
       pets: {},
       companions: {},
       weaponDisabledReasons: {},
+      heroDiscards: [],
+      bannedHeroes: [],
     });
     expect(restored.encounterDeck).toEqual(initial.encounterDeck);
     expect(restored.encounterInspections).toEqual(initial.encounterInspections);
     expect(restored.rng).toEqual(initial.rng);
     expect(() =>
       migrateMatchState({ ...restored, encounterState: undefined }),
-    ).toThrow("schema v10");
+    ).toThrow("schema v11");
   });
   it("recomputes authoritative NPC event results and rejects changed reports, actors and timestamps", () => {
     const initial = npcFixture("xyy.npc-action.nj02");

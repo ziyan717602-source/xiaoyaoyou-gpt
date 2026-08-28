@@ -1,3 +1,4 @@
+import { reloadHero } from "./hero-roster.js";
 import type {
   CommandEnvelope,
   CommandId,
@@ -26,7 +27,6 @@ import {
 } from "./hp-evolution.js";
 import {
   cardDefinition,
-  handLimitForHero,
   heroDefinition,
   heroHasSkill,
   type CardInstanceId,
@@ -936,23 +936,12 @@ export function reduceDyingEvent(
     ) {
       throw new Error("JN20602 transformation is not applicable.");
     }
-    const transformed: MatchState = {
-      ...state,
-      players: {
-        ...state.players,
-        [playerId]: {
-          ...player,
-          heroId: targetHero.id,
-          alive: true,
-          hp: targetHero.maxHp,
-          maxHp: targetHero.maxHp,
-          strength: targetHero.strength,
-          dexterity: targetHero.dexterity,
-          handLimit: handLimitForHero(targetHero.id),
-        },
-      },
-      pendingChoice: null,
-    };
+    const transformed = reloadHero(
+      { ...state, pendingChoice: null },
+      playerId,
+      targetHero.id,
+      targetHero.maxHp,
+    );
     next = advanceBatch(transformed, batch, completedAt);
   } else if (event.type === "death.player-died") {
     const playerId = stringPayload(event, "playerId");

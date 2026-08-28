@@ -302,10 +302,10 @@ describe("CS03-03B concrete NPC effects through MatchState and command/event pip
     ).toEqual([companionInput.encounterState.resolution!.heldCardId]);
     expect(companion.encounterDiscard).toEqual([]);
     expect(() => start(npcFixture("xyy.npc-action.nj01"))).toThrow(
-      "not implemented",
+      "Foreign NPC action",
     );
     expect(() => start(npcFixture("xyy.npc-action.nj07"))).toThrow(
-      "no legal target",
+      "Foreign NPC action",
     );
   });
   it("NJ04 actually draws one, closes the held NPC once, and replays the authoritative event", () => {

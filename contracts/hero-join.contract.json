@@ -1,0 +1,34 @@
+{
+  "id": "CS03-03B-02-JOIN",
+  "dependsOn": ["CS03-03B-02-PETS", "M06"],
+  "matchSchemaVersion": 11,
+  "evidenceGrade": "C# source and read-only SQLite; not black-box equivalence",
+  "rules": [
+    "NPC NJ01 payer is a living teammate with nonempty hand; recipient is any teammate including self, payer or dead; both choices owned by active player",
+    "At second choice discard payer's entire hand in existing order without RNG; HP is min(2 * count, new hero maxHP), not a cure; encounter source has no JP/SJ cap of 3",
+    "Joining excludes XJ103/XJ207/XJ304/XJ507; live same/isomorphic role blocks; archetype relation blocks even if dead; banned identities block both",
+    "Role reload resets base stats and active role use counters, preserves hand/equipment/pets/companions and player seat/team/connection; imports new equipment skills and pet passives once",
+    "JN20602 uses the same reload path and no longer drops pet passives",
+    "Dead heroId is historical, not physical ownership; canonical 34-role registry partitions active/discarded/banned/available identities; new role leaves discard, replaced role enters discard unless still actively owned or banned",
+    "All 26 NPCs filter their declared actions through NJ01/06/07/08 Valid conditions; no private card identity consulted",
+    "Each mandatory choice is 15 seconds, seeded canonical timeout; existing auto mode acts immediately; every step JSON-roundtrips and event report is recomputed"
+  ],
+  "migration": "v10 -> v11 adds empty heroDiscards/bannedHeroes without resetting clocks, cards, RNG or existing stats; v10 did not store historical hero discards so these are not fabricated",
+  "boundaries": [
+    "entry still starts with an already selected held NPC; full MatchState NPC action/pass/forced-last/no-option routing remains CS03-03B-02-OPTIONS",
+    "protected cards, hero tokens/ROM, pet seals/disabled/burst, borrowed skills and their producers remain explicit content dependencies",
+    "JP/SJ recruitment origins are not exposed by this encounter entry",
+    "no claim of retroactively repairing ambiguous pet-stat errors in pre-v11 transformed snapshots",
+    "no production encounter turn or new browser flow until CS03-03D/M07; 55 CS03 content entries remain incomplete"
+  ],
+  "verification": "npm run hero-join:verify",
+  "legacyEvidence": [
+    "PSDGamepkg/JNS/NC303.cs:67-119 NJ01 action/input/valid",
+    "PSDGamepkg/JNS/NC303.cs:155-250 NJ06/07/08 validity",
+    "PSDGamepkg/Artiad/ContentRule.cs:13-68 hero same/isomorphic/archetype/banned checks",
+    "PSDBase/Card/Hero.cs:145-156 ISO parser and 214-220 joinable scope",
+    "PSDGamepkg/XIG.cs:437-530 G0OY, 1433-1517 G0IY, 1249-1263 discard-all no shuffle",
+    "PSDGamepkg/JNS/XJ405.cs:591-604 JN20602 G0OY/G0IY reload",
+    "psd.db3 Hero rows VALID IN (1,2), ISO mapped via ID/OFCODE (34 scoped roles)"
+  ]
+}

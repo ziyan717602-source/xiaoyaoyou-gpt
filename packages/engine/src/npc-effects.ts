@@ -26,6 +26,13 @@ import { beginDamageResponse } from "./reaction.js";
 import { nextInt } from "./random.js";
 import { ACTION_DEADLINE_MS } from "./time-recovery.js";
 import type { CardInstanceId } from "./setup-content.js";
+import type { HeroId } from "./setup-content.js";
+import type { EncounterCardId } from "./encounter-content.js";
+import {
+  isHeroJoinable,
+  reloadHero,
+  validateHeroRoster,
+} from "./hero-roster.js";
 import {
   exchangePet,
   petWeaponDisableReasons,
@@ -39,6 +46,8 @@ interface NpcExecution {
   readonly targets: readonly PlayerId[];
 }
 export interface EncounterRuntimeState {
+  readonly heroDiscards: readonly HeroId[];
+  readonly bannedHeroes: readonly HeroId[];
   readonly resolution: EncounterResolution | null;
   readonly pets: Readonly<Partial<Record<PlayerId, readonly MonsterId[]>>>;
   readonly companions: Readonly<Partial<Record<PlayerId, readonly NpcId[]>>>;
@@ -47,6 +56,8 @@ export interface EncounterRuntimeState {
 }
 export function emptyEncounterRuntime(): EncounterRuntimeState {
   return {
+    heroDiscards: [],
+    bannedHeroes: [],
     resolution: null,
     pets: {},
     companions: {},
@@ -55,6 +66,7 @@ export function emptyEncounterRuntime(): EncounterRuntimeState {
   };
 }
 const IMPLEMENTED_ACTIONS: readonly NpcActionId[] = [
+  "xyy.npc-action.nj01",
   "xyy.npc-action.nj02",
   "xyy.npc-action.nj03",
   "xyy.npc-action.nj04",
@@ -82,6 +94,7 @@ export function validateEncounterRuntime(state: MatchState): void {
     !("resolution" in runtime)
   )
     throw new Error("Invalid encounter runtime.");
+  validateHeroRoster(state);
   for (const [owner, cards] of [
     ...Object.entries(runtime.pets),
     ...Object.entries(runtime.companions),
@@ -170,6 +183,7 @@ export function validateEncounterRuntime(state: MatchState): void {
     )
       throw new Error("Invalid NPC execution.");
     const transfer =
+      npc.actionId === "xyy.npc-action.nj01" ||
       npc.actionId === "xyy.npc-action.nj06" ||
       npc.actionId === "xyy.npc-action.nj07";
     const expectedTargets =
@@ -186,11 +200,20 @@ export function validateEncounterRuntime(state: MatchState): void {
           ? ![
               "donor",
               "recipient",
-              npc.actionId === "xyy.npc-action.nj07" ? "pet" : "card",
+              ...(npc.actionId === "xyy.npc-action.nj01"
+                ? []
+                : [npc.actionId === "xyy.npc-action.nj07" ? "pet" : "card"]),
             ].includes(npc.stage)
           : npc.stage !== "target")
     )
       throw new Error("Invalid NPC execution step.");
+    if (
+      npc.actionId === "xyy.npc-action.nj01" &&
+      !legalNpcActions(state, flow!.activePlayerId, flow!.heldCardId!).includes(
+        npc.actionId,
+      )
+    )
+      throw new Error("NPC role is no longer joinable.");
     if (
       transfer &&
       npc.targets.length > 0 &&
@@ -260,6 +283,17 @@ function selectionOptions(
   execution: NpcExecution,
 ): readonly string[] {
   const living = orderedLiving(state);
+  if (execution.actionId === "xyy.npc-action.nj01") {
+    const actor = state.encounterState.resolution!.activePlayerId;
+    return Object.values(state.players)
+      .filter(
+        (p) =>
+          p.team === state.players[actor]!.team &&
+          (execution.stage === "recipient" || (p.alive && p.hand.length > 0)),
+      )
+      .sort((a, b) => a.seat - b.seat)
+      .map((p) => p.id);
+  }
   if (execution.stage === "target")
     return execution.actionId === "xyy.npc-action.nj08"
       ? living.filter((id) => state.players[id]!.hand.length > 0)
@@ -291,6 +325,37 @@ function selectionOptions(
       ? [...(state.encounterState.pets[donor] ?? [])].sort()
       : [];
   return [];
+}
+
+/** NC303 Valid handlers. No hidden card identity is consulted. */
+export function legalNpcActions(
+  state: MatchState,
+  actor: PlayerId,
+  cardId: EncounterCardId,
+): readonly NpcActionId[] {
+  const npc = encounterDefinition(cardId),
+    player = state.players[actor];
+  if (npc.kind !== "npc" || player?.alive !== true || player.team === null)
+    return [];
+  const living = Object.values(state.players).filter((p) => p.alive);
+  return npc.actionIds.filter((action) => {
+    if (action === "xyy.npc-action.nj01")
+      return (
+        isHeroJoinable(state, npc.heroId) &&
+        living.some((p) => p.team === player.team && p.hand.length > 0)
+      );
+    if (action === "xyy.npc-action.nj06" || action === "xyy.npc-action.nj07")
+      return living.some(
+        (p) =>
+          (action === "xyy.npc-action.nj06"
+            ? p.hand.length > 0
+            : (state.encounterState.pets[p.id]?.length ?? 0) > 0) &&
+          living.some((other) => other.id !== p.id && other.team === p.team),
+      );
+    if (action === "xyy.npc-action.nj08")
+      return living.some((p) => p.hand.length > 0);
+    return true;
+  });
 }
 function withChoice(
   state: MatchState,
@@ -430,7 +495,10 @@ function transition(
     const definition = encounterDefinition(effect.npcId);
     if (
       definition.kind !== "npc" ||
-      !definition.actionIds.includes(effect.actionId)
+      !definition.actionIds.includes(effect.actionId) ||
+      !legalNpcActions(state, flow.activePlayerId, effect.npcId).includes(
+        effect.actionId,
+      )
     )
       throw new Error("Foreign NPC action.");
     if (effect.actionId === "xyy.npc-action.nj04") {
@@ -444,9 +512,11 @@ function transition(
         {
           effectId: effect.effectId,
           actionId: effect.actionId,
-          stage: ["xyy.npc-action.nj06", "xyy.npc-action.nj07"].includes(
-            effect.actionId,
-          )
+          stage: [
+            "xyy.npc-action.nj01",
+            "xyy.npc-action.nj06",
+            "xyy.npc-action.nj07",
+          ].includes(effect.actionId)
             ? "donor"
             : "target",
           targets: [],
@@ -503,7 +573,44 @@ function transition(
         { ...execution, stage: "recipient", targets: [selected] },
         at,
       );
-    else if (execution.stage === "recipient")
+    else if (
+      execution.stage === "recipient" &&
+      execution.actionId === "xyy.npc-action.nj01"
+    ) {
+      const donor = execution.targets[0]!,
+        cards = state.players[donor]!.hand;
+      const definition = encounterDefinition(effect.npcId);
+      if (
+        definition.kind !== "npc" ||
+        !legalNpcActions(state, flow.activePlayerId, effect.npcId).includes(
+          execution.actionId,
+        )
+      )
+        throw new Error("Illegal NPC role join.");
+      const oldHero = state.players[selected]!.heroId;
+      state = reloadHero(
+        {
+          ...state,
+          players: {
+            ...state.players,
+            [donor]: { ...state.players[donor]!, hand: [] },
+          },
+          discardPile: [...state.discardPile, ...cards],
+        },
+        selected,
+        definition.heroId,
+        cards.length * 2,
+      );
+      report.heroJoin = {
+        donor,
+        recipient: selected,
+        discardedCardIds: cards,
+        oldHeroId: oldHero,
+        heroId: definition.heroId,
+        hp: state.players[selected]!.hp,
+      };
+      state = finish(state, at);
+    } else if (execution.stage === "recipient")
       state = withChoice(
         state,
         {
