@@ -690,7 +690,8 @@ export function reduceDyingEvent(
       !(
         state.turn?.phase === "encounter" &&
         (state.encounterState.npc !== null ||
-          state.encounterState.battle?.stage === "debut-damage")
+          state.encounterState.battle?.stage === "debut-damage" ||
+          state.encounterState.battle?.stage === "outcome-damage")
       ) &&
       state.turn?.phase !== "reward" &&
       state.turn?.phase !== "turn-end")

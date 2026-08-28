@@ -33,8 +33,10 @@
 - CS03-03B-02-OPTIONS 证据：`contracts/npc-options.contract.json`、`docs/content-standard/cs03-npc-options.md`、`docs/verification/receipts/cs03-npc-options.md`；`check:full` 通过（单元 197、重放 65、Bot 6、集成 28、既有 E2E 3）。修复既有死亡终局 fixture 继承随机变身角色的问题，未放宽死亡/胜负断言或修改生产规则。
 - CS03-03C-01-DEBUT 证据：`contracts/monster-debut.contract.json`、`docs/content-standard/cs03-monster-debut.md`、`docs/verification/receipts/cs03-monster-debut.md`；`check:full` 通过（单元 206、重放 87、Bot 6、集成 30、既有 E2E 3），schema 12。
 - CS03-03C-02-CARDS 证据：`contracts/battle-cards.contract.json`、`docs/content-standard/cs03-battle-cards-evidence.md`、`docs/verification/receipts/cs03-battle-cards.md`；`check:full` 通过（单元 214、重放 112、Bot 6、集成 33、既有 E2E 3），schema 13。JN50203 既有网络 fixture 的随机变身角色污染已用强制失败场景证实并修正，未修改生产死亡规则或放宽断言。
-- 当前工作：普通四牌节点已验证；在绿色提交上执行干净预检、公开历史扫描并备份，然后立即进入下一节点。前置可恢复提交 `bbf1c17`。
-- 下一 ready 动作：`CS03-03C-03-OUTCOME`，从 `FG04.cs` 的标准 20 怪物 WinEff/LoseEff 和 `XIR.cs` 的 VS/Z2/ZF/BC/Capture 路径固定合同与红测，实现实际胜败效果、选择/伤害/死亡后续算和捕获清理。其后完成 `CS03-03C-04-SKILLS`；两条遭遇分支均真实闭合后再接 CS03-03D。
+- CS03-03C-03-OUTCOME 证据：`contracts/monster-outcome.contract.json`、`docs/content-standard/cs03-monster-outcome-evidence.md`、`docs/verification/receipts/cs03-monster-outcome.md`；最终 `check:full` 通过（单元285、重放115、Bot6、集成36、既有原型 E2E3）。标准20怪物胜败、并发选择、来源治疗、濒死后续算、普通/GT04捕获和定身跳回合已接入；schema14。恢复红测修复选择、换宠及跳回合标记的快照绑定缺口。
+- 当前工作：保存胜败节点绿色提交，执行干净 `goal:preflight` 后推送；继续战斗技能证据和失败场景。
+- 当前回滚点：本收据所在胜败绿色提交；前一回滚点 `4b6801a` 已通过干净预检并与公开远程哈希一致。
+- 下一 ready 动作：`CS03-03C-04-SKILLS` 回补战斗技能、额外参战、强制命中/胜败和宠物消耗。两条遭遇分支与战斗技能均真实闭合后再接 CS03-03D；当前战后摸牌数仅交接，未声称正式整局可玩。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-010`，见 `docs/rules-semantics/decisions.md`。
 

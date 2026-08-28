@@ -7,8 +7,11 @@ import {
 } from "./hp-evolution.js";
 import { cardDefinition, type CardInstanceId } from "./setup-content.js";
 import { weaponEffectsEnabled } from "./pet-effects.js";
+import type { MonsterId } from "./encounter-content.js";
+import { encounterDefinition } from "./encounter-definitions.js";
 
 export interface CureIntent {
+  readonly sourceMonsterId?: MonsterId;
   readonly itemId: string;
   readonly sourcePlayerId: PlayerId | null;
   readonly targetPlayerId: PlayerId;
@@ -19,6 +22,7 @@ export interface CureIntent {
 }
 
 export interface AppliedCure {
+  readonly sourceMonsterId?: MonsterId;
   readonly itemId: string;
   readonly sourcePlayerId: PlayerId | null;
   readonly targetPlayerId: PlayerId;
@@ -44,6 +48,12 @@ export function planCureBatch(
 ): readonly AppliedCure[] {
   const rollingHp = new Map<PlayerId, number>();
   return intents.map((intent) => {
+    if (
+      intent.sourceMonsterId !== undefined &&
+      (intent.sourcePlayerId !== null ||
+        encounterDefinition(intent.sourceMonsterId).kind !== "monster")
+    )
+      throw new Error("Invalid monster cure source.");
     if (!Number.isSafeInteger(intent.amount) || intent.amount < 0) {
       throw new Error("Cure amount must be a nonnegative safe integer.");
     }
@@ -69,6 +79,9 @@ export function planCureBatch(
     const hpAfter = Math.min(target.maxHp, hpBefore + amount);
     rollingHp.set(target.id, hpAfter);
     return {
+      ...(intent.sourceMonsterId === undefined
+        ? {}
+        : { sourceMonsterId: intent.sourceMonsterId }),
       itemId: intent.itemId,
       sourcePlayerId: intent.sourcePlayerId,
       targetPlayerId: target.id,

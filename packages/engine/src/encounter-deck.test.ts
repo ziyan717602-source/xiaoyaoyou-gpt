@@ -89,7 +89,7 @@ describe("CS03-01 deterministic encounter deck substrate", () => {
 
     const migrated = migrateMatchState(legacy);
     const expected = createEncounterDecks(current.rng.seed);
-    expect(migrated).toMatchObject({ schemaVersion: 13, ...expected });
+    expect(migrated).toMatchObject({ schemaVersion: 14, ...expected });
     expect(migrated.rng).toEqual(current.rng);
     expect(JSON.parse(JSON.stringify(migrated))).toEqual(migrated);
   });

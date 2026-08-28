@@ -73,7 +73,7 @@ for (const token of [
   );
 }
 for (const token of [
-  "MATCH_SCHEMA_VERSION = 13",
+  "MATCH_SCHEMA_VERSION = 14",
   "upgradeEncounterDecksFromV6",
   "deckCount: state.encounterDeck.length",
 ]) {

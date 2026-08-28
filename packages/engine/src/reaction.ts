@@ -410,7 +410,10 @@ export function beginDamageResponse(
   parentSourceEffectId?: EffectId,
 ): MatchState {
   const battle = state.encounterState.battle;
-  if (battle?.stage === "debut-damage" && sourceEffectId !== battle.effectId) {
+  if (
+    (battle?.stage === "debut-damage" || battle?.stage === "outcome-damage") &&
+    sourceEffectId !== battle.effectId
+  ) {
     if (
       parentSourceEffectId === undefined ||
       !Object.hasOwn(battle.damageSourceParents, parentSourceEffectId) ||
@@ -482,6 +485,7 @@ export function reduceReactionEvent(
         state.turn?.phase === "encounter" &&
         (state.encounterState.npc !== null ||
           state.encounterState.battle?.stage === "debut-damage" ||
+          state.encounterState.battle?.stage === "outcome-damage" ||
           state.encounterState.battle?.stage === "card-reactions")
       ) &&
       state.turn?.phase !== "reward" &&

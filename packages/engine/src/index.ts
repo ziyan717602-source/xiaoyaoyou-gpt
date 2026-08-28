@@ -30,7 +30,9 @@ import {
 import { withPetOwnership, weaponEffectsEnabled } from "./pet-effects.js";
 
 import { battleCardActions, battleScore } from "./battle-cards.js";
-export const MATCH_SCHEMA_VERSION = 13 as const;
+import { monsterOutcomeActions } from "./monster-outcome.js";
+import { projectMonsterOutcomeEffects } from "./monster-outcome-effects.js";
+export const MATCH_SCHEMA_VERSION = 14 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -68,6 +70,7 @@ export interface DuelContinuation {
 }
 
 export interface TurnState {
+  readonly skippedByImmobilization?: true;
   readonly number: number;
   readonly phase: TurnPhase;
   readonly openedAt: number;
@@ -116,6 +119,8 @@ export interface PlayerConnectionState {
 }
 
 export interface PlayerState {
+  /** GS01's G0DS: consumed by the next skipped turn, not a battle-local flag. */
+  readonly immobilized?: boolean;
   readonly id: PlayerId;
   readonly seat: number;
   readonly nickname: string;
@@ -263,6 +268,7 @@ export interface CreateMatchInput {
 }
 
 export interface PublicPlayerView {
+  readonly immobilized?: boolean;
   readonly id: PlayerId;
   readonly seat: number;
   readonly nickname: string;
@@ -452,6 +458,7 @@ export type AvailableAction =
     }
   | {
       readonly type: "submit-choice";
+      readonly optional?: boolean;
       readonly choiceId: ChoiceId;
       readonly optionIds: readonly string[];
       readonly minSelections: number;
@@ -482,7 +489,10 @@ export interface PlayerView {
       | "playerStrengthBonuses"
       | "cardWindow"
       | "remainingCardQuota"
-    > & { readonly score: ReturnType<typeof battleScore> | null };
+    > & {
+      readonly score: ReturnType<typeof battleScore> | null;
+      readonly outcome?: ReturnType<typeof projectMonsterOutcomeEffects>;
+    };
     readonly discardPile: readonly EncounterCardId[];
     readonly lastInspection: EncounterInspection | null;
     readonly resolution?: Omit<
@@ -679,25 +689,36 @@ export function migrateMatchState(value: unknown): MatchState {
       (current.turn !== null &&
         (typeof current.turn.openedAt !== "number" ||
           typeof current.turn.deadlineAt !== "number")) ||
+      (current.turn?.skippedByImmobilization !== undefined &&
+        (current.turn.skippedByImmobilization !== true ||
+          !["discard", "turn-end"].includes(current.turn.phase) ||
+          current.activePlayerId === null ||
+          current.players[current.activePlayerId]?.immobilized !== true)) ||
       (current.setup !== null &&
         (typeof current.setup.openedAt !== "number" ||
           typeof current.setup.deadlineAt !== "number")) ||
       Object.values(current.players).some(
         (player) =>
           typeof player.handLimit !== "number" ||
-          player.equipment === undefined,
+          player.equipment === undefined ||
+          (player.immobilized !== undefined &&
+            typeof player.immobilized !== "boolean"),
       )
     ) {
-      throw new Error("Match schema v13 snapshot is missing required fields.");
+      throw new Error("Match schema v14 snapshot is missing required fields.");
     }
     try {
       validateEncounterRuntime(current);
       validateNpcOptions(current);
       validateMonsterBattle(current);
     } catch {
-      throw new Error("Match schema v13 has invalid encounter state.");
+      throw new Error("Match schema v14 has invalid encounter state.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 13) {
+    // Preserve the exact v13 battle-card wait; never invent an outcome or deadline.
+    return migrateMatchState({ ...raw, schemaVersion: MATCH_SCHEMA_VERSION });
   }
   if (raw.schemaVersion === 12) {
     const legacy = value as MatchState;
@@ -916,7 +937,9 @@ export function createPlayerView(
             : pendingChoiceActions(state, viewerId)
           : state.reactionWindow === null
             ? state.encounterState.battle?.cards != null
-              ? battleCardActions(state, viewerId)
+              ? state.encounterState.battle.outcome !== undefined
+                ? monsterOutcomeActions(state, viewerId)
+                : battleCardActions(state, viewerId)
               : turnActions(state, viewerId)
             : reactionActions(state, viewerId);
   return {
@@ -939,6 +962,9 @@ export function createPlayerView(
             ? player.heroId
             : null,
         alive: player.alive,
+        ...(player.immobilized === undefined
+          ? {}
+          : { immobilized: player.immobilized }),
         hp: player.hp,
         maxHp: player.maxHp,
         strength: player.strength,
@@ -971,7 +997,17 @@ export function createPlayerView(
               score:
                 state.encounterState.battle.cards === null
                   ? null
-                  : battleScore(state),
+                  : state.encounterState.battle.outcome !== undefined
+                    ? state.encounterState.battle.cards.outcome
+                    : battleScore(state),
+              ...(state.encounterState.battle.outcome === undefined
+                ? {}
+                : {
+                    outcome: projectMonsterOutcomeEffects(
+                      state.encounterState.battle.outcome,
+                      viewerId,
+                    ),
+                  }),
             },
           }),
       discardPile: state.encounterDiscard,
@@ -1874,6 +1910,7 @@ export { reduceDuelEvent } from "./duel.js";
 export { beginNpcOptions } from "./npc-options.js";
 export { beginMonsterDebut } from "./monster-debut.js";
 export { beginBattleCards, battleScore } from "./battle-cards.js";
+export { beginMonsterOutcome } from "./monster-outcome.js";
 export {
   beginNpcAction,
   reduceNpcEvent,

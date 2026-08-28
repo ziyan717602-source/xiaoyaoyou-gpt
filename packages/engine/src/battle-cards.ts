@@ -783,9 +783,13 @@ export function validateBattleCards(s: MatchState, transient = false): void {
       "card-choice",
       "outcome-ready",
       "escaped",
+      "outcome-damage",
+      "outcome-choice",
+      "capture-choice",
+      "complete",
     ].includes(b.stage) ||
-    s.phase !== "playing" ||
-    s.dyingBatch !== null ||
+    (b.outcome === undefined && s.phase !== "playing") ||
+    (b.outcome === undefined && s.dyingBatch !== null) ||
     !Number.isSafeInteger(c.windowSerial) ||
     c.windowSerial < 1 ||
     ![0, 1, 2].includes(c.consecutivePasses) ||
@@ -813,7 +817,7 @@ export function validateBattleCards(s: MatchState, transient = false): void {
       owners.has(p.playerId) ||
       usedCards.has(p.cardInstanceId) ||
       p.effectId !== `${b.effectId}:card:${index + 1}` ||
-      !s.discardPile.includes(p.cardInstanceId) ||
+      (b.outcome === undefined && !s.discardPile.includes(p.cardInstanceId)) ||
       !["pending", "resolved", "cancelled"].includes(p.result)
     )
       fail();

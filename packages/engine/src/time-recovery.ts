@@ -178,6 +178,40 @@ export function collectSystemDeadlines(
     }
     return deadlines;
   }
+  const battle = state.encounterState.battle;
+  if (
+    battle?.stage === "outcome-choice" ||
+    battle?.stage === "capture-choice"
+  ) {
+    const pet = state.encounterState.resolution?.petDecision;
+    const choices =
+      battle.stage === "capture-choice" && pet
+        ? [
+            {
+              choiceId: pet.choiceId,
+              playerId: pet.ownerPlayerId,
+              openedAt: pet.openedAt,
+              deadlineAt: pet.deadlineAt,
+            },
+          ]
+        : battle.outcome!.choices.filter((c) => c.selections === null);
+    for (const c of choices) {
+      const deadlineAt = effectiveDeadline(
+        state,
+        c.playerId,
+        c.openedAt,
+        c.deadlineAt,
+      );
+      deadlines.push({
+        id: `timeout:monster-outcome:${c.choiceId}:${deadlineAt}`,
+        origin: "system-timeout",
+        deadlineAt,
+        targetId: `monster-outcome:${c.choiceId}`,
+        playerId: c.playerId,
+      });
+    }
+    return deadlines;
+  }
   const battleWindow = state.encounterState.battle?.cardWindow;
   if (state.encounterState.battle?.stage === "card-window" && battleWindow) {
     for (const playerId of battleWindow.playerIds.filter(

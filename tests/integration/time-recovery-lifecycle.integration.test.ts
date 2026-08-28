@@ -19,6 +19,7 @@ import {
   beginNpcOptions,
   beginMonsterDebut,
   beginBattleCards,
+  beginMonsterOutcome,
   collectSystemDeadlines,
   reduceEvent,
   type DomainEvent,
@@ -28,6 +29,8 @@ import {
 import { grantPets } from "../../packages/engine/src/testing/npc-fixture.js";
 import { npcOptionsFixture } from "../../packages/engine/src/testing/npc-options-fixture.js";
 import { monsterFixture } from "../../packages/engine/src/testing/monster-fixture.js";
+import { npcCommand } from "../../packages/engine/src/testing/npc-fixture.js";
+import { withWeaponSkillEquipment } from "../../packages/engine/src/hero-stats.js";
 import {
   buildRoomServer,
   type RoomAppServer,
@@ -361,6 +364,245 @@ function persistedEventsAfter(
 }
 
 describe("M06 time/recovery over six real WebSockets", () => {
+  it.each(["multi-choice", "dying", "capture-timeout"] as const)(
+    "resumes real monster outcome %s across six connections and SQLite restart",
+    async (mode) => {
+      const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-monster-outcome-"));
+      roots.push(root);
+      const databasePath = join(root, "outcome.sqlite");
+      let running = await start(databasePath),
+        stopped = false;
+      let clients: Client[] = [];
+      const stop = async () => {
+        for (const c of clients) c.socket.close();
+        await running.server.closeGracefully();
+        clients = [];
+        stopped = true;
+      };
+      try {
+        const created = await createPlaying(running);
+        clients = [...created.clients];
+        await stop();
+        const base = latestSnapshotState(databasePath, created.roomId);
+        const at = Date.now() - 100;
+        let input = monsterFixture(
+          mode === "multi-choice"
+            ? "xyy.monster.gl03"
+            : mode === "dying"
+              ? "xyy.monster.gt01"
+              : "xyy.monster.gf02",
+          {
+            base,
+            at,
+            supporter: null,
+            hinder: null,
+          },
+        );
+        const actor = input.activePlayerId!;
+        input = {
+          ...input,
+          players: {
+            ...input.players,
+            [actor]: {
+              ...input.players[actor]!,
+              strength: mode === "multi-choice" ? 0 : 100,
+              hp: mode === "dying" ? 2 : input.players[actor]!.hp,
+            },
+          },
+        };
+        if (mode === "multi-choice") {
+          const ids = [
+            actor,
+            ...input.turnOrder.filter((id) => id !== actor),
+          ].slice(0, 3);
+          const weapons = [
+            "xyy.card.wq01@47",
+            "xyy.card.wq02@48",
+            "xyy.card.wq03@49",
+          ] as const;
+          for (const [i, id] of ids.entries()) {
+            input = {
+              ...input,
+              drawPile: input.drawPile.filter(
+                (c) =>
+                  c !== weapons[i] && (i !== 0 || c !== "xyy.card.fj01@52"),
+              ),
+              players: {
+                ...input.players,
+                [id]: withWeaponSkillEquipment(input.players[id]!, {
+                  weapon: weapons[i]!,
+                  armor: i === 0 ? "xyy.card.fj01@52" : null,
+                }),
+              },
+            };
+          }
+        }
+        if (mode === "capture-timeout")
+          input = grantPets(input, actor, ["xyy.monster.gf01"]);
+        input = beginMonsterDebut(input, "fixture-debut", at + 3).state;
+        input = beginBattleCards(input, "fixture-cards", at + 4).state;
+        for (
+          let i = 0;
+          input.encounterState.battle!.stage === "card-window";
+          i++
+        ) {
+          const w = input.encounterState.battle!.cardWindow!;
+          const id = w.playerIds.find((id) => !w.passedPlayerIds.includes(id))!;
+          const r = applyCommand(
+            input,
+            npcCommand(
+              input,
+              id,
+              { type: "pass-battle", windowId: w.windowId },
+              at + 5 + i,
+            ),
+          );
+          if (!r.accepted) throw new Error(r.reason);
+          input = r.state;
+        }
+        const opened = beginMonsterOutcome(
+          input,
+          "fixture-outcome",
+          at + 20,
+        ).state;
+        const initial = {
+          ...opened,
+          version: base.version,
+          eventSequence: base.eventSequence,
+        };
+        const db = new Database(databasePath),
+          json = JSON.stringify(initial);
+        try {
+          db.prepare(
+            "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE match_id = ? AND event_sequence = ?",
+          ).run(
+            json,
+            createHash("sha256").update(json).digest("hex"),
+            created.roomId,
+            base.eventSequence,
+          );
+        } finally {
+          db.close();
+        }
+        const read = () => latestSnapshotState(databasePath, created.roomId);
+        const reconnect = async () => {
+          running = await start(databasePath);
+          stopped = false;
+          clients = await Promise.all(
+            created.sessions.map((s) => connect(running.wsUrl, s)),
+          );
+          await waitUntil(() =>
+            clients.every((c) =>
+              c.latestView.players.every(
+                (p) => p.connection.status === "connected",
+              ),
+            ),
+          );
+        };
+        await reconnect();
+        const seen = new Set<string>();
+        for (
+          let n = 0;
+          read().encounterState.battle!.stage !== "complete";
+          n++
+        ) {
+          if (n > 60) throw new Error("Network outcome stalled");
+          const s = read(),
+            b = s.encounterState.battle!;
+          const key = `${b.stage}:${s.dyingBatch?.status ?? ""}:${b.outcome!.stepIndex}:${b.outcome!.choices.filter((c) => c.selections !== null).length}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            const deadlines = collectSystemDeadlines(s).filter(
+              (d) => d.origin === "system-timeout",
+            );
+            await stop();
+            await reconnect();
+            expect(
+              collectSystemDeadlines(read()).filter(
+                (d) => d.origin === "system-timeout",
+              ),
+            ).toEqual(deadlines);
+            expect(read().encounterState.battle!.outcome).toEqual(b.outcome);
+          }
+          for (const [i, c] of clients.entries()) {
+            for (const p of c.latestView.players)
+              if (p.id !== created.sessions[i]!.playerId)
+                expect(p.hand).toBeNull();
+          }
+          if (mode === "capture-timeout") {
+            await waitUntil(
+              () => read().encounterState.battle!.stage === "complete",
+              18000,
+            );
+            expect(systemTimeoutCount(databasePath, created.roomId)).toBe(1);
+            expect(read().rng.cursor).toBe(initial.rng.cursor + 1);
+            break;
+          }
+          const actions = clients.flatMap((c, index) =>
+            c.latestView.availableActions.map((a) => ({ index, a })),
+          );
+          const e =
+            actions.find(
+              ({ a }) => a.type === "pass-reaction" || a.type === "pass-rescue",
+            ) ?? actions.find(({ a }) => a.type === "submit-choice");
+          if (!e) throw new Error(`No network outcome action at ${key}`);
+          const cmd =
+            e.a.type === "submit-choice"
+              ? {
+                  type: "submit-choice" as const,
+                  choiceId: e.a.choiceId,
+                  selections: e.a.optionIds.includes("xyy.card.fj01@52")
+                    ? ["xyy.card.fj01@52"]
+                    : e.a.optionIds.slice(0, e.a.minSelections),
+                }
+              : e.a.type === "pass-reaction" || e.a.type === "pass-rescue"
+                ? e.a
+                : null;
+          if (!cmd) throw new Error("Invalid network outcome test action");
+          const response = await send(
+            clients[e.index]!,
+            created.sessions[e.index]!,
+            `outcome-network-${n}`,
+            cmd,
+          );
+          expect(response.type).toBe("command-accepted");
+          if (response.type === "command-accepted")
+            await waitUntil(() =>
+              clients.every((c) => c.latestView.version >= response.version),
+            );
+        }
+        if (mode === "multi-choice") {
+          expect(seen.has("outcome-choice::1:1")).toBe(true);
+          expect(read().discardPile).toHaveLength(4);
+        }
+        if (mode === "dying") {
+          expect([...seen].some((key) => key.includes("awaiting-rescue"))).toBe(
+            true,
+          );
+          expect(read().players[actor]!.alive).toBe(false);
+          // C# VS/ObtainPet does not add an alive-only filter after death.
+          expect(read().encounterState.pets[actor]).toEqual([
+            "xyy.monster.gt01",
+          ]);
+        }
+        const beforeRestart = read();
+        await stop();
+        await reconnect();
+        expect(read().encounterState).toEqual(beforeRestart.encounterState);
+        expect(read().players).toEqual(beforeRestart.players);
+        expect(
+          persistedEventsAfter(
+            databasePath,
+            created.roomId,
+            initial.eventSequence,
+          ).reduce(reduceEvent, initial),
+        ).toEqual(read());
+      } finally {
+        if (!stopped) await stop();
+      }
+    },
+    30000,
+  );
   it.each(["manual", "choice-timeout", "side-timeout"] as const)(
     "restores team battle windows, nested TP01 and ZP04 choice over six sockets; mode=%s",
     async (mode) => {

@@ -1,0 +1,37 @@
+{
+  "id": "CS03-03C-03-OUTCOME",
+  "dependsOn": ["CS03-03C-02-CARDS", "M05", "CS03-03B-02-PETS"],
+  "evidenceGrade": "C# source and catalog evidence; not black-box equivalence",
+  "scope": "Execute all twenty standard monster win/loss branches after the frozen battle result, including resumable choices, damage/death aftermath, capture, passive changes and cleanup",
+  "legacyEvidence": [
+    "PSDGamepkg/JNS/FG04.cs:80-713 standard twenty monster handlers; 3506-3558 monster Harm/Cure source and FROM_NMB",
+    "PSDGamepkg/XIR.cs:125-138 immobilized turn; 535-636 VS/VT/Z2/ZF/BC; 973-1015 RecycleMonster",
+    "PSDGamepkg/XIG.cs:24 RaiseGMessage; 1516-1531 G0DS; 2814-2885 G1XR discard all before drawing",
+    "PSDGamepkg/Artiad/Kitty.cs:62-215 HarvestPet ACTIVE and PASSIVE conflict behavior",
+    "PSDBase/Board.cs:127-174 opposing decision owner; 234-241 CleanBattler"
+  ],
+  "rules": [
+    "Freeze battle win/lose before effects; deaths, cures and pet bonuses do not recalculate this battle result",
+    "ZP01 escape skips both win and loss effects and capture, but clears held monster and battle-local changes",
+    "Damage and cure use actual monster identity, element and from-nmb; monster origin is not the active player",
+    "GS02/GS04/GL02 follow-up targets and equipment are read after all prior damage, rescue and death aftermath finishes",
+    "GL03 loss discards the active player's selected equipment first, recalculates maximum equipment count, then asks all tied owners concurrently with a shared original deadline",
+    "GS04 encrypted hand selection exposes anonymous hand slots only to the chooser, never private card identities",
+    "GF03 loss discards all participating teammates' hands before any redraw, then deals a separate damage batch",
+    "GT01 victory damages active player and real living supporter; defeat damages real living hinder even though counterintuitive",
+    "GT04 loss optionally replaces a selected enemy-owned earth pet directly (PASSIVE), without a second retain-one choice or fabricating victory",
+    "Normal victory capture preserves the actual held entity, applies gain/loss passives and asks retain-one on same-element conflict",
+    "GS01 loss immobilizes the active player; next turn clears it and skips that turn after discard-to-limit, not merely a visual flag",
+    "All choices use 15 seconds, optional pass or canonical seeded mandatory selection; 60-second disconnection never resets deadlines"
+  ],
+  "acceptance": [
+    "Forty explicit win/loss branches plus escape, no-target and dead-actor paths",
+    "Every wait survives JSON round-trip, persisted event replay and real six-client SQLite restart",
+    "Damage prevention/counters, simultaneous dying, death aftermath and frozen-result continuation",
+    "Six projections hide non-owner options and private hand identities; no response-capability timing leak",
+    "Card/encounter/hero conservation, exact pet passive deltas, no repeated payment/capture/draw on replay",
+    "Stable node verifier, check:fast and check:full before green commit; clean goal:preflight before pushing"
+  ],
+  "verification": "npm run monster-outcome:verify",
+  "status": "verified runtime slice; production turn and battle skills remain CS03-03D and CS03-03C-04"
+}

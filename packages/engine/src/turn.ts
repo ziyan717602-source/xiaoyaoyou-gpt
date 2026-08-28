@@ -1116,6 +1116,48 @@ export function reduceTurnEvent(
       },
       discardPile: [...state.discardPile, ...cards],
     };
+  } else if (event.type === "turn.immobilized-skipped") {
+    const playerId = stringPayload(event, "playerId");
+    const at = numberPayload(event, "skippedAt");
+    const player = state.players[playerId];
+    if (
+      state.turn.phase !== "turn-start" ||
+      state.activePlayerId !== playerId ||
+      !player?.alive ||
+      player.immobilized !== true ||
+      state.turn.skippedByImmobilization !== undefined ||
+      !Number.isSafeInteger(at) ||
+      at < state.turn.openedAt
+    )
+      throw new Error("Immobilized turn is not ready to skip.");
+    next = {
+      ...state,
+      turn: {
+        ...state.turn,
+        skippedByImmobilization: true,
+        phase: player.hand.length > player.handLimit ? "discard" : "turn-end",
+        openedAt: at,
+        deadlineAt: at + ACTION_DEADLINE_MS,
+      },
+    };
+  } else if (event.type === "turn.immobilization-ended") {
+    const playerId = stringPayload(event, "playerId");
+    const player = state.players[playerId];
+    if (
+      state.turn.phase !== "turn-end" ||
+      state.activePlayerId !== playerId ||
+      !state.turn.skippedByImmobilization ||
+      player?.immobilized !== true ||
+      player.hand.length > player.handLimit
+    )
+      throw new Error("Immobilized discard has not finished.");
+    next = {
+      ...state,
+      players: {
+        ...state.players,
+        [playerId]: { ...player, immobilized: false },
+      },
+    };
   } else if (event.type === "turn.advanced") {
     const playerId = stringPayload(event, "playerId");
     const turnNumber = numberPayload(event, "turnNumber");
@@ -1254,6 +1296,15 @@ function finishOrAdvance(builder: EventBuilder): void {
     advancedAt: builder.resolvedAt,
   });
   const nextPlayer = builder.state.players[nextPlayerId]!;
+  if (nextPlayer.immobilized === true) {
+    builder.append("turn.immobilized-skipped", {
+      playerId: nextPlayerId,
+      skippedAt: builder.resolvedAt,
+    });
+    if (builder.state.turn!.phase === "turn-end")
+      triggerTurnEndOrAdvance(builder);
+    return;
+  }
   if (
     nextPlayer.heroId !== null &&
     heroHasSkill(nextPlayer.heroId, "xyy.skill.jn20701")
@@ -1270,6 +1321,13 @@ function finishOrAdvance(builder: EventBuilder): void {
 }
 
 function triggerTurnEndOrAdvance(builder: EventBuilder): void {
+  if (builder.state.turn?.skippedByImmobilization) {
+    builder.append("turn.immobilization-ended", {
+      playerId: builder.state.activePlayerId,
+    });
+    finishOrAdvance(builder);
+    return;
+  }
   const playerId = builder.state.activePlayerId;
   const player =
     playerId === null ? undefined : builder.state.players[playerId];

@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
 import {
+  applyMonsterOutcomeCommand,
+  applyMonsterOutcomeTimeout,
+  continueMonsterOutcome,
+  reduceMonsterOutcomeEvent,
+} from "./monster-outcome.js";
+import {
   applyBattleCommand,
   applyBattleChoiceTimeout,
   continueBattleCards,
@@ -250,6 +256,8 @@ export function reduceEvent(
   state: Readonly<MatchState>,
   eventToReduce: Readonly<DomainEvent>,
 ): MatchState {
+  if (eventToReduce.type === "monster.outcome")
+    return reduceMonsterOutcomeEvent(state, eventToReduce);
   if (eventToReduce.type === "battle.cards")
     return reduceBattleCardsEvent(state, eventToReduce);
   if (eventToReduce.type === "monster.debut")
@@ -438,6 +446,11 @@ function applyCommandOnce(
     }
     if (
       input.reactionWindow === null &&
+      input.encounterState.battle?.outcome !== undefined
+    )
+      return applyMonsterOutcomeCommand(input, envelope, serverReceivedAt);
+    if (
+      input.reactionWindow === null &&
       input.encounterState.battle?.cards != null
     )
       return applyBattleCommand(input, envelope, serverReceivedAt);
@@ -607,11 +620,18 @@ export function applyCommand(
     continuationEvents.at(-1)?.eventId ?? result.events.at(-1)?.eventId ?? null,
   );
   continuationEvents.push(...battleContinuation.events);
+  const outcomeContinuation = continueMonsterOutcome(
+    battleContinuation.state,
+    commandId,
+    resolvedAt,
+    continuationEvents.at(-1)?.eventId ?? result.events.at(-1)?.eventId ?? null,
+  );
+  continuationEvents.push(...outcomeContinuation.events);
   return continuationEvents.length === 0
     ? result
     : {
         accepted: true,
-        state: battleContinuation.state,
+        state: outcomeContinuation.state,
         events: [...result.events, ...continuationEvents],
       };
 }
@@ -761,6 +781,8 @@ function resolveTimeout(
   if (deadline.targetId.startsWith("death-loot:")) {
     return applyDeathLootTimeout(state, command, deadline.playerId);
   }
+  if (deadline.targetId.startsWith("monster-outcome:"))
+    return applyMonsterOutcomeTimeout(state, command, deadline.playerId);
   if (deadline.targetId.startsWith("choice:")) {
     if (state.pendingChoice?.continuation.resumeWith === "resolve-battle-team")
       return applyBattleChoiceTimeout(state, command, deadline.playerId);

@@ -13,6 +13,8 @@ import {
 import { beginDamageResponse } from "./reaction.js";
 import { isCanonicalHpEvolutionMask } from "./hp-evolution.js";
 import { ACTION_DEADLINE_MS } from "./time-recovery.js";
+import type { MonsterOutcomeCursor } from "./monster-outcome-effects.js";
+import { validateMonsterOutcome } from "./monster-outcome.js";
 import {
   validateBattleCards,
   type BattleCardsState,
@@ -30,7 +32,12 @@ export interface MonsterBattleState {
     | "card-reactions"
     | "card-choice"
     | "outcome-ready"
-    | "escaped";
+    | "escaped"
+    | "outcome-damage"
+    | "outcome-choice"
+    | "capture-choice"
+    | "complete";
+  readonly outcome?: MonsterOutcomeCursor;
   readonly cards: BattleCardsState | null;
   readonly cardWindow: BattleCardWindow | null;
   readonly remainingCardQuota: Readonly<Record<PlayerId, number>>;
@@ -79,7 +86,7 @@ export function validateMonsterBattle(
     s.encounterState.npc !== null ||
     flow.npcDecision !== null ||
     flow.pendingEffect !== null ||
-    flow.petDecision !== null
+    (flow.petDecision !== null && battle.stage !== "capture-choice")
   )
     throw new Error("Invalid monster battle context.");
   const definition = encounterDefinition(battle.monsterId);
@@ -95,6 +102,10 @@ export function validateMonsterBattle(
       "card-choice",
       "outcome-ready",
       "escaped",
+      "outcome-damage",
+      "outcome-choice",
+      "capture-choice",
+      "complete",
     ].includes(battle.stage) ||
     !Number.isSafeInteger(battle.openedAt) ||
     battle.openedAt < 0 ||
@@ -149,6 +160,8 @@ export function validateMonsterBattle(
       !s.encounterDiscard.includes(battle.monsterId)
     )
       throw new Error("Invalid terminal monster cleanup.");
+  } else if (battle.outcome !== undefined) {
+    validateMonsterOutcome(s, allowTransient);
   } else if (
     flow.stage !== "monster-effects" ||
     flow.heldCardId !== battle.monsterId ||
@@ -164,31 +177,35 @@ export function validateMonsterBattle(
     )
   )
     throw new Error("Monster has no debut damage.");
-  if (battle.stage === "debut-damage") {
+  if (battle.stage === "debut-damage" || battle.stage === "outcome-damage") {
     if (
       !allowTransient &&
       (s.phase !== "playing" ||
         (s.reactionWindow === null && s.pendingChoice === null))
     )
       throw new Error("Monster damage cursor has no resumable wait.");
+    const damageSource =
+      battle.stage === "outcome-damage"
+        ? `${battle.outcome!.effectId}:${battle.outcome!.stepIndex}`
+        : battle.effectId;
     const root = s.effectStack.find(
       (e) =>
         e.kind === "damage-batch" &&
-        e.effectId === `${battle.effectId}:damage-batch`,
+        e.effectId === `${damageSource}:damage-batch`,
     );
     if (root !== undefined) {
       const items = root.payload.damageItems;
       if (
         root.parentEffectId !== null ||
         root.sourcePlayerId !== null ||
-        root.payload.sourceEffectId !== battle.effectId ||
+        root.payload.sourceEffectId !== damageSource ||
         !Array.isArray(items) ||
         items.some(
           (item: AppliedDamage) =>
             !item ||
             item.sourcePlayerId !== null ||
             item.sourceMonsterId !== battle.monsterId ||
-            !item.itemId?.startsWith(`${battle.effectId}:`) ||
+            !item.itemId?.startsWith(`${damageSource}:`) ||
             s.players[item.targetPlayerId] === undefined ||
             !Number.isSafeInteger(item.amount) ||
             item.amount < 0 ||
