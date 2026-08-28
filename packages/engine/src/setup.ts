@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import {
+  continueMonsterAfterDamage,
+  reduceMonsterDebutEvent,
+} from "./monster-debut.js";
+import {
   PROTOCOL_VERSION,
   type ClientCommand,
   type CommandEnvelope,
@@ -240,6 +244,8 @@ export function reduceEvent(
   state: Readonly<MatchState>,
   eventToReduce: Readonly<DomainEvent>,
 ): MatchState {
+  if (eventToReduce.type === "monster.debut")
+    return reduceMonsterDebutEvent(state, eventToReduce);
   if (eventToReduce.type === "npc-options.operation")
     return reduceNpcOptionsEvent(state, eventToReduce);
   if (eventToReduce.type.startsWith("npc."))
@@ -572,11 +578,18 @@ export function applyCommand(
     continuationEvents.at(-1)?.eventId ?? result.events.at(-1)?.eventId ?? null,
   );
   continuationEvents.push(...npcContinuation.events);
+  const monsterContinuation = continueMonsterAfterDamage(
+    npcContinuation.state,
+    commandId,
+    resolvedAt,
+    continuationEvents.at(-1)?.eventId ?? result.events.at(-1)?.eventId ?? null,
+  );
+  continuationEvents.push(...monsterContinuation.events);
   return continuationEvents.length === 0
     ? result
     : {
         accepted: true,
-        state: npcContinuation.state,
+        state: monsterContinuation.state,
         events: [...result.events, ...continuationEvents],
       };
 }

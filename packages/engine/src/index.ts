@@ -23,9 +23,13 @@ import {
 } from "./npc-effects.js";
 import { projectEncounterResolution } from "./encounter-resolution.js";
 import { validateNpcOptions } from "./npc-options.js";
+import {
+  validateMonsterBattle,
+  type MonsterBattleState,
+} from "./monster-debut.js";
 import { withPetOwnership, weaponEffectsEnabled } from "./pet-effects.js";
 
-export const MATCH_SCHEMA_VERSION = 11 as const;
+export const MATCH_SCHEMA_VERSION = 12 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -462,6 +466,10 @@ export interface PlayerView {
   readonly players: readonly PublicPlayerView[];
   readonly encounter: {
     readonly deckCount: number;
+    readonly battle?: Pick<
+      MonsterBattleState,
+      "monsterId" | "stage" | "strength" | "agility" | "playerStrengthBonuses"
+    >;
     readonly discardPile: readonly EncounterCardId[];
     readonly lastInspection: EncounterInspection | null;
     readonly resolution?: Omit<
@@ -667,15 +675,24 @@ export function migrateMatchState(value: unknown): MatchState {
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v11 snapshot is missing required fields.");
+      throw new Error("Match schema v12 snapshot is missing required fields.");
     }
     try {
       validateEncounterRuntime(current);
       validateNpcOptions(current);
+      validateMonsterBattle(current);
     } catch {
-      throw new Error("Match schema v11 has invalid encounter state.");
+      throw new Error("Match schema v12 has invalid encounter state.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 11) {
+    const legacy = value as MatchState;
+    return migrateMatchState({
+      ...legacy,
+      schemaVersion: MATCH_SCHEMA_VERSION,
+      encounterState: { ...legacy.encounterState, battle: null },
+    });
   }
   if (raw.schemaVersion === 10) {
     const legacy = value as MatchState;
@@ -684,6 +701,7 @@ export function migrateMatchState(value: unknown): MatchState {
       schemaVersion: MATCH_SCHEMA_VERSION,
       encounterState: {
         ...legacy.encounterState,
+        battle: null,
         heroDiscards: [],
         bannedHeroes: [],
       },
@@ -701,6 +719,7 @@ export function migrateMatchState(value: unknown): MatchState {
           ...legacy.encounterState,
           pets: {},
           weaponDisabledReasons: {},
+          battle: null,
           heroDiscards: [],
           bannedHeroes: [],
         },
@@ -902,6 +921,18 @@ export function createPlayerView(
       })),
     encounter: {
       deckCount: state.encounterDeck.length,
+      ...(state.encounterState.battle === null
+        ? {}
+        : {
+            battle: {
+              monsterId: state.encounterState.battle.monsterId,
+              stage: state.encounterState.battle.stage,
+              strength: state.encounterState.battle.strength,
+              agility: state.encounterState.battle.agility,
+              playerStrengthBonuses:
+                state.encounterState.battle.playerStrengthBonuses,
+            },
+          }),
       discardPile: state.encounterDiscard,
       lastInspection: state.encounterInspections[viewerId] ?? null,
       ...(state.encounterState.resolution === null
@@ -1800,6 +1831,7 @@ export {
 } from "./encounter.js";
 export { reduceDuelEvent } from "./duel.js";
 export { beginNpcOptions } from "./npc-options.js";
+export { beginMonsterDebut } from "./monster-debut.js";
 export {
   beginNpcAction,
   reduceNpcEvent,

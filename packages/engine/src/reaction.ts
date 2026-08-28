@@ -379,7 +379,31 @@ export function beginDamageResponse(
   sourcePlayerId: PlayerId | null,
   damageItems: readonly AppliedDamage[],
   openedAt: number,
+  parentSourceEffectId?: EffectId,
 ): MatchState {
+  const battle = state.encounterState.battle;
+  if (battle?.stage === "debut-damage" && sourceEffectId !== battle.effectId) {
+    if (
+      parentSourceEffectId === undefined ||
+      !Object.hasOwn(battle.damageSourceParents, parentSourceEffectId) ||
+      (Object.hasOwn(battle.damageSourceParents, sourceEffectId) &&
+        battle.damageSourceParents[sourceEffectId] !== parentSourceEffectId)
+    )
+      throw new Error("Monster child damage requires a known parent source.");
+    state = {
+      ...state,
+      encounterState: {
+        ...state.encounterState,
+        battle: {
+          ...battle,
+          damageSourceParents: {
+            ...battle.damageSourceParents,
+            [sourceEffectId]: parentSourceEffectId,
+          },
+        },
+      },
+    };
+  }
   const eligiblePlayerIds = damageResponders(state, damageItems);
   if (eligiblePlayerIds.length === 0) {
     return applyPlannedDamage(state, sourceEffectId, damageItems, openedAt);
@@ -427,7 +451,9 @@ export function reduceReactionEvent(
     state.phase !== "playing" ||
     (state.turn?.phase !== "action" &&
       !(
-        state.turn?.phase === "encounter" && state.encounterState.npc !== null
+        state.turn?.phase === "encounter" &&
+        (state.encounterState.npc !== null ||
+          state.encounterState.battle?.stage === "debut-damage")
       ) &&
       state.turn?.phase !== "reward" &&
       state.turn?.phase !== "turn-end")

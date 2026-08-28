@@ -107,6 +107,7 @@ export function npcFixture(
           ),
     encounterDiscard: [],
     encounterState: {
+      battle: null,
       heroDiscards: [],
       bannedHeroes: [],
       weaponDisabledReasons: {},
@@ -173,6 +174,9 @@ export function grantPets(
     {
       ...state,
       encounterDeck: state.encounterDeck.filter(
+        (id) => !cards.includes(id as MonsterId),
+      ),
+      encounterDiscard: state.encounterDiscard.filter(
         (id) => !cards.includes(id as MonsterId),
       ),
     },

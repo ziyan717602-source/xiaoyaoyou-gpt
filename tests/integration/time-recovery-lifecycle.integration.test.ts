@@ -17,6 +17,7 @@ import {
 import {
   applyCommand,
   beginNpcOptions,
+  beginMonsterDebut,
   collectSystemDeadlines,
   reduceEvent,
   type DomainEvent,
@@ -25,6 +26,7 @@ import {
 } from "@xiaoyaoyou/engine";
 import { grantPets } from "../../packages/engine/src/testing/npc-fixture.js";
 import { npcOptionsFixture } from "../../packages/engine/src/testing/npc-options-fixture.js";
+import { monsterFixture } from "../../packages/engine/src/testing/monster-fixture.js";
 import {
   buildRoomServer,
   type RoomAppServer,
@@ -358,6 +360,240 @@ function persistedEventsAfter(
 }
 
 describe("M06 time/recovery over six real WebSockets", () => {
+  it.each([false, true])(
+    "restores actual GH04 reaction and rescue windows, overdue=%s, retaining source, deadlines, privacy and exact event replay",
+    async (overdue) => {
+      const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-monster-recovery-"));
+      roots.push(root);
+      const databasePath = join(root, "monster.sqlite");
+      let running = await start(databasePath);
+      let clients: Client[] = [];
+      let stopped = false;
+      const stop = async () => {
+        for (const client of clients) client.socket.close();
+        await running.server.closeGracefully();
+        clients = [];
+        stopped = true;
+      };
+      try {
+        const created = await createPlaying(running);
+        clients = [...created.clients];
+        await stop();
+        const base = latestSnapshotState(databasePath, created.roomId);
+        let input = monsterFixture("xyy.monster.gh04", {
+          base,
+          at: Date.now() - (overdue ? 15_501 : 5),
+          seed: "monster-network",
+        });
+        const victim = input.turnOrder[0]!,
+          rescuer = input.turnOrder[1]!;
+        const rescueCard = "xyy.card.tp02@36" as const;
+        input = {
+          ...input,
+          drawPile: input.drawPile.filter((c) => c !== rescueCard),
+          players: {
+            ...input.players,
+            [victim]: { ...input.players[victim]!, hp: 1 },
+            [rescuer]: { ...input.players[rescuer]!, hand: [rescueCard] },
+          },
+        };
+        const opened = beginMonsterDebut(
+          input,
+          "fixture-monster",
+          input.turn!.openedAt + 3,
+        ).state;
+        const initial: MatchState = {
+          ...opened,
+          version: base.version,
+          eventSequence: base.eventSequence,
+        };
+        const initialWindow = initial.reactionWindow!;
+        expect(initialWindow.deadlineAt - initialWindow.openedAt).toBe(15_000);
+        const stateJson = JSON.stringify(initial);
+        const database = new Database(databasePath);
+        try {
+          database
+            .prepare(
+              "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE match_id = ? AND event_sequence = ?",
+            )
+            .run(
+              stateJson,
+              createHash("sha256").update(stateJson).digest("hex"),
+              created.roomId,
+              base.eventSequence,
+            );
+        } finally {
+          database.close();
+        }
+        const reconnect = async () => {
+          running = await start(databasePath);
+          stopped = false;
+          clients = await Promise.all(
+            created.sessions.map((session) => connect(running.wsUrl, session)),
+          );
+          await waitUntil(() =>
+            clients.every((c) =>
+              c.latestView.players.every(
+                (p) => p.connection.status === "connected",
+              ),
+            ),
+          );
+        };
+        const submit = async (
+          owner: string,
+          id: string,
+          command: ClientCommand,
+        ) => {
+          const index = created.sessions.findIndex((s) => s.playerId === owner);
+          const response = await send(
+            clients[index]!,
+            created.sessions[index]!,
+            id,
+            command,
+          );
+          if (response.type === "command-accepted")
+            await waitUntil(() =>
+              clients.every((c) => c.latestView.version >= response.version),
+            );
+          return response;
+        };
+        const read = () => latestSnapshotState(databasePath, created.roomId);
+        const countBefore = systemTimeoutCount(databasePath, created.roomId);
+        await reconnect();
+        if (overdue) {
+          await waitUntil(
+            () =>
+              systemTimeoutCount(databasePath, created.roomId) ===
+              countBefore + 1,
+          );
+          expect(read().reactionWindow?.passedPlayerIds).toEqual([
+            initialWindow.priorityOrder[0],
+          ]);
+        } else expect(read().reactionWindow).toEqual(initialWindow);
+        let state = read();
+        for (const [i, client] of clients.entries()) {
+          if (created.sessions[i]!.playerId !== rescuer)
+            expect(JSON.stringify(client.latestView)).not.toContain(rescueCard);
+          expect(client.latestView.encounter.battle).toMatchObject({
+            monsterId: "xyy.monster.gh04",
+            stage: "debut-damage",
+          });
+        }
+        expect(state.effectStack[0]!.payload.damageItems).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              sourcePlayerId: null,
+              sourceMonsterId: "xyy.monster.gh04",
+              element: "fire",
+            }),
+          ]),
+        );
+        const priority =
+          state.reactionWindow!.priorityOrder[
+            state.reactionWindow!.priorityIndex
+          ]!;
+        const outsider = state.turnOrder.find((id) => id !== priority)!;
+        expect(
+          (
+            await submit(outsider, "monster-forbidden", {
+              type: "pass-reaction",
+              windowId: state.reactionWindow!.windowId,
+            })
+          ).type,
+        ).toBe("command-rejected");
+        expect(read()).toEqual(state);
+        // Restart a non-expired response window, not merely its JSON value.
+        const responseWindow = state.reactionWindow;
+        await stop();
+        await reconnect();
+        expect(read().reactionWindow).toEqual(responseWindow);
+        for (let n = 0; read().reactionWindow !== null; n++) {
+          if (n > 8) throw new Error("Monster response did not finish");
+          state = read();
+          const w = state.reactionWindow!;
+          expect(
+            (
+              await submit(
+                w.priorityOrder[w.priorityIndex]!,
+                `monster-pass-${n}`,
+                { type: "pass-reaction", windowId: w.windowId },
+              )
+            ).type,
+          ).toBe("command-accepted");
+        }
+        const dying = read();
+        expect(dying.dyingBatch?.currentTargetPlayerId).toBe(victim);
+        expect(dying.players[victim]!.hp).toBe(0);
+        expect(dying.encounterState.battle!.stage).toBe("debut-damage");
+        await stop();
+        await reconnect();
+        expect(read().pendingChoice).toEqual(dying.pendingChoice);
+        expect(read().dyingBatch).toEqual(dying.dyingBatch);
+        for (let n = 0; read().pendingChoice!.playerIds[0] !== rescuer; n++) {
+          if (n > 6) throw new Error("Missing rescue priority");
+          state = read();
+          expect(
+            (
+              await submit(
+                state.pendingChoice!.playerIds[0]!,
+                `monster-rescue-pass-${n}`,
+                {
+                  type: "pass-rescue",
+                  choiceId: state.pendingChoice!.choiceId,
+                },
+              )
+            ).type,
+          ).toBe("command-accepted");
+        }
+        const rescue: ClientCommand = {
+          type: "play-rescue-card",
+          cardInstanceId: rescueCard,
+          targetPlayerId: victim,
+        };
+        expect((await submit(rescuer, "monster-rescue", rescue)).type).toBe(
+          "command-accepted",
+        );
+        const finished = read();
+        expect(finished.players[victim]).toMatchObject({ alive: true, hp: 2 });
+        expect(finished.encounterState.battle!.stage).toBe("combat-ready");
+        expect(finished.encounterState.resolution!.heldCardId).toBe(
+          "xyy.monster.gh04",
+        );
+        expect(finished.pendingChoice).toBeNull();
+        expect(finished.dyingBatch).toBeNull();
+        const persisted = persistedEventsAfter(
+          databasePath,
+          created.roomId,
+          initial.eventSequence,
+        );
+        expect(persisted.reduce(reduceEvent, initial)).toEqual(finished);
+        expect(
+          persisted.filter((e) => e.type === "monster.debut"),
+        ).toHaveLength(1);
+        const rescueEvents = persisted.filter(
+          (e) => e.causationCommandId === "monster-rescue",
+        );
+        expect(
+          new Set(rescueEvents.map((e) => e.payload.matchVersion)).size,
+        ).toBe(1);
+        expect(await submit(rescuer, "monster-rescue", rescue)).toMatchObject({
+          type: "command-accepted",
+          duplicate: true,
+        });
+        expect(read()).toEqual(finished);
+        await stop();
+        await reconnect();
+        expect(read().encounterState).toEqual(finished.encounterState);
+        expect(read().players).toEqual(finished.players);
+        expect(read().rng).toEqual(finished.rng);
+        expect(systemTimeoutCount(databasePath, created.roomId)).toBe(
+          countBefore + (overdue ? 1 : 0),
+        );
+      } finally {
+        if (!stopped) await stop();
+      }
+    },
+  );
   it.each([
     "xyy.npc-action.nj01",
     "xyy.npc-action.nj06",

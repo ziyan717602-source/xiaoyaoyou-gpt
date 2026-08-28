@@ -28,6 +28,7 @@ import { ACTION_DEADLINE_MS } from "./time-recovery.js";
 import type { CardInstanceId } from "./setup-content.js";
 import type { HeroId } from "./setup-content.js";
 import type { EncounterCardId } from "./encounter-content.js";
+import type { MonsterBattleState } from "./monster-debut.js";
 import {
   isHeroJoinable,
   reloadHero,
@@ -46,6 +47,7 @@ interface NpcExecution {
   readonly targets: readonly PlayerId[];
 }
 export interface EncounterRuntimeState {
+  readonly battle: MonsterBattleState | null;
   readonly heroDiscards: readonly HeroId[];
   readonly bannedHeroes: readonly HeroId[];
   readonly resolution: EncounterResolution | null;
@@ -56,6 +58,7 @@ export interface EncounterRuntimeState {
 }
 export function emptyEncounterRuntime(): EncounterRuntimeState {
   return {
+    battle: null,
     heroDiscards: [],
     bannedHeroes: [],
     resolution: null,

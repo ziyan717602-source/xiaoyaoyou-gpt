@@ -1,4 +1,6 @@
 import { reloadHero } from "./hero-roster.js";
+import type { MonsterId } from "./encounter-content.js";
+import { encounterDefinition } from "./encounter-definitions.js";
 import type {
   CommandEnvelope,
   CommandId,
@@ -102,6 +104,7 @@ function jn50203Owner(
 }
 
 export interface DamageIntent {
+  readonly sourceMonsterId?: MonsterId;
   readonly itemId: string;
   readonly sourcePlayerId: PlayerId | null;
   readonly targetPlayerId: PlayerId;
@@ -121,6 +124,7 @@ export interface DamageModifier {
 }
 
 export interface AppliedDamage {
+  readonly sourceMonsterId?: MonsterId;
   readonly itemId: string;
   readonly sourcePlayerId: PlayerId | null;
   readonly targetPlayerId: PlayerId;
@@ -208,6 +212,12 @@ export function planDamageBatch(
       left.effectId.localeCompare(right.effectId),
   );
   const planned = intents.map((intent) => {
+    if (
+      intent.sourceMonsterId !== undefined &&
+      (intent.sourcePlayerId !== null ||
+        encounterDefinition(intent.sourceMonsterId).kind !== "monster")
+    )
+      throw new Error("Invalid monster damage source.");
     if (!Number.isSafeInteger(intent.amount) || intent.amount < 0) {
       throw new Error("Damage amount must be a nonnegative safe integer.");
     }
@@ -659,6 +669,7 @@ function reduceJn30201Event(
     context.owner.id,
     expected,
     resolvedAt,
+    context.sourceEffectId,
   );
 }
 
@@ -677,7 +688,9 @@ export function reduceDyingEvent(
     state.phase !== "playing" ||
     (state.turn?.phase !== "action" &&
       !(
-        state.turn?.phase === "encounter" && state.encounterState.npc !== null
+        state.turn?.phase === "encounter" &&
+        (state.encounterState.npc !== null ||
+          state.encounterState.battle?.stage === "debut-damage")
       ) &&
       state.turn?.phase !== "reward" &&
       state.turn?.phase !== "turn-end")
@@ -1214,6 +1227,7 @@ export function reduceDyingEvent(
       owner.id,
       expectedDamage,
       finishedAt,
+      batch.sourceEffectId,
     );
   } else {
     throw new Error(`Unsupported dying event ${event.type}.`);

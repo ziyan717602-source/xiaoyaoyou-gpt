@@ -1,0 +1,38 @@
+{
+  "id": "CS03-03C-01-DEBUT",
+  "dependsOn": ["CS03-03B-02-OPTIONS", "M04", "M05", "M06"],
+  "evidenceGrade": "C# source plus scoped SQLite metadata, not black-box equivalence",
+  "rules": {
+    "GS01": "exchange entire hands with living real hinder, preserving order and keeping identities private; no RNG",
+    "GH03": "living real supporter takes max(0, current actor strength - 1) fire FROM_NMB damage",
+    "GH04": "all living players take two fire FROM_NMB damage in one batch",
+    "GL02": "living real supporter receives +2 battle-local strength, not a permanent player base-stat change",
+    "GT02": "living non-attending players with hands take earth FROM_NMB damage equal to own hand count; pet participation does not make its owner a participant",
+    "GT03": "held monster gains three strength for this battle; pet capture/reset handled later",
+    "others": "fourteen remaining scoped monsters have no debut method; explicit no-op debut does not imply their win/loss/consume effects are implemented"
+  },
+  "requirements": [
+    "Only internal held-monster entry can start; no client command can invent monster, outcome or participants",
+    "Persist monster identity, stable debut effect ID, phase, original time and battle-local numeric state; starting twice is rejected",
+    "Actual damage uses existing prevention/rescue/death pipelines; pending child blocks combat-ready; finished match discards held monster once without reward",
+    "Monster source identity is preserved separately from player identity, with actual element and FROM_NMB mask",
+    "Nested pursuit and death aftermath preserve an acyclic serialized damage-source ancestry after the originating effect frame has been consumed",
+    "Normal/JSON/SQLite restart and event replay yield identical results; 15-second windows, optional pass, auto mode and privacy remain enforced",
+    "Reject corrupt battle identity, stage, effect binding and forged event reports; preserve card/encounter ownership"
+  ],
+  "boundaries": [
+    "Combat-ready is a continuation boundary, not a finished battle or production end-action integration",
+    "Battle-card priority, extra participant producers, silence/cancel-debut producers, victory/defeat effects and capture/cleanup remain CS03-03C successors",
+    "Production turn remains gated until CS03-03D and all 55 CS03 catalog entries remain incomplete"
+  ],
+  "legacyEvidence": [
+    "PSDGamepkg/JNS/FG04.cs:80-89 GS01, 228-236 GH03, 280-283 GH04, 318-322 GL02, 618-624 GT02, 634-640 GT03",
+    "PSDGamepkg/JNS/FG04.cs:3506-3535 monster damage identity/element/FROM_NMB",
+    "PSDGamepkg/XIR.cs:455-508 pool/debut/transition ordering; ZC copies STRa to STRc",
+    "PSDBase/Board.cs:182-186 attendance; PSDBase/Player.cs:452-455 real living player",
+    "PSDBase/Player.cs:527-535 and PSDGamepkg/Artiad/ContentRule.cs:210 pet warrior is not alive; GS01 therefore excludes pet hinder",
+    "PSDGamepkg/XIG.cs:1162-1205 hand exchange privacy; 2078-2112 temporary battle strength; 2234-2253 monster strength",
+    "PSDGamepkg/Artiad/Kitty.cs:489-505 pet load resets monster stats via G0WB"
+  ],
+  "verification": "npm run monster-debut:verify"
+}
