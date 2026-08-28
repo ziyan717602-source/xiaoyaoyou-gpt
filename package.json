@@ -30,6 +30,7 @@
     "encounter-deck:verify": "npm run encounter-deck:contract && npm run test:encounter-deck",
     "encounter-flow:contract": "node scripts/verify-encounter-flow.mjs",
     "encounter-flow:verify": "npm run encounter-flow:contract && vitest run packages/engine/src/encounter.test.ts && npm run typecheck",
+    "encounter-resolution:verify": "vitest run packages/engine/src/encounter-resolution.test.ts packages/engine/src/encounter-resolution.replay.test.ts && npm run typecheck",
     "hero-skills:contract": "node scripts/verify-hero-skills.mjs",
     "hero-skills:verify": "npm run hero-skills:contract && npm run test:hero-skills",
     "action-tricks:contract": "node scripts/verify-action-tricks.mjs",

@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "contractId": "xiaoyaoyou-cs03-reveal-routing-v1",
+  "scope": "CONTENT-STANDARD/CS03-03A",
+  "authority": "C# source and scoped SQLite rows; not black-box equivalent effect execution",
+  "reveal": {
+    "monster": "hold-card-and-wait-for-concrete-battle-effects",
+    "npc": "hold-card-and-request-engine-computed-legal-actions",
+    "giveUp": "discard-exactly-one-top-card-and-reward-one",
+    "empty": "explicit-deck-exhausted-no-reward"
+  },
+  "npc": {
+    "owner": "active-player",
+    "actionMs": 15000,
+    "optionalTimeout": "pass-without-rng",
+    "finalCard": "cannot-pass-if-any-legal-action",
+    "mandatoryTimeout": "seeded-legal-option-in-canonical-npc-action-order",
+    "noLegalActions": "discard-and-reveal-next-or-exhaust-immediately",
+    "missingHandler": "not-equivalent-to-no-legal-actions",
+    "selected": "hold-card-with-stable-pending-effect-id-until-handler-finishes",
+    "completed": "discard-npc-except-NJ09-companion-transfer; reward-two"
+  },
+  "capture": {
+    "elementSlots": 5,
+    "conflict": "recipient-must-retain-existing-or-new-pet-within-15000ms",
+    "timeout": "seeded-random-legal-retention-in-canonical-card-id-order",
+    "ownership": "hold-new-card-until-decision-then-discard-only-unretained-card"
+  },
+  "battle": {
+    "hit": "positive-DEXi-forces-hit-negative-forces-miss-otherwise-DEX-at-least-AGL",
+    "power": "active-plus-successful-distinct-support-hinder-drummers-and-side-bonuses-clamped-at-zero",
+    "selfSupport": "count-active-once",
+    "tie": "active-side-wins",
+    "forcedOutcome": "first-living-nonzero-STRi-in-stable-original-seat-insertion-order"
+  },
+  "exhaustion": {
+    "score": "sum-current-positive-pet-strength-of-living-owners-only",
+    "tieWinner": 2,
+    "afterCompletion": "turn-end-after-normal-reward-and-cleanup",
+    "afterNoNpcAction": "immediate"
+  },
+  "integrationBoundary": {
+    "productionTurn": "unchanged-until-concrete-NPC-and-monster-effects-can-terminate",
+    "completionHooks": "internal-only-not-client-commands-and-not-proof-of-effect-execution",
+    "persistence": "JSON-roundtrip-tested; MatchState-event-and-SQLite-integration-still-required",
+    "requiredNext": [
+      "NPC-validity-targeting-and-concrete-effects-including-resumable-dying-and-hero-join",
+      "monster-debut-combat-responses-win-loss-pet-effects-and-cleanup",
+      "MatchState-versioned-events-availableActions-timeouts-and-six-connection-restart"
+    ]
+  },
+  "legacyEvidence": [
+    "PSDGamepkg/XIR.cs:371-452 reveal and NPC skip/completion",
+    "PSDGamepkg/XIR.cs:1016-1078 legal actions and mandatory last NPC",
+    "PSDGamepkg/XIR.cs:595-705 reward/cleanup/exhaustion timing",
+    "PSDBase/Board.cs:211-234 battle pools and forced outcome",
+    "PSDGamepkg/Artiad/Pond.cs:19-27 hit calculation",
+    "PSDGamepkg/Artiad/Kitty.cs:10-205 same-element pet retention",
+    "PSDGamepkg/JNS/NC303.cs:67-269 NPC handlers and NJ09 companion",
+    "PSDGamepkg/XI.cs:1200-1223 pet score",
+    "PSDGamepkg/XIG.cs:716-730 blue wins score ties",
+    "PSDGamepkg/XIS.cs:46-68 and VW/Aywi.cs:160-173 Garden insertion ordering"
+  ]
+}

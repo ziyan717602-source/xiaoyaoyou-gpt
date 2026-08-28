@@ -1683,6 +1683,35 @@ export {
   type EncounterZones,
 } from "./encounter.js";
 export { reduceDuelEvent } from "./duel.js";
+export {
+  ENCOUNTER_DEFINITIONS,
+  encounterDefinition,
+  type EncounterDefinition,
+  type MonsterDefinition,
+  type NpcDefinition,
+  type NpcActionId,
+  type PetElement,
+} from "./encounter-definitions.js";
+export {
+  assertEncounterOwnership,
+  beginEncounterResolution,
+  openNpcDecision,
+  chooseNpcAction,
+  defaultNpcAction,
+  finishNpcAction,
+  finishMonsterBattle,
+  chooseCapturedPet,
+  defaultCapturedPet,
+  projectEncounterResolution,
+  evaluateBattle,
+  evaluatePetScore,
+  type EncounterResolution,
+  type EncounterResolutionResult,
+  type EncounterResolutionZones,
+  type NpcDecision,
+  type BattlePlayer,
+  type BattleInput,
+} from "./encounter-resolution.js";
 export { beginDamageResponse } from "./reaction.js";
 export {
   applyPlannedDamage,
