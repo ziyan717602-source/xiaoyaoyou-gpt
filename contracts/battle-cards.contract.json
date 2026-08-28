@@ -1,0 +1,38 @@
+{
+  "id": "CS03-03C-02-CARDS",
+  "dependsOn": ["CS03-03C-01-DEBUT", "M04", "M06"],
+  "evidenceGrade": "C# source and read-only SQLite Tux rows, not black-box equivalence",
+  "scope": "Real two-team battle-card rounds, ordinary ZP01-ZP04 effects and nested counters; hand off outcome without pretending monster win/loss effects are finished",
+  "rules": [
+    "XIR.RunSeperateStage asks the currently losing side first; all eligible living players on that team can respond, not just a single chosen owner",
+    "After a whole side passes ask the other side; two whole-side passes end card rounds. Any actual action resets the two-pass cycle and recomputes advantage after its effects finish",
+    "Participation, waiting UI and deadlines must not disclose private legal cards; empty-hand players still receive the same publicly eligible pass window",
+    "G0CZ initializes one battle-card quota per player and consumes it before G0CC/G0CD; countered cards do not refund quota or cards",
+    "ZP01 needs participation, not hit; resolution skips battle win/loss via Z2. Do not report this as a victory",
+    "ZP02 needs successful participation and adds the post-debut/pre-battle-card STRa baseline, not the already-card-modified STRc",
+    "ZP03 needs successful participation and adds three battle-local strength",
+    "ZP04 is legal for nonparticipants and resolves to a mandatory choice of either team for plus two pool strength; choose after counter responses, not before card cancellation",
+    "Ordinary battle cards use G0CD and can be countered by TP01; nested counter resolution preserves stable parent effects and does not pay the original card again",
+    "Side windows and interrupted children retain original identities and absolute deadlines on restart; optional timeout passes and mandatory side-choice timeout is seeded random"
+  ],
+  "legacyEvidence": [
+    "PSDGamepkg/XIR.cs:500-534 ZD then ZN; 848-939 RunSeperateStage",
+    "PSDBase/Board.cs:182-232 participation, hit-success and winning-side calculation",
+    "PSDGamepkg/JNS/JP06.cs:708-744 ZP01-ZP04; 416-452 TP01; 3020-3022 GeneralZPBribe",
+    "PSDGamepkg/XIU.cs:317-331 quota charged before card action",
+    "PSDGamepkg/XIG.cs:551-635 G0CC costs and G0CD; 1572-1627 G0CD/G0CE; 2078-2112 STRa/STRc; 2417-2425 quotas",
+    "SQLite Tux CODE ZP01/ZP02/ZP03/ZP04: OCCURS R*ZD, PRIORS 0, TERMHIND 0; TP01 OCCURS G0CD"
+  ],
+  "acceptance": [
+    "Two-side pass rounds terminate with source-derived score and held monster still owned by the encounter",
+    "Real four card payments, local effects, eligibility, quota and TP01 counter chains survive every JSON boundary",
+    "ZP04 target selection after responses, mandatory seeded timeout, stale/duplicate/unauthorized and same-version competing commands",
+    "Six real network connections and SQLite restart at side window, card counter and mandatory team choice; exact persisted-event replay",
+    "Six player views, 56 cards/46 encounter entities/34 heroes conserved and no private response-capability leak"
+  ],
+  "boundaries": [
+    "Battle skills and monster win/loss/capture/consumption effects remain mandatory successors; this is not catalog completion",
+    "CS03-03D production integration and full PC/mobile playability remain required"
+  ],
+  "verification": "npm run battle-cards:verify"
+}

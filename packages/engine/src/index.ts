@@ -29,7 +29,8 @@ import {
 } from "./monster-debut.js";
 import { withPetOwnership, weaponEffectsEnabled } from "./pet-effects.js";
 
-export const MATCH_SCHEMA_VERSION = 12 as const;
+import { battleCardActions, battleScore } from "./battle-cards.js";
+export const MATCH_SCHEMA_VERSION = 13 as const;
 export const PERSISTENCE_VERSION = 1 as const;
 
 export type MatchPhase = "lobby" | "setup" | "playing" | "finished";
@@ -295,6 +296,12 @@ export interface SetupView {
 }
 
 export type AvailableAction =
+  | { readonly type: "pass-battle"; readonly windowId: string }
+  | {
+      readonly type: "play-battle-card";
+      readonly windowId: string;
+      readonly cardInstanceId: CardInstanceId;
+    }
   | { readonly type: "choose-hero"; readonly heroIds: readonly HeroId[] }
   | { readonly type: "reroll-hero" }
   | {
@@ -468,8 +475,14 @@ export interface PlayerView {
     readonly deckCount: number;
     readonly battle?: Pick<
       MonsterBattleState,
-      "monsterId" | "stage" | "strength" | "agility" | "playerStrengthBonuses"
-    >;
+      | "monsterId"
+      | "stage"
+      | "strength"
+      | "agility"
+      | "playerStrengthBonuses"
+      | "cardWindow"
+      | "remainingCardQuota"
+    > & { readonly score: ReturnType<typeof battleScore> | null };
     readonly discardPile: readonly EncounterCardId[];
     readonly lastInspection: EncounterInspection | null;
     readonly resolution?: Omit<
@@ -675,16 +688,35 @@ export function migrateMatchState(value: unknown): MatchState {
           player.equipment === undefined,
       )
     ) {
-      throw new Error("Match schema v12 snapshot is missing required fields.");
+      throw new Error("Match schema v13 snapshot is missing required fields.");
     }
     try {
       validateEncounterRuntime(current);
       validateNpcOptions(current);
       validateMonsterBattle(current);
     } catch {
-      throw new Error("Match schema v12 has invalid encounter state.");
+      throw new Error("Match schema v13 has invalid encounter state.");
     }
     return current;
+  }
+  if (raw.schemaVersion === 12) {
+    const legacy = value as MatchState;
+    return migrateMatchState({
+      ...legacy,
+      schemaVersion: MATCH_SCHEMA_VERSION,
+      encounterState: {
+        ...legacy.encounterState,
+        battle:
+          legacy.encounterState.battle === null
+            ? null
+            : {
+                ...legacy.encounterState.battle,
+                cards: null,
+                cardWindow: null,
+                remainingCardQuota: {},
+              },
+      },
+    });
   }
   if (raw.schemaVersion === 11) {
     const legacy = value as MatchState;
@@ -883,7 +915,9 @@ export function createPlayerView(
             ? brotherHandActions(state, viewerId)
             : pendingChoiceActions(state, viewerId)
           : state.reactionWindow === null
-            ? turnActions(state, viewerId)
+            ? state.encounterState.battle?.cards != null
+              ? battleCardActions(state, viewerId)
+              : turnActions(state, viewerId)
             : reactionActions(state, viewerId);
   return {
     matchId: state.matchId,
@@ -931,6 +965,13 @@ export function createPlayerView(
               agility: state.encounterState.battle.agility,
               playerStrengthBonuses:
                 state.encounterState.battle.playerStrengthBonuses,
+              cardWindow: state.encounterState.battle.cardWindow,
+              remainingCardQuota:
+                state.encounterState.battle.remainingCardQuota,
+              score:
+                state.encounterState.battle.cards === null
+                  ? null
+                  : battleScore(state),
             },
           }),
       discardPile: state.encounterDiscard,
@@ -1832,6 +1873,7 @@ export {
 export { reduceDuelEvent } from "./duel.js";
 export { beginNpcOptions } from "./npc-options.js";
 export { beginMonsterDebut } from "./monster-debut.js";
+export { beginBattleCards, battleScore } from "./battle-cards.js";
 export {
   beginNpcAction,
   reduceNpcEvent,

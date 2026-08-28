@@ -31,6 +31,7 @@ import type {
   ReactionWindow,
 } from "./index.js";
 import { nextInt } from "./random.js";
+import { resolveBattleCardEffect } from "./battle-cards.js";
 import { reduceInspectionEvent } from "./inspection.js";
 import {
   cardDefinition,
@@ -265,6 +266,33 @@ function makeWindow(input: {
   };
 }
 
+/** A paid encounter card shares the ordinary TP01/counter machinery. */
+export function openCardResponse(
+  state: MatchState,
+  effect: EffectFrame,
+  at: number,
+): MatchState {
+  if (
+    state.reactionWindow ||
+    state.pendingChoice ||
+    state.effectStack.length ||
+    effect.sourcePlayerId === null
+  )
+    throw new Error("Cannot open card response over another child.");
+  return {
+    ...state,
+    effectStack: [effect],
+    reactionWindow: makeWindow({
+      state,
+      effect,
+      windowId: `${effect.effectId}:responses`,
+      parentWindow: null,
+      afterPlayerId: effect.sourcePlayerId,
+      openedAt: at,
+    }),
+  };
+}
+
 function damageItemsForEffect(
   effect: Readonly<EffectFrame>,
 ): readonly AppliedDamage[] {
@@ -453,7 +481,8 @@ export function reduceReactionEvent(
       !(
         state.turn?.phase === "encounter" &&
         (state.encounterState.npc !== null ||
-          state.encounterState.battle?.stage === "debut-damage")
+          state.encounterState.battle?.stage === "debut-damage" ||
+          state.encounterState.battle?.stage === "card-reactions")
       ) &&
       state.turn?.phase !== "reward" &&
       state.turn?.phase !== "turn-end")
@@ -1145,7 +1174,16 @@ export function reduceReactionEvent(
     ) {
       throw new Error("Effect resolution event is not applicable.");
     }
-    if (effect.kind === "cancel-effect") {
+    if (
+      [
+        "card:xyy.card.zp01",
+        "card:xyy.card.zp02",
+        "card:xyy.card.zp03",
+        "card:xyy.card.zp04",
+      ].includes(effect.kind)
+    ) {
+      next = resolveBattleCardEffect(state, effect, resolvedAt);
+    } else if (effect.kind === "cancel-effect") {
       const targetEffectId = effect.targetIds[0];
       if (stringPayload(event, "targetEffectId") !== targetEffectId) {
         throw new Error(

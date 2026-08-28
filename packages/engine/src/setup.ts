@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
 import {
+  applyBattleCommand,
+  applyBattleChoiceTimeout,
+  continueBattleCards,
+  reduceBattleCardsEvent,
+} from "./battle-cards.js";
+import {
   continueMonsterAfterDamage,
   reduceMonsterDebutEvent,
 } from "./monster-debut.js";
@@ -244,6 +250,8 @@ export function reduceEvent(
   state: Readonly<MatchState>,
   eventToReduce: Readonly<DomainEvent>,
 ): MatchState {
+  if (eventToReduce.type === "battle.cards")
+    return reduceBattleCardsEvent(state, eventToReduce);
   if (eventToReduce.type === "monster.debut")
     return reduceMonsterDebutEvent(state, eventToReduce);
   if (eventToReduce.type === "npc-options.operation")
@@ -411,6 +419,8 @@ function applyCommandOnce(
       return applyDyingCommand(input, envelope, serverReceivedAt);
     }
     if (input.pendingChoice !== null) {
+      if (input.pendingChoice.continuation.resumeWith === "resolve-battle-team")
+        return applyBattleCommand(input, envelope, serverReceivedAt);
       if (input.pendingChoice.continuation.resumeWith === "resolve-npc-action")
         return applyNpcActionCommand(input, envelope, serverReceivedAt);
       if (input.pendingChoice.continuation.resumeWith === "resolve-npc-choice")
@@ -426,6 +436,11 @@ function applyCommandOnce(
       }
       return applyPendingChoiceCommand(input, envelope, serverReceivedAt);
     }
+    if (
+      input.reactionWindow === null &&
+      input.encounterState.battle?.cards != null
+    )
+      return applyBattleCommand(input, envelope, serverReceivedAt);
     return input.reactionWindow === null
       ? applyTurnCommand(input, envelope, serverReceivedAt)
       : applyReactionCommand(input, envelope, serverReceivedAt);
@@ -585,11 +600,18 @@ export function applyCommand(
     continuationEvents.at(-1)?.eventId ?? result.events.at(-1)?.eventId ?? null,
   );
   continuationEvents.push(...monsterContinuation.events);
+  const battleContinuation = continueBattleCards(
+    monsterContinuation.state,
+    commandId,
+    resolvedAt,
+    continuationEvents.at(-1)?.eventId ?? result.events.at(-1)?.eventId ?? null,
+  );
+  continuationEvents.push(...battleContinuation.events);
   return continuationEvents.length === 0
     ? result
     : {
         accepted: true,
-        state: monsterContinuation.state,
+        state: battleContinuation.state,
         events: [...result.events, ...continuationEvents],
       };
 }
@@ -680,6 +702,20 @@ function resolveTimeout(
   if (deadline.targetId.startsWith("setup:")) {
     return resolveSetupTimeout(state, command, deadline);
   }
+  if (deadline.targetId.startsWith("battle:")) {
+    const w = state.encounterState.battle!.cardWindow!;
+    return applyBattleCommand(
+      state,
+      timeoutEnvelope(
+        state,
+        command.commandId,
+        deadline.playerId,
+        { type: "pass-battle", windowId: w.windowId },
+        command.deadlineAt,
+      ),
+      command.deadlineAt,
+    );
+  }
   if (deadline.targetId.startsWith("reaction:")) {
     const window = state.reactionWindow;
     if (window === null) {
@@ -726,6 +762,8 @@ function resolveTimeout(
     return applyDeathLootTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("choice:")) {
+    if (state.pendingChoice?.continuation.resumeWith === "resolve-battle-team")
+      return applyBattleChoiceTimeout(state, command, deadline.playerId);
     if (state.pendingChoice?.continuation.resumeWith === "resolve-npc-action")
       return applyNpcActionTimeout(state, command, deadline.playerId);
     if (state.pendingChoice?.continuation.resumeWith === "resolve-npc-choice")

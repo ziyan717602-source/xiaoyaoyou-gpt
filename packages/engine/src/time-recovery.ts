@@ -178,6 +178,27 @@ export function collectSystemDeadlines(
     }
     return deadlines;
   }
+  const battleWindow = state.encounterState.battle?.cardWindow;
+  if (state.encounterState.battle?.stage === "card-window" && battleWindow) {
+    for (const playerId of battleWindow.playerIds.filter(
+      (id) => !battleWindow.passedPlayerIds.includes(id),
+    )) {
+      const deadlineAt = effectiveDeadline(
+        state,
+        playerId,
+        battleWindow.openedAt,
+        battleWindow.deadlineAt,
+      );
+      deadlines.push({
+        id: `timeout:battle:${battleWindow.windowId}:${playerId}:${deadlineAt}`,
+        origin: "system-timeout",
+        deadlineAt,
+        targetId: `battle:${battleWindow.windowId}:${playerId}`,
+        playerId,
+      });
+    }
+    return deadlines;
+  }
   if (
     state.turn !== null &&
     state.activePlayerId !== null &&

@@ -40,6 +40,12 @@ describe("protocol runtime schema", () => {
       }).ok,
     ).toBe(true);
     for (const command of [
+      { type: "pass-battle", windowId: "battle-window-1" },
+      {
+        type: "play-battle-card",
+        windowId: "battle-window-1",
+        cardInstanceId: "xyy.card.zp04@25",
+      },
       {
         type: "play-card",
         cardInstanceId: "xyy.card.jp04@7",

@@ -128,7 +128,7 @@ describe("monster debut replay, private views and cursor integrity", () => {
     old.schemaVersion = 11;
     delete old.encounterState.battle;
     expect(migrateMatchState(old)).toEqual(state);
-    expect(state.schemaVersion).toBe(12);
+    expect(state.schemaVersion).toBe(13);
   });
 
   const corruptions: Record<string, (s: any) => void> = {

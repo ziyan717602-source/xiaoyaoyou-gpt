@@ -13,11 +13,27 @@ import {
 import { beginDamageResponse } from "./reaction.js";
 import { isCanonicalHpEvolutionMask } from "./hp-evolution.js";
 import { ACTION_DEADLINE_MS } from "./time-recovery.js";
+import {
+  validateBattleCards,
+  type BattleCardsState,
+  type BattleCardWindow,
+} from "./battle-cards.js";
 
 export interface MonsterBattleState {
   readonly monsterId: MonsterId;
   readonly effectId: string;
-  readonly stage: "debut-damage" | "combat-ready" | "aborted";
+  readonly stage:
+    | "debut-damage"
+    | "combat-ready"
+    | "aborted"
+    | "card-window"
+    | "card-reactions"
+    | "card-choice"
+    | "outcome-ready"
+    | "escaped";
+  readonly cards: BattleCardsState | null;
+  readonly cardWindow: BattleCardWindow | null;
+  readonly remainingCardQuota: Readonly<Record<PlayerId, number>>;
   readonly openedAt: number;
   readonly updatedAt: number;
   readonly strength: number;
@@ -70,7 +86,16 @@ export function validateMonsterBattle(
   if (
     definition.kind !== "monster" ||
     battle.effectId !== effectIdFor(s, battle.monsterId) ||
-    !["debut-damage", "combat-ready", "aborted"].includes(battle.stage) ||
+    ![
+      "debut-damage",
+      "combat-ready",
+      "aborted",
+      "card-window",
+      "card-reactions",
+      "card-choice",
+      "outcome-ready",
+      "escaped",
+    ].includes(battle.stage) ||
     !Number.isSafeInteger(battle.openedAt) ||
     battle.openedAt < 0 ||
     !Number.isSafeInteger(battle.updatedAt) ||
@@ -97,6 +122,7 @@ export function validateMonsterBattle(
     )
   )
     throw new Error("Invalid monster battle strength bonus.");
+  validateBattleCards(s, allowTransient);
   const sources = battle.damageSourceParents;
   const sourceBound = (id: string, seen = new Set<string>()): boolean => {
     if (seen.has(id) || !Object.hasOwn(sources, id)) return false;
@@ -345,6 +371,9 @@ function transition(
       monsterId,
       effectId,
       stage: "combat-ready",
+      cards: null,
+      cardWindow: null,
+      remainingCardQuota: {},
       openedAt: at,
       updatedAt: at,
       strength:
@@ -408,7 +437,27 @@ export function reduceMonsterDebutEvent(
   )
     throw new Error("Invalid monster debut event.");
   const expected = transition(state, operation, resolvedAt);
-  if (JSON.stringify(expected.report) !== JSON.stringify(report))
+  // v12 logs predate battle cards. Compare their unchanged debut report against
+  // the v12 shape; never erase actual card state or repair a partial new report.
+  const oldReport = report as { battle?: Record<string, unknown> } | null;
+  let comparable: unknown = expected.report;
+  if (
+    oldReport?.battle &&
+    ["cards", "cardWindow", "remainingCardQuota"].every(
+      (key) => !Object.hasOwn(oldReport.battle!, key),
+    )
+  ) {
+    const { cards, cardWindow, remainingCardQuota, ...legacyBattle } =
+      expected.report.battle!;
+    if (
+      cards !== null ||
+      cardWindow !== null ||
+      Object.keys(remainingCardQuota).length
+    )
+      throw new Error("Cannot downgrade a battle-card report.");
+    comparable = { ...expected.report, battle: legacyBattle };
+  }
+  if (JSON.stringify(comparable) !== JSON.stringify(report))
     throw new Error("Monster debut report mismatch.");
   return {
     ...expected.state,

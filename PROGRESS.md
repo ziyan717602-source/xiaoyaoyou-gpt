@@ -2,7 +2,7 @@
 
 - 分支：`codex/goal-mvp`
 - 当前节点：`CONTENT-STANDARD / CS03-BATTLE-DECKS`
-- 最近验证完成：`CS03-03C-01-DEBUT / 六类怪物登场、怪物来源伤害、隐蛊/冰心诀、追打/濒死/救援/死亡后自伤、临时属性、父子来源与六连接重启通过。战牌/胜败及正式回合未闭合，不计为 55 项内容完成。`
+- 最近验证完成：`CS03-03C-02-CARDS / 团队共同窗口、普通四张战牌、额度、冰心诀链、强制随机选边、旧版事件与快照迁移、六连接真实重启及共同超时通过。战斗技能/胜败及正式回合未闭合，不计为 55 项内容完成。`
 - P01 证据：`docs/audits/p01-pre-clean-backup.md`、`p01-public-history-scan.md`、`p01-remote-clone-verification.md`
 - P02 清单证据：`docs/legacy-evidence/inventory.json`、`docs/legacy-evidence/README.md`、`docs/verification/receipts/p02-legacy-inventory.md`
 - P03 目录证据：`catalog/catalog.json`、`catalog/report.md`、`docs/verification/receipts/p03-authoritative-catalog.md`
@@ -32,8 +32,9 @@
 - CS03-03B-02-JOIN 证据：`contracts/hero-join.contract.json`、`docs/content-standard/cs03-hero-join.md`、`docs/verification/receipts/cs03-hero-join.md`；`check:full` 通过（单元 182、重放 61、Bot 6、集成 26、既有 E2E 3）。
 - CS03-03B-02-OPTIONS 证据：`contracts/npc-options.contract.json`、`docs/content-standard/cs03-npc-options.md`、`docs/verification/receipts/cs03-npc-options.md`；`check:full` 通过（单元 197、重放 65、Bot 6、集成 28、既有 E2E 3）。修复既有死亡终局 fixture 继承随机变身角色的问题，未放宽死亡/胜负断言或修改生产规则。
 - CS03-03C-01-DEBUT 证据：`contracts/monster-debut.contract.json`、`docs/content-standard/cs03-monster-debut.md`、`docs/verification/receipts/cs03-monster-debut.md`；`check:full` 通过（单元 206、重放 87、Bot 6、集成 30、既有 E2E 3），schema 12。
-- 当前工作：NPC 实际处理器与怪物登场子流程可恢复；怪物停在战牌前交接点，正式回合未接入，奖励/即时计分仍待消费。
-- 下一 ready 节点：`CS03-03C / 战牌、胜败与消耗`，从 C# 战牌优先权、合法性和本场数值修正开始，再完成逐怪物胜败；两条分支均可终止后进入 CS03-03D。
+- CS03-03C-02-CARDS 证据：`contracts/battle-cards.contract.json`、`docs/content-standard/cs03-battle-cards-evidence.md`、`docs/verification/receipts/cs03-battle-cards.md`；`check:full` 通过（单元 214、重放 112、Bot 6、集成 33、既有 E2E 3），schema 13。JN50203 既有网络 fixture 的随机变身角色污染已用强制失败场景证实并修正，未修改生产死亡规则或放宽断言。
+- 当前工作：普通四牌节点已验证；在绿色提交上执行干净预检、公开历史扫描并备份，然后立即进入下一节点。前置可恢复提交 `bbf1c17`。
+- 下一 ready 动作：`CS03-03C-03-OUTCOME`，从 `FG04.cs` 的标准 20 怪物 WinEff/LoseEff 和 `XIR.cs` 的 VS/Z2/ZF/BC/Capture 路径固定合同与红测，实现实际胜败效果、选择/伤害/死亡后续算和捕获清理。其后完成 `CS03-03C-04-SKILLS`；两条遭遇分支均真实闭合后再接 CS03-03D。
 - 阻塞：无。
 - 临时规则决定：`SEM-001` 至 `SEM-010`，见 `docs/rules-semantics/decisions.md`。
 

@@ -551,7 +551,12 @@ function injectJn50203Dying(
         player.id,
         {
           ...player,
-          heroId: player.id === owner ? "xyy.hero.xj402" : player.heroId,
+          heroId:
+            player.id === owner
+              ? "xyy.hero.xj402"
+              : player.id === victim
+                ? "xyy.hero.xj201"
+                : player.heroId,
           alive: true,
           hp: player.id === victim ? 0 : player.id === owner ? 3 : player.maxHp,
           maxHp: player.id === owner ? 7 : player.maxHp,
@@ -1916,7 +1921,19 @@ describe("M05 damage/dying over six real WebSockets", () => {
     for (const client of clients) client.socket.close();
     await running.server.closeGracefully();
     rewriteSnapshot(databasePath, created.roomId, (state) =>
-      injectJn50203Dying(state, owner, victim),
+      // Exercise the previously random setup role explicitly: the ordinary
+      // death-loot fixture must not inherit XJ206's dying transformation.
+      injectJn50203Dying(
+        {
+          ...state,
+          players: {
+            ...state.players,
+            [victim]: { ...state.players[victim]!, heroId: "xyy.hero.xj206" },
+          },
+        },
+        owner,
+        victim,
+      ),
     );
     running = await start(databasePath);
     clients = await Promise.all(

@@ -18,6 +18,7 @@ import {
   applyCommand,
   beginNpcOptions,
   beginMonsterDebut,
+  beginBattleCards,
   collectSystemDeadlines,
   reduceEvent,
   type DomainEvent,
@@ -360,6 +361,373 @@ function persistedEventsAfter(
 }
 
 describe("M06 time/recovery over six real WebSockets", () => {
+  it.each(["manual", "choice-timeout", "side-timeout"] as const)(
+    "restores team battle windows, nested TP01 and ZP04 choice over six sockets; mode=%s",
+    async (mode) => {
+      const automaticChoice = mode === "choice-timeout";
+      const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-battle-recovery-"));
+      roots.push(root);
+      const databasePath = join(root, "battle.sqlite");
+      let running = await start(databasePath),
+        stopped = false;
+      let clients: Client[] = [];
+      const stop = async () => {
+        for (const c of clients) c.socket.close();
+        await running.server.closeGracefully();
+        clients = [];
+        stopped = true;
+      };
+      try {
+        const created = await createPlaying(running);
+        clients = [...created.clients];
+        await stop();
+        const base = latestSnapshotState(databasePath, created.roomId);
+        let input = monsterFixture("xyy.monster.gt03", {
+          base,
+          at: Date.now() - (mode === "side-timeout" ? 15501 : 5),
+          supporter: null,
+          hinder: null,
+        });
+        const actor = input.activePlayerId!,
+          actorTeam = input.players[actor]!.team;
+        const iceOwner = input.turnOrder.find((id) => id !== actor)!;
+        input = {
+          ...input,
+          drawPile: input.drawPile.filter(
+            (c) =>
+              ![
+                "xyy.card.zp04@25",
+                "xyy.card.tp01@33",
+                "xyy.card.tp01@34",
+              ].includes(c),
+          ),
+          players: {
+            ...input.players,
+            [actor]: {
+              ...input.players[actor]!,
+              strength: 2,
+              hand: ["xyy.card.zp04@25", "xyy.card.tp01@34"],
+            },
+            [iceOwner]: {
+              ...input.players[iceOwner]!,
+              hand: ["xyy.card.tp01@33"],
+            },
+          },
+        };
+        const debuted = beginMonsterDebut(
+          input,
+          "fixture-debut",
+          input.turn!.openedAt + 3,
+        ).state;
+        const opened = beginBattleCards(
+          debuted,
+          "fixture-cards",
+          input.turn!.openedAt + 4,
+        ).state;
+        const initial = {
+          ...opened,
+          version: base.version,
+          eventSequence: base.eventSequence,
+        };
+        const database = new Database(databasePath),
+          json = JSON.stringify(initial);
+        try {
+          database
+            .prepare(
+              "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE match_id = ? AND event_sequence = ?",
+            )
+            .run(
+              json,
+              createHash("sha256").update(json).digest("hex"),
+              created.roomId,
+              base.eventSequence,
+            );
+        } finally {
+          database.close();
+        }
+        const read = () => latestSnapshotState(databasePath, created.roomId);
+        const reconnect = async () => {
+          running = await start(databasePath);
+          stopped = false;
+          clients = await Promise.all(
+            created.sessions.map((s) => connect(running.wsUrl, s)),
+          );
+          await waitUntil(() =>
+            clients.every((c) =>
+              c.latestView.players.every(
+                (p) => p.connection.status === "connected",
+              ),
+            ),
+          );
+        };
+        const submit = async (
+          owner: string,
+          id: string,
+          command: ClientCommand,
+        ) => {
+          const index = created.sessions.findIndex((s) => s.playerId === owner);
+          const response = await send(
+            clients[index]!,
+            created.sessions[index]!,
+            id,
+            command,
+          );
+          if (response.type === "command-accepted")
+            await waitUntil(() =>
+              clients.every((c) => c.latestView.version >= response.version),
+            );
+          return response;
+        };
+        await reconnect();
+        if (mode === "side-timeout") {
+          await waitUntil(
+            () => systemTimeoutCount(databasePath, created.roomId) === 3,
+          );
+          const afterTimeout = read();
+          expect(
+            afterTimeout.encounterState.battle!.cardWindow!.sideTeam,
+          ).not.toBe(actorTeam);
+          expect(afterTimeout.encounterState.battle!.cardWindow!.openedAt).toBe(
+            initial.encounterState.battle!.cardWindow!.deadlineAt,
+          );
+          const timeoutEvents = persistedEventsAfter(
+            databasePath,
+            created.roomId,
+            initial.eventSequence,
+          ).filter((e) => e.type === "system.timeout-resolved");
+          expect(
+            new Set(timeoutEvents.map((e) => e.payload.targetId)).size,
+          ).toBe(3);
+          await stop();
+          await reconnect();
+          expect(systemTimeoutCount(databasePath, created.roomId)).toBe(3);
+          expect(read().encounterState.battle).toEqual(
+            afterTimeout.encounterState.battle,
+          );
+          for (let i = 0; i < 3; i++) {
+            const w = read().encounterState.battle!.cardWindow!;
+            const id = w.playerIds.find(
+              (id) => !w.passedPlayerIds.includes(id),
+            )!;
+            expect(
+              (
+                await submit(id, `after-side-timeout-${i}`, {
+                  type: "pass-battle",
+                  windowId: w.windowId,
+                })
+              ).type,
+            ).toBe("command-accepted");
+          }
+          expect(read().encounterState.battle!.stage).toBe("outcome-ready");
+          expect(
+            persistedEventsAfter(
+              databasePath,
+              created.roomId,
+              initial.eventSequence,
+            ).reduce(reduceEvent, initial),
+          ).toEqual(read());
+          return;
+        }
+        const w = read().encounterState.battle!.cardWindow!;
+        expect(w).toEqual(initial.encounterState.battle!.cardWindow);
+        const teammates = w.playerIds.filter((id) => id !== actor);
+        const competing = await Promise.all(
+          teammates.map((id, i) =>
+            submit(id, `battle-compete-${i}`, {
+              type: "pass-battle",
+              windowId: w.windowId,
+            }),
+          ),
+        );
+        expect(
+          competing.filter((x) => x.type === "command-accepted"),
+        ).toHaveLength(1);
+        expect(
+          competing.filter((x) => x.type === "command-rejected"),
+        ).toHaveLength(1);
+        const passedWindow = read().encounterState.battle!.cardWindow;
+        await stop();
+        await reconnect();
+        expect(read().encounterState.battle!.cardWindow).toEqual(passedWindow);
+        for (const [i, c] of clients.entries()) {
+          const viewer = created.sessions[i]!.playerId;
+          if (viewer !== actor)
+            expect(JSON.stringify(c.latestView)).not.toContain(
+              "xyy.card.zp04@25",
+            );
+          if (viewer !== iceOwner)
+            expect(JSON.stringify(c.latestView)).not.toContain(
+              "xyy.card.tp01@33",
+            );
+          expect(c.latestView.encounter.battle!.cardWindow!.sideTeam).toBe(
+            actorTeam,
+          );
+        }
+        const outsider = input.turnOrder.find(
+          (id) => input.players[id]!.team !== actorTeam,
+        )!;
+        const beforeInvalid = read();
+        expect(
+          (
+            await submit(outsider, "battle-forbidden", {
+              type: "play-battle-card",
+              cardInstanceId: "xyy.card.zp04@25",
+              windowId: w.windowId,
+            })
+          ).type,
+        ).toBe("command-rejected");
+        expect(read()).toEqual(beforeInvalid);
+        const play: ClientCommand = {
+          type: "play-battle-card",
+          cardInstanceId: "xyy.card.zp04@25",
+          windowId: w.windowId,
+        };
+        expect((await submit(actor, "battle-play", play)).type).toBe(
+          "command-accepted",
+        );
+        const responseWindow = read().reactionWindow;
+        await stop();
+        await reconnect();
+        expect(read().reactionWindow).toEqual(responseWindow);
+        let counterNo = 0;
+        for (const [owner, card] of [
+          [iceOwner, "xyy.card.tp01@33"],
+          [actor, "xyy.card.tp01@34"],
+        ] as const) {
+          for (
+            let i = 0;
+            read().reactionWindow!.priorityOrder[
+              read().reactionWindow!.priorityIndex
+            ] !== owner;
+            i++
+          ) {
+            if (i > 6) throw new Error("Missing battle counter priority");
+            const r = read().reactionWindow!;
+            expect(
+              (
+                await submit(
+                  r.priorityOrder[r.priorityIndex]!,
+                  `battle-counter-pass-${counterNo}-${i}`,
+                  { type: "pass-reaction", windowId: r.windowId },
+                )
+              ).type,
+            ).toBe("command-accepted");
+          }
+          expect(
+            (
+              await submit(owner, `battle-counter-${counterNo++}`, {
+                type: "play-reaction-card",
+                cardInstanceId: card,
+                targetEffectId: read().reactionWindow!.effectId,
+              })
+            ).type,
+          ).toBe("command-accepted");
+          const nested = read();
+          await stop();
+          await reconnect();
+          expect(read().reactionWindow).toEqual(nested.reactionWindow);
+          expect(read().effectStack).toEqual(nested.effectStack);
+        }
+        for (let i = 0; read().reactionWindow !== null; i++) {
+          if (i > 20) throw new Error("Battle responses stalled");
+          const r = read().reactionWindow!;
+          expect(
+            (
+              await submit(
+                r.priorityOrder[r.priorityIndex]!,
+                `battle-final-response-${i}`,
+                { type: "pass-reaction", windowId: r.windowId },
+              )
+            ).type,
+          ).toBe("command-accepted");
+        }
+        const choosing = read();
+        expect(choosing.pendingChoice!.optionIds).toEqual(["team:1", "team:2"]);
+        const timeoutBefore = systemTimeoutCount(databasePath, created.roomId);
+        await stop();
+        await reconnect();
+        expect(read().pendingChoice).toEqual(choosing.pendingChoice);
+        if (automaticChoice) {
+          await waitUntil(() => read().pendingChoice === null, 18000);
+          expect(read().rng.cursor).toBe(choosing.rng.cursor + 1);
+          expect(systemTimeoutCount(databasePath, created.roomId)).toBe(
+            timeoutBefore + 1,
+          );
+        } else {
+          expect(
+            (
+              await submit(actor, "battle-team-choice", {
+                type: "submit-choice",
+                choiceId: choosing.pendingChoice!.choiceId,
+                selections: [`team:${actorTeam}`],
+              })
+            ).type,
+          ).toBe("command-accepted");
+        }
+        const afterChoice = read();
+        expect(
+          afterChoice.encounterState.battle!.remainingCardQuota[actor],
+        ).toBe(0);
+        expect(await submit(actor, "battle-play", play)).toMatchObject({
+          type: "command-accepted",
+          duplicate: true,
+        });
+        expect(read()).toEqual(afterChoice);
+        for (
+          let i = 0;
+          read().encounterState.battle!.stage === "card-window";
+          i++
+        ) {
+          if (i > 6) throw new Error("Battle side passes stalled");
+          const window = read().encounterState.battle!.cardWindow!;
+          const owner = window.playerIds.find(
+            (id) => !window.passedPlayerIds.includes(id),
+          )!;
+          expect(
+            (
+              await submit(owner, `battle-side-pass-${i}`, {
+                type: "pass-battle",
+                windowId: window.windowId,
+              })
+            ).type,
+          ).toBe("command-accepted");
+        }
+        const finished = read();
+        expect(finished.encounterState.battle!.stage).toBe("outcome-ready");
+        expect(finished.encounterState.resolution!.heldCardId).toBe(
+          "xyy.monster.gt03",
+        );
+        expect(
+          finished.discardPile.filter((c) => c === "xyy.card.zp04@25"),
+        ).toHaveLength(1);
+        expect(
+          persistedEventsAfter(
+            databasePath,
+            created.roomId,
+            initial.eventSequence,
+          ).reduce(reduceEvent, initial),
+        ).toEqual(finished);
+        await stop();
+        await reconnect();
+        const restored = read();
+        expect(restored.encounterState).toEqual(finished.encounterState);
+        expect(restored.rng).toEqual(finished.rng);
+        expect(systemTimeoutCount(databasePath, created.roomId)).toBe(
+          timeoutBefore + (automaticChoice ? 1 : 0),
+        );
+        expect(
+          persistedEventsAfter(
+            databasePath,
+            created.roomId,
+            initial.eventSequence,
+          ).reduce(reduceEvent, initial),
+        ).toEqual(restored);
+      } finally {
+        if (!stopped) await stop();
+      }
+    },
+    45000,
+  );
   it.each([false, true])(
     "restores actual GH04 reaction and rescue windows, overdue=%s, retaining source, deadlines, privacy and exact event replay",
     async (overdue) => {

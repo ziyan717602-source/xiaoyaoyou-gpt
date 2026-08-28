@@ -112,7 +112,7 @@ describe("JP02 private knowledge and command replay", () => {
     expect(upgraded).toEqual(initial);
     expect(upgraded.encounterInspections).toEqual({});
     const broken = { ...initial, encounterInspections: undefined };
-    expect(() => migrateMatchState(broken)).toThrow("schema v12");
+    expect(() => migrateMatchState(broken)).toThrow("schema v13");
   });
 
   it("rejects tampered inspection/order events instead of silently replaying different deck results", () => {

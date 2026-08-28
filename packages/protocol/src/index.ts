@@ -42,6 +42,12 @@ export interface RoomSession {
 }
 
 export type ClientCommand =
+  | { readonly type: "pass-battle"; readonly windowId: string }
+  | {
+      readonly type: "play-battle-card";
+      readonly windowId: string;
+      readonly cardInstanceId: string;
+    }
   | {
       readonly type: "choose-hero";
       readonly heroId: string;
@@ -281,6 +287,25 @@ export const clientMessageSchema = {
             clientIssuedAt: { type: "integer", minimum: 0 },
             command: {
               oneOf: [
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "windowId"],
+                  properties: {
+                    type: { const: "pass-battle" },
+                    windowId: identifierSchema,
+                  },
+                },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["type", "windowId", "cardInstanceId"],
+                  properties: {
+                    type: { const: "play-battle-card" },
+                    windowId: identifierSchema,
+                    cardInstanceId: identifierSchema,
+                  },
+                },
                 {
                   type: "object",
                   additionalProperties: false,
