@@ -1,0 +1,22 @@
+{
+  "id": "CS03-03B-02-OPTIONS",
+  "dependsOn": ["CS03-03B-02-JOIN"],
+  "scope": "Connect held NPC reveal to authoritative action choice, passing, forced-last timeout and real effects",
+  "authority": "XIR.cs:406-454 and 1016-1078; NC303 Valid handlers; existing SEM-001/002 timeout policy",
+  "requirements": [
+    "Only actual legal NPC action IDs are selectable; clients cannot supply validity or choose another NPC",
+    "Actor receives one generic submit-choice; all other viewers receive only public waiting metadata, no second nested action API",
+    "If another main-deck card exists, empty selection passes; timeout passes without RNG",
+    "Last NPC with legal actions is mandatory; timeout chooses a canonical sorted action with recorded seed RNG",
+    "No legal actions discards NPC and continues reveal; repeated empty NPCs converge to a window, a held monster or immediate-score deck exhaustion",
+    "Selecting an action enters its real handler, including target/payment/private-card/pet choices or damage/rescue/death, in one atomic command transaction",
+    "Every wait has 15 seconds; auto players act immediately without extending clocks; persistence retains original decisions",
+    "Reject corrupt choice bindings, forged event outcomes and stale/foreign/repeated commands; preserve 56 cards, 46 encounters and 34 heroes"
+  ],
+  "boundaries": [
+    "Monster effects and scoring execution are separate ready nodes; no fake resolution of a revealed monster",
+    "Production end-action remains gated until CS03-03D; existing browser E2E is not proof of a complete battle UI",
+    "No extension of supported NPC effect dependencies beyond NJ01/NJ07 contracts"
+  ],
+  "verification": "npm run npc-options:verify"
+}

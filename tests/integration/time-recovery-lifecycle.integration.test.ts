@@ -15,15 +15,16 @@ import {
   type ServerMessage,
 } from "@xiaoyaoyou/protocol";
 import {
-  beginNpcAction,
+  applyCommand,
+  beginNpcOptions,
   collectSystemDeadlines,
+  reduceEvent,
+  type DomainEvent,
   type MatchState,
   type PlayerView,
 } from "@xiaoyaoyou/engine";
-import {
-  npcFixture,
-  grantPets,
-} from "../../packages/engine/src/testing/npc-fixture.js";
+import { grantPets } from "../../packages/engine/src/testing/npc-fixture.js";
+import { npcOptionsFixture } from "../../packages/engine/src/testing/npc-options-fixture.js";
 import {
   buildRoomServer,
   type RoomAppServer,
@@ -319,6 +320,43 @@ function systemTimeoutCount(databasePath: string, matchId: string): number {
   }
 }
 
+function persistedEventsAfter(
+  databasePath: string,
+  matchId: string,
+  sequence: number,
+): DomainEvent[] {
+  const database = new Database(databasePath, { readonly: true });
+  try {
+    const rows = database
+      .prepare(
+        `SELECT sequence, event_id, command_id, causation_event_id, type,
+              ruleset_version, payload_json FROM events
+       WHERE match_id = ? AND sequence > ? ORDER BY sequence`,
+      )
+      .all(matchId, sequence) as Array<{
+      sequence: number;
+      event_id: string;
+      command_id: string;
+      causation_event_id: string | null;
+      type: string;
+      ruleset_version: string;
+      payload_json: string;
+    }>;
+    return rows.map((row) => ({
+      sequence: row.sequence,
+      eventId: row.event_id,
+      causationCommandId: row.command_id,
+      causationEventId: row.causation_event_id,
+      type: row.type,
+      matchId,
+      rulesetVersion: row.ruleset_version,
+      payload: JSON.parse(row.payload_json) as Record<string, unknown>,
+    }));
+  } finally {
+    database.close();
+  }
+}
+
 describe("M06 time/recovery over six real WebSockets", () => {
   it.each([
     "xyy.npc-action.nj01",
@@ -346,11 +384,15 @@ describe("M06 time/recovery over six real WebSockets", () => {
         clients = [...created.clients];
         await stop();
         const base = latestSnapshotState(databasePath, created.roomId);
-        let input = npcFixture(actionId, "npc-network", {
-          base,
-          at: Date.now(),
-          ...(heroJoin ? { npcId: "xyy.npc.nc106" as const } : {}),
-        });
+        let input = npcOptionsFixture(
+          heroJoin
+            ? "xyy.npc.nc106"
+            : petExchange
+              ? "xyy.npc.nc103"
+              : "xyy.npc.nc104",
+          undefined,
+          { base, at: Date.now(), seed: "npc-network" },
+        );
         const actor = input.activePlayerId!;
         const donor = input.turnOrder.find(
           (id) =>
@@ -394,7 +436,7 @@ describe("M06 time/recovery over six real WebSockets", () => {
             },
           };
         }
-        const prepared = beginNpcAction(
+        const prepared = beginNpcOptions(
           input,
           "npc-fixture-entry",
           input.turn!.openedAt + 1,
@@ -455,6 +497,86 @@ describe("M06 time/recovery over six real WebSockets", () => {
           return response;
         };
         await reconnect();
+        const actionWindow = clients[indexOf(actor)]!.latestView.pendingChoice!;
+        const beforeAction = latestSnapshotState(databasePath, created.roomId);
+        expect(actionWindow.optionIds).toContain(actionId);
+        for (const [i, client] of clients.entries()) {
+          expect(client.latestView.encounter.resolution).toMatchObject({
+            stage: "npc-choice",
+            decisionOwnerPlayerId: actor,
+          });
+          expect(client.latestView.encounter.resolution).not.toHaveProperty(
+            "availableActions",
+          );
+          if (created.sessions[i]!.playerId !== actor) {
+            expect(client.latestView.pendingChoice).toBeNull();
+            expect(client.latestView.availableActions).toEqual([]);
+          }
+          if (created.sessions[i]!.playerId !== donor)
+            for (const card of hand)
+              expect(JSON.stringify(client.latestView)).not.toContain(card);
+        }
+        await stop();
+        await reconnect();
+        expect(clients[indexOf(actor)]!.latestView.pendingChoice).toEqual(
+          actionWindow,
+        );
+        expect(latestSnapshotState(databasePath, created.roomId).rng).toEqual(
+          beforeAction.rng,
+        );
+        expect(
+          (
+            await submit(
+              donor,
+              "npc-action-wrong-owner",
+              [actionId],
+              actionWindow.choiceId,
+            )
+          ).type,
+        ).toBe("command-rejected");
+        expect(
+          (
+            await submit(actor, "npc-action-unavailable", [
+              "xyy.npc-action.nj08",
+            ])
+          ).type,
+        ).toBe("command-rejected");
+        const beforeSelection = latestSnapshotState(
+          databasePath,
+          created.roomId,
+        );
+        expect(
+          (await submit(actor, "npc-select-action", [actionId])).type,
+        ).toBe("command-accepted");
+        const afterAction = latestSnapshotState(databasePath, created.roomId);
+        expect(afterAction.version).toBe(beforeSelection.version + 1);
+        expect(afterAction.eventSequence).toBe(
+          beforeSelection.eventSequence + 2,
+        );
+        const actionEvents = persistedEventsAfter(
+          databasePath,
+          created.roomId,
+          beforeSelection.eventSequence,
+        );
+        expect(actionEvents.map((event) => event.type)).toEqual([
+          "npc-options.operation",
+          "npc.operation",
+        ]);
+        expect(actionEvents.reduce(reduceEvent, beforeSelection)).toEqual(
+          afterAction,
+        );
+        expect(afterAction.encounterState.npc?.stage).toBe("donor");
+        expect(
+          await submit(
+            actor,
+            "npc-select-action",
+            [actionId],
+            actionWindow.choiceId,
+          ),
+        ).toMatchObject({ type: "command-accepted", duplicate: true });
+        expect(latestSnapshotState(databasePath, created.roomId)).toEqual(
+          afterAction,
+        );
         expect((await submit(actor, "npc-donor", [donor])).type).toBe(
           "command-accepted",
         );
@@ -586,6 +708,194 @@ describe("M06 time/recovery over six real WebSockets", () => {
         );
         expect(afterRestart.drawPile).toEqual(finished.drawPile);
         expect(afterRestart.rng).toEqual(finished.rng);
+      } finally {
+        if (!stopped) await stop();
+      }
+    },
+  );
+  it.each([false, true])(
+    "restores an overdue NPC action window (mandatory=%s), resolves it once and replays the persisted events",
+    async (mandatory) => {
+      const root = mkdtempSync(join(tmpdir(), "xiaoyaoyou-npc-timeout-"));
+      roots.push(root);
+      const databasePath = join(root, "npc-timeout.sqlite");
+      let running = await start(databasePath);
+      let clients: Client[] = [];
+      let stopped = false;
+      const stop = async () => {
+        for (const client of clients) client.socket.close();
+        await running.server.closeGracefully();
+        clients = [];
+        stopped = true;
+      };
+      try {
+        const created = await createPlaying(running);
+        clients = [...created.clients];
+        await stop();
+        const base = latestSnapshotState(databasePath, created.roomId);
+        // Age a complete, internally consistent 15-second window. Only this
+        // initial scenario is injected; the running service owns all timeouts.
+        let input = npcOptionsFixture(
+          "xyy.npc.nc106",
+          mandatory ? [] : ["xyy.monster.gs01"],
+          {
+            base,
+            at: Date.now() - 15_501,
+            seed: "npc-overdue-window",
+          },
+        );
+        const actor = input.activePlayerId!;
+        input = {
+          ...input,
+          drawPile: input.drawPile.slice(2),
+          players: {
+            ...input.players,
+            [actor]: {
+              ...input.players[actor]!,
+              hand: input.drawPile.slice(0, 2),
+            },
+          },
+        };
+        const opened = beginNpcOptions(
+          input,
+          "fixture-overdue-npc",
+          input.turn!.openedAt + 1,
+        ).state;
+        const initial: MatchState = {
+          ...opened,
+          version: base.version,
+          eventSequence: base.eventSequence,
+        };
+        const choice = initial.pendingChoice!;
+        expect(choice.deadlineAt - choice.openedAt).toBe(15_000);
+        expect(choice.optional).toBe(!mandatory);
+        expect(choice.optionIds).toEqual([
+          "xyy.npc-action.nj01",
+          "xyy.npc-action.nj04",
+        ]);
+        const deadline = collectSystemDeadlines(initial).find(
+          (d) => d.origin === "system-timeout",
+        )!;
+        const expected = applyCommand(initial, {
+          origin: "system-timeout",
+          commandId: deadline.id,
+          matchId: initial.matchId,
+          expectedVersion: initial.version,
+          targetId: deadline.targetId,
+          deadlineAt: deadline.deadlineAt,
+        });
+        if (!expected.accepted) throw new Error(expected.reason);
+        const stateJson = JSON.stringify(initial);
+        const database = new Database(databasePath);
+        try {
+          database
+            .prepare(
+              "UPDATE snapshots SET state_json = ?, state_hash = ? WHERE match_id = ? AND event_sequence = ?",
+            )
+            .run(
+              stateJson,
+              createHash("sha256").update(stateJson).digest("hex"),
+              created.roomId,
+              base.eventSequence,
+            );
+        } finally {
+          database.close();
+        }
+        const before = systemTimeoutCount(databasePath, created.roomId);
+        const reconnect = async () => {
+          running = await start(databasePath);
+          stopped = false;
+          clients = await Promise.all(
+            created.sessions.map((session) => connect(running.wsUrl, session)),
+          );
+          await waitUntil(() =>
+            clients.every((client) =>
+              client.latestView.players.every(
+                (player) => player.connection.status === "connected",
+              ),
+            ),
+          );
+        };
+        await reconnect();
+        await waitUntil(
+          () => systemTimeoutCount(databasePath, created.roomId) === before + 1,
+        );
+        const resolved = latestSnapshotState(databasePath, created.roomId);
+        expect(resolved.encounterState).toEqual(expected.state.encounterState);
+        expect(resolved.players).toEqual(expected.state.players);
+        expect(resolved.encounterDeck).toEqual(expected.state.encounterDeck);
+        expect(resolved.encounterDiscard).toEqual(
+          expected.state.encounterDiscard,
+        );
+        expect(resolved.pendingChoice).toEqual(expected.state.pendingChoice);
+        expect(resolved.rng).toEqual(expected.state.rng);
+        expect(resolved.rng.cursor - initial.rng.cursor).toBe(
+          mandatory ? 1 : 0,
+        );
+        if (!mandatory)
+          expect(resolved.encounterState.resolution).toMatchObject({
+            stage: "monster-effects",
+            heldCardId: "xyy.monster.gs01",
+          });
+        const persisted = persistedEventsAfter(
+          databasePath,
+          created.roomId,
+          initial.eventSequence,
+        );
+        expect(persisted.reduce(reduceEvent, initial)).toEqual(resolved);
+        const timeoutEvents = persisted.filter(
+          (event) => event.causationCommandId === deadline.id,
+        );
+        expect(timeoutEvents.map((event) => event.type)).toEqual(
+          mandatory
+            ? [
+                "npc-options.operation",
+                "npc.operation",
+                "system.timeout-resolved",
+              ]
+            : ["npc-options.operation", "system.timeout-resolved"],
+        );
+        expect(
+          new Set(timeoutEvents.map((event) => event.payload.matchVersion))
+            .size,
+        ).toBe(1);
+        const actorIndex = created.sessions.findIndex(
+          (session) => session.playerId === actor,
+        );
+        expect(
+          (
+            await send(
+              clients[actorIndex]!,
+              created.sessions[actorIndex]!,
+              "stale-npc-action",
+              {
+                type: "submit-choice",
+                choiceId: choice.choiceId,
+                selections: [choice.optionIds[0]!],
+              },
+            )
+          ).type,
+        ).toBe("command-rejected");
+        expect(latestSnapshotState(databasePath, created.roomId)).toEqual(
+          resolved,
+        );
+        await stop();
+        await reconnect();
+        const restarted = latestSnapshotState(databasePath, created.roomId);
+        expect(restarted.encounterState).toEqual(resolved.encounterState);
+        expect(restarted.pendingChoice).toEqual(resolved.pendingChoice);
+        expect(restarted.players).toEqual(resolved.players);
+        expect(restarted.rng).toEqual(resolved.rng);
+        expect(systemTimeoutCount(databasePath, created.roomId)).toBe(
+          before + 1,
+        );
+        expect(
+          persistedEventsAfter(
+            databasePath,
+            created.roomId,
+            initial.eventSequence,
+          ).reduce(reduceEvent, initial),
+        ).toEqual(restarted);
       } finally {
         if (!stopped) await stop();
       }

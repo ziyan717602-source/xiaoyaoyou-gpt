@@ -22,6 +22,7 @@ import {
   type EncounterRuntimeState,
 } from "./npc-effects.js";
 import { projectEncounterResolution } from "./encounter-resolution.js";
+import { validateNpcOptions } from "./npc-options.js";
 import { withPetOwnership, weaponEffectsEnabled } from "./pet-effects.js";
 
 export const MATCH_SCHEMA_VERSION = 11 as const;
@@ -463,7 +464,10 @@ export interface PlayerView {
     readonly deckCount: number;
     readonly discardPile: readonly EncounterCardId[];
     readonly lastInspection: EncounterInspection | null;
-    readonly resolution?: ReturnType<typeof projectEncounterResolution>;
+    readonly resolution?: Omit<
+      ReturnType<typeof projectEncounterResolution>,
+      "availableActions"
+    >;
     readonly pets?: EncounterRuntimeState["pets"];
     readonly companions?: EncounterRuntimeState["companions"];
     readonly weaponDisabledReasons?: EncounterRuntimeState["weaponDisabledReasons"];
@@ -667,6 +671,7 @@ export function migrateMatchState(value: unknown): MatchState {
     }
     try {
       validateEncounterRuntime(current);
+      validateNpcOptions(current);
     } catch {
       throw new Error("Match schema v11 has invalid encounter state.");
     }
@@ -902,7 +907,7 @@ export function createPlayerView(
       ...(state.encounterState.resolution === null
         ? {}
         : {
-            resolution: projectEncounterResolution(
+            resolution: encounterSummary(
               state.encounterState.resolution,
               viewerId,
             ),
@@ -979,6 +984,14 @@ export function createPlayerView(
         : null,
     dyingBatch: state.dyingBatch,
   };
+}
+
+function encounterSummary(
+  ...args: Parameters<typeof projectEncounterResolution>
+) {
+  const { availableActions: _substrateActions, ...summary } =
+    projectEncounterResolution(...args);
+  return summary;
 }
 
 function pendingChoiceActions(
@@ -1786,6 +1799,7 @@ export {
   type EncounterZones,
 } from "./encounter.js";
 export { reduceDuelEvent } from "./duel.js";
+export { beginNpcOptions } from "./npc-options.js";
 export {
   beginNpcAction,
   reduceNpcEvent,

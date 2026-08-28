@@ -6,6 +6,8 @@ import { join } from "node:path";
 import {
   beginDamageResponse,
   beginDyingBatch,
+  heroDefinition,
+  handLimitForHero,
   planDamageBatch,
   SETUP_CARD_INSTANCES,
   type MatchState,
@@ -368,14 +370,41 @@ function injectCards(
           !input.winnerFixture ||
           player.id === input.actor ||
           player.id === input.target;
+        // Terminal-death fixtures must not inherit a random hero's mandatory
+        // transformation or post-damage skill from an earlier scenario.
+        const terminalHeroes = [
+          "xyy.hero.xj101",
+          "xyy.hero.xj102",
+          "xyy.hero.xj104",
+          "xyy.hero.xj201",
+          "xyy.hero.xj401",
+          "xyy.hero.xj503",
+        ] as const;
+        const hero = input.winnerFixture
+          ? heroDefinition(terminalHeroes[player.seat]!)
+          : null;
         return [
           player.id,
           {
             ...player,
             heroId:
-              player.id === input.rescuer ? "xyy.hero.x3w03" : player.heroId,
+              hero?.id ??
+              (player.id === input.rescuer ? "xyy.hero.x3w03" : player.heroId),
+            ...(hero === null
+              ? {}
+              : {
+                  maxHp: hero.maxHp,
+                  strength: hero.strength,
+                  dexterity: hero.dexterity,
+                  handLimit: handLimitForHero(hero.id),
+                }),
             alive: staysAlive,
-            hp: player.id === input.target ? 2 : staysAlive ? player.maxHp : 0,
+            hp:
+              player.id === input.target
+                ? 2
+                : staysAlive
+                  ? (hero?.maxHp ?? player.maxHp)
+                  : 0,
             hand: hands[player.id] ?? [],
             equipment:
               player.id === input.target
@@ -1791,11 +1820,18 @@ describe("M05 damage/dying over six real WebSockets", () => {
       (player) => player.id === winnerActor,
     )!.team;
     rewriteSnapshot(databasePath, created.roomId, (state) =>
-      injectCards(state, {
-        actor: winnerActor,
-        target: loser,
-        winnerFixture: true,
-      }),
+      injectCards(
+        {
+          ...state,
+          // Regression: an inherited dying-transformation role must not leak
+          // into a fixture specifically asserting ordinary terminal death.
+          players: {
+            ...state.players,
+            [loser]: { ...state.players[loser]!, heroId: "xyy.hero.xj206" },
+          },
+        },
+        { actor: winnerActor, target: loser, winnerFixture: true },
+      ),
     );
     running = await start(databasePath);
     clients = await Promise.all(
@@ -1824,6 +1860,10 @@ describe("M05 damage/dying over six real WebSockets", () => {
     );
     let pass = 0;
     while (clients[0]!.latestView.phase === "playing") {
+      expect(
+        clients[0]!.latestView.dyingBatch,
+        JSON.stringify(clients[0]!.latestView),
+      ).not.toBeNull();
       const batch = clients[0]!.latestView.dyingBatch!;
       const priority = batch.priorityOrder[batch.priorityIndex]!;
       response = await send(

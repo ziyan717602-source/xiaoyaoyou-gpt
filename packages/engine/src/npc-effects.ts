@@ -807,8 +807,9 @@ export function beginNpcAction(
   state: MatchState,
   commandId: CommandId,
   at: number,
+  causationEventId: string | null = null,
 ) {
-  return execute(state, { type: "start" }, commandId, at);
+  return execute(state, { type: "start" }, commandId, at, causationEventId);
 }
 export function applyNpcChoiceCommand(
   state: MatchState,

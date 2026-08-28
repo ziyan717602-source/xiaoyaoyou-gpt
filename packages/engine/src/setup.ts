@@ -68,6 +68,11 @@ import {
   continueNpcAfterDamage,
   reduceNpcEvent,
 } from "./npc-effects.js";
+import {
+  applyNpcActionCommand,
+  applyNpcActionTimeout,
+  reduceNpcOptionsEvent,
+} from "./npc-options.js";
 const PLAYER_COUNT = 6;
 const HERO_CHOICES = 3;
 const INITIAL_HAND_SIZE = 3;
@@ -235,6 +240,8 @@ export function reduceEvent(
   state: Readonly<MatchState>,
   eventToReduce: Readonly<DomainEvent>,
 ): MatchState {
+  if (eventToReduce.type === "npc-options.operation")
+    return reduceNpcOptionsEvent(state, eventToReduce);
   if (eventToReduce.type.startsWith("npc."))
     return reduceNpcEvent(state, eventToReduce);
   if (
@@ -398,6 +405,8 @@ function applyCommandOnce(
       return applyDyingCommand(input, envelope, serverReceivedAt);
     }
     if (input.pendingChoice !== null) {
+      if (input.pendingChoice.continuation.resumeWith === "resolve-npc-action")
+        return applyNpcActionCommand(input, envelope, serverReceivedAt);
       if (input.pendingChoice.continuation.resumeWith === "resolve-npc-choice")
         return applyNpcChoiceCommand(input, envelope, serverReceivedAt);
       if (input.pendingChoice.prompt === "hero-skill:xyy.skill.jn20102") {
@@ -704,6 +713,8 @@ function resolveTimeout(
     return applyDeathLootTimeout(state, command, deadline.playerId);
   }
   if (deadline.targetId.startsWith("choice:")) {
+    if (state.pendingChoice?.continuation.resumeWith === "resolve-npc-action")
+      return applyNpcActionTimeout(state, command, deadline.playerId);
     if (state.pendingChoice?.continuation.resumeWith === "resolve-npc-choice")
       return applyNpcChoiceTimeout(state, command, deadline.playerId);
     if (state.pendingChoice?.prompt === "hero-skill:xyy.skill.jn20102") {

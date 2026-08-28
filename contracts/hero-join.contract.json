@@ -15,7 +15,7 @@
   ],
   "migration": "v10 -> v11 adds empty heroDiscards/bannedHeroes without resetting clocks, cards, RNG or existing stats; v10 did not store historical hero discards so these are not fabricated",
   "boundaries": [
-    "entry still starts with an already selected held NPC; full MatchState NPC action/pass/forced-last/no-option routing remains CS03-03B-02-OPTIONS",
+    "handler requires a selected held NPC; CS03-03B-02-OPTIONS now connects actual MatchState NPC action/pass/forced-last/no-option routing to this entry",
     "protected cards, hero tokens/ROM, pet seals/disabled/burst, borrowed skills and their producers remain explicit content dependencies",
     "JP/SJ recruitment origins are not exposed by this encounter entry",
     "no claim of retroactively repairing ambiguous pet-stat errors in pre-v11 transformed snapshots",
